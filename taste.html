@@ -310,6 +310,57 @@ body::before {
   stroke: var(--text-en);
 }
 
+/* --- ILLUSTRATIONS --- */
+.illustration {
+  margin: 3rem auto;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+.illustration.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+.illustration img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+.illustration.hero {
+  max-width: 580px;
+  margin: 0 auto 1rem;
+}
+.illustration.hero img {
+  border-radius: 2px;
+  box-shadow: 0 2px 20px rgba(42, 31, 20, 0.08);
+}
+.illustration.inline {
+  max-width: 420px;
+  margin: 2.5rem auto;
+}
+.illustration.inline img {
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+}
+.illustration.wide {
+  max-width: 500px;
+  margin: 2.5rem auto;
+}
+.illustration.wide img {
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+}
+.illustration figcaption {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.7rem;
+  color: var(--margin-note);
+  margin-top: 0.6rem;
+  letter-spacing: 0.05em;
+  font-style: italic;
+}
+
 /* --- ANIMATIONS --- */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(20px); }
@@ -344,6 +395,10 @@ body::before {
   <div class="title-en">Taste for Makers</div>
   <div class="meta">Paul Graham · 2002 年 2 月 · 译自 <a href="https://paulgraham.com/taste.html" target="_blank">paulgraham.com</a></div>
 </header>
+
+<figure class="illustration hero section">
+  <img src="images/taste-header.png" alt="A single ink brushstroke on cream paper" loading="eager">
+</figure>
 
 <main class="content">
 
@@ -459,6 +514,11 @@ body::before {
     <div class="en">When you're forced to be simple, you're forced to face the real problem. When you can't deliver ornament, you have to deliver substance.</div>
   </div>
 </div>
+
+<figure class="illustration inline section">
+  <img src="images/taste-simple.png" alt="A face drawn in a few precise lines">
+  <figcaption>Eight lines in exactly the right place</figcaption>
+</figure>
 
 <div class="divider">· · ·</div>
 
@@ -680,6 +740,11 @@ body::before {
   </div>
 </div>
 
+<figure class="illustration wide section">
+  <img src="images/taste-nature-symmetry.png" alt="Leaf skeleton showing recursive vein patterns">
+  <figcaption>Recursion means repetition in subelements, like the pattern of veins in a leaf</figcaption>
+</figure>
+
 <div class="divider">· · ·</div>
 
 <!-- PRINCIPLE 10: REDESIGN -->
@@ -778,6 +843,12 @@ body::before {
     <div class="cn">十五世纪的佛罗伦萨居民包括布鲁内莱斯基、吉贝尔蒂、多纳泰罗、马萨乔、菲利波·利皮、弗拉·安杰利科、韦罗基奥、波提切利、达·芬奇和米开朗基罗。当时的米兰和佛罗伦萨一样大。你能说出几个十五世纪米兰艺术家的名字？</div>
     <div class="en">The inhabitants of fifteenth century Florence included Brunelleschi, Ghiberti, Donatello, Masaccio, Filippo Lippi, Fra Angelico, Verrocchio, Botticelli, Leonardo, and Michelangelo. Milan at the time was as big as Florence. How many fifteenth century Milanese artists can you name?</div>
   </div>
+
+  <figure class="illustration wide section">
+    <img src="images/taste-florence.png" alt="Ink wash painting of Florence with Brunelleschi's dome">
+    <figcaption>Firenze, 1450</figcaption>
+  </figure>
+
   <div class="pair">
     <div class="cn">十五世纪的佛罗伦萨正在发生什么。这不可能是遗传因素，因为现在没有在发生。你必须假设，无论达·芬奇和米开朗基罗与生俱来有多少天赋，在米兰出生的人也有同样的天赋。那么米兰的达·芬奇们怎么样了？</div>
     <div class="en">Something was happening in Florence in the fifteenth century. And it can't have been heredity, because it isn't happening now. You have to assume that whatever inborn ability Leonardo and Michelangelo had, there were people born in Milan with just as much. What happened to the Milanese Leonardo?</div>
@@ -835,6 +906,10 @@ body::before {
     <div class="en">Intolerance for ugliness is not in itself enough. You have to understand a field well before you develop a good nose for what needs fixing. You have to do your homework. But as you become expert in a field, you'll start to hear little voices saying, <em>What a hack! There must be a better way.</em> Don't ignore those voices. Cultivate them. The recipe for great work is: very exacting taste, plus the ability to gratify it.</div>
   </div>
 </div>
+
+<figure class="illustration wide section">
+  <img src="images/taste-closing.png" alt="A hand holding a calligraphy brush, ink drop about to fall">
+</figure>
 
 </main>
 
