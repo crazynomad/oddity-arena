@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Angry Birds - Canvas Edition</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="game-container">
+  <div id="ui-overlay">
+    <div id="score-display">Score: <span id="score">0</span></div>
+    <div id="birds-display">Birds: <span id="birds-left">3</span></div>
+    <button id="reset-btn">🔄 Reset</button>
+  </div>
+  <canvas id="game-canvas"></canvas>
+  <div id="message-overlay" class="hidden">
+    <div id="message-box">
+      <h2 id="message-title"></h2>
+      <p id="message-text"></p>
+      <button id="message-btn">Play Again</button>
+    </div>
+  </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>

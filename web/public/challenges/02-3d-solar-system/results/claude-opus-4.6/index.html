@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>N-Body Gravity Sandbox — Spacetime Curvature</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="ui-panel">
+    <h1>⚛ Gravity Sandbox</h1>
+    <div class="section">
+      <h2>Simulation</h2>
+      <div class="btn-row">
+        <button id="btn-pause">⏸ Pause</button>
+        <button id="btn-reset">↺ Reset</button>
+      </div>
+      <label>Gravity Strength <span id="val-gravity">1.00</span>
+        <input type="range" id="slider-gravity" min="0" max="5" step="0.05" value="1">
+      </label>
+      <label>Sim Speed <span id="val-speed">1.00</span>
+        <input type="range" id="slider-speed" min="0" max="3" step="0.05" value="1">
+      </label>
+      <label>Trail Length <span id="val-trail">120</span>
+        <input type="range" id="slider-trail" min="10" max="500" step="10" value="120">
+      </label>
+    </div>
+    <div class="section">
+      <h2>Overlays</h2>
+      <label class="toggle"><input type="checkbox" id="chk-curvature" checked> Curvature Grid</label>
+      <label class="toggle"><input type="checkbox" id="chk-trails" checked> Trails</label>
+      <label class="toggle"><input type="checkbox" id="chk-vectors"> Velocity Vectors</label>
+    </div>
+    <div class="section">
+      <h2>Add Body</h2>
+      <label>Mass <span id="val-mass">50</span>
+        <input type="range" id="slider-mass" min="5" max="500" step="5" value="50">
+      </label>
+      <button id="btn-add" class="primary">+ Add Random Body</button>
+      <button id="btn-add-central" class="primary">★ Add Heavy Central</button>
+      <button id="btn-preset">Load Preset: Solar</button>
+    </div>
+    <div class="section">
+      <h2>Bodies <span id="body-count">0</span></h2>
+      <div id="body-list"></div>
+    </div>
+    <div class="section info">
+      <p>Click a body to select & delete. Scroll to zoom. Drag to orbit.</p>
+      <p>Relativity effect: <em>gravitational redshift</em> — bodies near heavy masses shift red.</p>
+    </div>
+  </div>
+  <div id="canvas-container"></div>
+  <div id="stats-bar">
+    <span id="fps-counter">60 FPS</span>
+    <span id="energy-display">KE: 0</span>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script type="module" src="script.js"></script>
+</body>
+</html>

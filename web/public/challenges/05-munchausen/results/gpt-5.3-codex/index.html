@@ -1,0 +1,569 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Munchausen Swamp Escape</title>
+  <style>
+    :root {
+      --bg1: #0b1f17;
+      --bg2: #163726;
+      --mud: #4a3324;
+      --mud2: #5f402c;
+      --fog: rgba(210, 255, 230, 0.08);
+      --text: #f5f1d2;
+    }
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(circle at 30% 20%, #234b36 0%, #12281d 45%, #08150f 100%);
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--text);
+    }
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      cursor: pointer;
+    }
+    .hint {
+      position: fixed;
+      right: 14px;
+      bottom: 10px;
+      font-size: 14px;
+      letter-spacing: 0.3px;
+      color: rgba(245, 241, 210, 0.7);
+      user-select: none;
+      pointer-events: none;
+      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+  <div class="hint">Click to replay</div>
+
+  <script>
+    const canvas = document.getElementById("scene");
+    const ctx = canvas.getContext("2d");
+
+    let w = 0;
+    let h = 0;
+    let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    const state = {
+      running: true,
+      start: 0,
+      t: 0,
+      last: 0,
+      duration: 24.5,
+      bubbles: [],
+      mud: [],
+      sparkles: [],
+      waves: []
+    };
+
+    const sceneBreaks = {
+      walking: [0.0, 4.0],
+      sinking: [4.0, 7.5],
+      panic: [7.5, 10.8],
+      eureka: [10.8, 13.0],
+      pull: [13.0, 16.2],
+      rises: [16.2, 21.2],
+      triumph: [21.2, 24.5]
+    };
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = window.innerWidth;
+      h = window.innerHeight;
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function clamp(v, a, b) {
+      return Math.max(a, Math.min(b, v));
+    }
+
+    function lerp(a, b, t) {
+      return a + (b - a) * t;
+    }
+
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function easeInOutSine(t) {
+      return -(Math.cos(Math.PI * t) - 1) / 2;
+    }
+
+    function norm(t, a, b) {
+      return clamp((t - a) / (b - a), 0, 1);
+    }
+
+    function inScene(name) {
+      const [a, b] = sceneBreaks[name];
+      return state.t >= a && state.t < b;
+    }
+
+    function xForTime(t) {
+      const center = w * 0.5;
+      const walkStart = w * 0.2;
+      if (t < sceneBreaks.walking[1]) {
+        const p = norm(t, sceneBreaks.walking[0], sceneBreaks.walking[1]);
+        return lerp(walkStart, center, easeInOutSine(p));
+      }
+      return center;
+    }
+
+    function swampY() {
+      return h * 0.68;
+    }
+
+    function bodyDepthForTime(t) {
+      let depth = 0;
+
+      if (t < sceneBreaks.sinking[0]) {
+        depth = 0;
+      } else if (t < sceneBreaks.sinking[1]) {
+        const p = easeOutCubic(norm(t, sceneBreaks.sinking[0], sceneBreaks.sinking[1]));
+        depth = lerp(0, 46, p);
+      } else if (t < sceneBreaks.pull[0]) {
+        const wobble = Math.sin(t * 8) * 4;
+        depth = 46 + wobble;
+      } else if (t < sceneBreaks.pull[1]) {
+        const p = easeInOutSine(norm(t, sceneBreaks.pull[0], sceneBreaks.pull[1]));
+        depth = lerp(46, 10, p);
+      } else if (t < sceneBreaks.rises[1]) {
+        const p = easeOutCubic(norm(t, sceneBreaks.rises[0], sceneBreaks.rises[1]));
+        depth = lerp(10, -28, p);
+      } else {
+        depth = -28;
+      }
+      return depth;
+    }
+
+    function captionForTime(t) {
+      if (inScene("walking")) return "Strolling confidently through the mire...";
+      if (inScene("sinking")) return "Wait. Why is the ground gone?";
+      if (inScene("panic")) return "Panic in the swamp!";
+      if (inScene("eureka")) return "Eureka! A ridiculous idea...";
+      if (inScene("pull")) return "He grabs his own hair and PULLS.";
+      if (inScene("rises")) return "Up he goes, against all reason.";
+      return "Triumph! Baron Munchausen defeats the mud.";
+    }
+
+    function addMudBurst(x, y, strength = 1) {
+      const count = Math.floor(10 + 16 * strength);
+      for (let i = 0; i < count; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const speed = (40 + Math.random() * 130) * strength;
+        state.mud.push({
+          x,
+          y,
+          vx: Math.cos(a) * speed,
+          vy: -Math.abs(Math.sin(a)) * speed - Math.random() * 70,
+          life: 0.6 + Math.random() * 0.8,
+          age: 0,
+          r: 2 + Math.random() * 4,
+          c: Math.random() < 0.4 ? "#3e2a1f" : "#6c4b35"
+        });
+      }
+    }
+
+    function addBubble(x, y, scale = 1) {
+      state.bubbles.push({
+        x: x + (Math.random() - 0.5) * 60,
+        y: y + Math.random() * 8,
+        vx: (Math.random() - 0.5) * 14,
+        vy: -(28 + Math.random() * 55) * scale,
+        life: 0.9 + Math.random() * 1.1,
+        age: 0,
+        r: 2 + Math.random() * 5
+      });
+    }
+
+    function addSparkle(x, y, spread = 1) {
+      const n = Math.floor(7 + 8 * spread);
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const s = 20 + Math.random() * 85 * spread;
+        state.sparkles.push({
+          x,
+          y,
+          vx: Math.cos(a) * s,
+          vy: Math.sin(a) * s - 20,
+          life: 0.55 + Math.random() * 0.45,
+          age: 0,
+          r: 1 + Math.random() * 2.2
+        });
+      }
+    }
+
+    function addWave(x, y, maxR) {
+      state.waves.push({ x, y, r: 4, maxR, age: 0, life: 0.8 + Math.random() * 0.6 });
+    }
+
+    function updateParticles(dt, actor) {
+      const t = state.t;
+      const surface = swampY();
+
+      if (inScene("sinking") && Math.random() < 0.35) addBubble(actor.x, surface + 5, 0.9);
+      if (inScene("panic") && Math.random() < 0.65) {
+        addBubble(actor.x, surface + 8, 1.2);
+        if (Math.random() < 0.25) addMudBurst(actor.x + (Math.random() - 0.5) * 30, surface + 2, 0.6);
+      }
+      if (inScene("eureka") && Math.random() < 0.3) addSparkle(actor.x + 10, actor.headY - 18, 0.6);
+
+      if (inScene("pull")) {
+        if (Math.random() < 0.8) addMudBurst(actor.x + (Math.random() - 0.5) * 34, surface + 3, 1.15);
+        if (Math.random() < 0.5) addBubble(actor.x, surface + 4, 1.3);
+        if (Math.random() < 0.65) addSparkle(actor.hairX, actor.hairY, 1.0);
+        if (Math.random() < 0.3) addWave(actor.x, surface + 2, 65);
+      }
+
+      if (inScene("rises") && Math.random() < 0.4) {
+        addSparkle(actor.x, actor.headY, 0.8);
+        if (Math.random() < 0.35) addWave(actor.x, surface + 2, 52);
+      }
+
+      if (inScene("triumph") && Math.random() < 0.45) {
+        addSparkle(actor.x + (Math.random() - 0.5) * 50, actor.headY - 20, 0.7);
+      }
+
+      for (const p of state.bubbles) {
+        p.age += dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+      }
+      for (const p of state.mud) {
+        p.age += dt;
+        p.vy += 300 * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+      }
+      for (const p of state.sparkles) {
+        p.age += dt;
+        p.vy += 40 * dt;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+      }
+      for (const p of state.waves) {
+        p.age += dt;
+        p.r += (p.maxR - p.r) * 2.8 * dt;
+      }
+
+      state.bubbles = state.bubbles.filter(p => p.age < p.life && p.y > 0);
+      state.mud = state.mud.filter(p => p.age < p.life && p.y < h + 30);
+      state.sparkles = state.sparkles.filter(p => p.age < p.life);
+      state.waves = state.waves.filter(p => p.age < p.life);
+
+      if (Math.random() < 0.04) addBubble(Math.random() * w, surface + 2, 0.6);
+      if (Math.random() < 0.018) addWave(Math.random() * w, surface + 1, 25 + Math.random() * 30);
+    }
+
+    function drawBackground(t) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      g.addColorStop(0, "#1f4734");
+      g.addColorStop(0.55, "#103123");
+      g.addColorStop(1, "#08140f");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+
+      for (let i = 0; i < 6; i++) {
+        const y = h * (0.17 + i * 0.08);
+        const sway = Math.sin(t * 0.35 + i) * 22;
+        ctx.fillStyle = i % 2 ? "rgba(15,40,28,0.45)" : "rgba(35,70,52,0.35)";
+        ctx.fillRect(-40 + sway, y, w + 80, h * 0.09);
+      }
+
+      ctx.fillStyle = "rgba(180,220,190,0.06)";
+      for (let i = 0; i < 24; i++) {
+        const x = (i / 24) * w + Math.sin(t * 0.14 + i) * 9;
+        const y = h * 0.18 + ((i * 37) % 210);
+        ctx.beginPath();
+        ctx.arc(x, y, 1.2 + (i % 3), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    function drawSwamp(t) {
+      const y = swampY();
+      const mudGrad = ctx.createLinearGradient(0, y - 10, 0, h);
+      mudGrad.addColorStop(0, "#6f4c35");
+      mudGrad.addColorStop(0.45, "#4b3426");
+      mudGrad.addColorStop(1, "#2a1b13");
+      ctx.fillStyle = mudGrad;
+      ctx.fillRect(0, y, w, h - y + 2);
+
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      for (let x = 0; x <= w; x += 14) {
+        const wave = Math.sin((x * 0.02) + t * 1.9) * 2.8 + Math.sin((x * 0.05) + t * 0.8) * 1.5;
+        ctx.lineTo(x, y + wave);
+      }
+      ctx.lineTo(w, h);
+      ctx.lineTo(0, h);
+      ctx.closePath();
+      ctx.fillStyle = "rgba(110, 78, 54, 0.55)";
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(165,130,93,0.22)";
+      ctx.lineWidth = 1;
+      for (const wave of state.waves) {
+        const a = 1 - wave.age / wave.life;
+        ctx.globalAlpha = 0.5 * a;
+        ctx.beginPath();
+        ctx.ellipse(wave.x, wave.y, wave.r, wave.r * 0.35, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function actorPose(t) {
+      const x = xForTime(t);
+      const surface = swampY();
+      const depth = bodyDepthForTime(t);
+      const bodyBaseY = surface - 70 + depth;
+      const walkP = t * 5.5;
+
+      const panicAmp = inScene("panic") ? 1 : 0;
+      const headBob = inScene("walking") ? Math.sin(walkP) * 2.2 : Math.sin(t * 9) * panicAmp * 2;
+      const armSwing = inScene("walking") ? Math.sin(walkP) * 0.55 : Math.sin(t * 14) * panicAmp * 0.65;
+
+      let pull = 0;
+      if (t >= sceneBreaks.pull[0]) {
+        pull = easeOutCubic(norm(t, sceneBreaks.pull[0], sceneBreaks.pull[1]));
+      }
+      if (t >= sceneBreaks.rises[0]) {
+        pull = 1;
+      }
+
+      const hairLift = pull * 22;
+      const headY = bodyBaseY - 24 + headBob - pull * 5;
+      const hairX = x + 14;
+      const hairY = headY - 15 - hairLift;
+
+      const triumphant = t >= sceneBreaks.triumph[0];
+      const leftArm = triumphant ? -1.2 : -0.65 - armSwing + pull * 0.8;
+      const rightArm = triumphant ? 0.9 : 0.8 + armSwing + pull * 0.85;
+
+      return {
+        x,
+        surface,
+        depth,
+        bodyY: bodyBaseY,
+        headY,
+        hairX,
+        hairY,
+        leftArm,
+        rightArm,
+        pull,
+        walkP,
+        triumphant
+      };
+    }
+
+    function drawActor(a) {
+      const x = a.x;
+
+      const clipTop = a.surface - 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, 0, w, clipTop + 80);
+      ctx.clip();
+
+      ctx.strokeStyle = "#0f0f10";
+      ctx.lineWidth = 6;
+      ctx.lineCap = "round";
+
+      ctx.beginPath();
+      ctx.moveTo(x, a.bodyY);
+      ctx.lineTo(x, a.bodyY + 40);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x, a.bodyY + 40);
+      const legSwing = Math.sin(a.walkP) * (inScene("walking") ? 8 : 3);
+      ctx.lineTo(x - 10 - legSwing * 0.4, a.bodyY + 70);
+      ctx.moveTo(x, a.bodyY + 40);
+      ctx.lineTo(x + 10 + legSwing * 0.4, a.bodyY + 70);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x, a.bodyY + 12);
+      ctx.lineTo(x - 22 * Math.cos(a.leftArm), a.bodyY + 12 + 22 * Math.sin(a.leftArm));
+      ctx.moveTo(x, a.bodyY + 12);
+      ctx.lineTo(x + 22 * Math.cos(a.rightArm), a.bodyY + 12 + 22 * Math.sin(a.rightArm));
+      ctx.stroke();
+
+      ctx.fillStyle = "#f2d9b6";
+      ctx.beginPath();
+      ctx.arc(x, a.headY, 13.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#6e4c2a";
+      ctx.beginPath();
+      ctx.arc(x + 3, a.headY - 14, 11, Math.PI, 0);
+      ctx.fill();
+
+      ctx.strokeStyle = "#d4aa50";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x + 12, a.headY - 15);
+      ctx.quadraticCurveTo(x + 15, a.headY - 26, a.hairX, a.hairY);
+      ctx.stroke();
+
+      if (a.pull > 0.04) {
+        ctx.strokeStyle = "#f2d9b6";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(x + 18, a.bodyY + 2);
+        const handX = lerp(x + 20, a.hairX + 1, a.pull);
+        const handY = lerp(a.bodyY + 2, a.hairY + 2, a.pull);
+        ctx.lineTo(handX, handY);
+        ctx.stroke();
+
+        ctx.fillStyle = "#f2d9b6";
+        ctx.beginPath();
+        ctx.arc(handX, handY, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.fillStyle = "#111";
+      ctx.beginPath();
+      ctx.arc(x - 4, a.headY - 2, 1.8, 0, Math.PI * 2);
+      ctx.arc(x + 4, a.headY - 2, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#553a26";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      if (inScene("panic")) {
+        ctx.arc(x, a.headY + 6, 5, 0.1, Math.PI - 0.1, false);
+      } else if (a.triumphant) {
+        ctx.arc(x, a.headY + 4, 6, 0, Math.PI, false);
+      } else {
+        ctx.arc(x, a.headY + 5, 4, 0.2, Math.PI - 0.2, false);
+      }
+      ctx.stroke();
+
+      ctx.restore();
+
+      ctx.fillStyle = "rgba(0,0,0,0.17)";
+      ctx.beginPath();
+      ctx.ellipse(x, swampY() + 8, 22, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawParticles() {
+      for (const p of state.mud) {
+        const a = 1 - p.age / p.life;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = p.c;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (const p of state.bubbles) {
+        const a = 1 - p.age / p.life;
+        ctx.globalAlpha = a * 0.75;
+        ctx.strokeStyle = "#c9d8be";
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      for (const p of state.sparkles) {
+        const a = 1 - p.age / p.life;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = "#f7ed9f";
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,245,180,0.8)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(p.x - p.r * 2.2, p.y);
+        ctx.lineTo(p.x + p.r * 2.2, p.y);
+        ctx.moveTo(p.x, p.y - p.r * 2.2);
+        ctx.lineTo(p.x, p.y + p.r * 2.2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawCaption(text) {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.fillStyle = "rgba(0,0,0,0.35)";
+      ctx.fillRect(w * 0.18, h * 0.08, w * 0.64, 48);
+      ctx.fillStyle = "#f5f0c9";
+      ctx.font = "600 24px Georgia, Times New Roman, serif";
+      ctx.fillText(text, w * 0.5, h * 0.08 + 31);
+      ctx.restore();
+    }
+
+    function resetAnimation(now) {
+      state.start = now;
+      state.t = 0;
+      state.last = now;
+      state.running = true;
+      state.bubbles.length = 0;
+      state.mud.length = 0;
+      state.sparkles.length = 0;
+      state.waves.length = 0;
+      for (let i = 0; i < 12; i++) addBubble(Math.random() * w, swampY() + 5, 0.8);
+    }
+
+    function frame(nowMs) {
+      const now = nowMs * 0.001;
+      if (!state.start) resetAnimation(now);
+      const dt = clamp(now - state.last, 0, 1 / 30);
+      state.last = now;
+
+      if (state.running) {
+        state.t = now - state.start;
+        if (state.t >= state.duration) {
+          state.t = state.duration;
+          state.running = false;
+        }
+      }
+
+      const actor = actorPose(state.t);
+      updateParticles(dt, actor);
+
+      drawBackground(state.t);
+      drawSwamp(state.t);
+      drawParticles();
+      drawActor(actor);
+      drawCaption(captionForTime(state.t));
+
+      if (!state.running) {
+        ctx.save();
+        ctx.fillStyle = "rgba(0,0,0,0.24)";
+        ctx.fillRect(0, 0, w, h);
+        ctx.textAlign = "center";
+        ctx.fillStyle = "#f7f2d5";
+        ctx.font = "700 34px Georgia, serif";
+        ctx.fillText("The Baron Prevails", w / 2, h * 0.45);
+        ctx.font = "500 20px Georgia, serif";
+        ctx.fillText("Click anywhere to replay", w / 2, h * 0.45 + 38);
+        ctx.restore();
+      }
+
+      requestAnimationFrame(frame);
+    }
+
+    window.addEventListener("resize", resize);
+    canvas.addEventListener("click", () => resetAnimation(performance.now() * 0.001));
+
+    resize();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

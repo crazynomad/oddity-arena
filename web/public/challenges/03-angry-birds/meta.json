@@ -1,0 +1,19 @@
+{
+  "id": "angry-birds",
+  "title": "Angry Birds Clone",
+  "titleCn": "愤怒的小鸟",
+  "difficulty": "medium",
+  "category": "game",
+  "description": "Build a playable Angry Birds clone with physics engine",
+  "models": [
+    "claude-opus-4.6",
+    "claude-sonnet-4",
+    "gemini-3.1-pro",
+    "glm-5",
+    "gpt-5.3-codex",
+    "kimi-k2.5",
+    "minimax-m2.5",
+    "qwen3.5-plus"
+  ],
+  "descCn": "构建一个可玩的愤怒的小鸟克隆版，含物理引擎"
+}
