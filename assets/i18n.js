@@ -81,6 +81,7 @@ const i18n = {
     'cat.animation': { zh: '动画', en: 'animation' },
     'cat.frontend': { zh: '前端', en: 'frontend' },
     'cat.engineering': { zh: '工程', en: 'engineering' },
+    'cat.svg': { zh: 'SVG', en: 'svg' },
 
     // Table headers
     'table.rank': { zh: '#', en: '#' },
