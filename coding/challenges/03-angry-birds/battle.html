@@ -5,6 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title id="page-title">Battle — Oddity Arena</title>
   <link rel="stylesheet" href="../../../assets/style.css">
+  <style>
+    .vote-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; margin-right:6px; vertical-align:middle; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .elo-badge { display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:2px 10px; font-size:0.8em; color:var(--accent); font-weight:600; margin-left:8px; }
+    .elo-badge.top { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+    .vote-count-label { font-size:0.85em; color:var(--text-dim); margin-top:8px; text-align:center; }
+    .progress-row { display:flex; align-items:center; gap:10px; margin:6px 0; }
+    .progress-row .model-name { min-width:140px; text-align:right; font-size:0.85em; font-weight:600; }
+    .progress-row .bar-wrap { flex:1; background:var(--surface); border-radius:4px; height:24px; overflow:hidden; position:relative; }
+    .progress-row .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.8em; font-weight:600; color:#fff; transition:width 0.6s ease; min-width:fit-content; }
+    .progress-row .bar-fill.winner-bar { background:var(--accent); }
+    .progress-row .bar-fill.loser-bar { background:var(--text-dim); opacity:0.6; }
+    .progress-row .bar-fill.neutral-bar { background:var(--text-dim); opacity:0.4; }
+    .progress-row .pct { min-width:45px; font-size:0.85em; color:var(--text-dim); }
+    .leaderboard { margin:24px 0; }
+    .leaderboard table { width:100%; border-collapse:collapse; }
+    .leaderboard th { text-align:left; color:var(--text-dim); font-size:0.8em; text-transform:uppercase; letter-spacing:0.05em; padding:8px; border-bottom:1px solid var(--border); }
+    .leaderboard td { padding:8px; border-bottom:1px solid var(--border); font-size:0.9em; }
+    .leaderboard tr:hover { background:var(--surface); }
+    .rank-1 { color:var(--accent); font-weight:700; }
+    .fullscreen-btn { position:absolute; top:8px; right:8px; background:rgba(0,0,0,0.6); color:#fff; border:none; border-radius:4px; padding:4px 8px; cursor:pointer; font-size:0.8em; opacity:0; transition:opacity 0.2s; z-index:10; }
+    .battle-side:hover .fullscreen-btn { opacity:1; }
+    .battle-side { position:relative; }
+    .toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--accent); color:var(--bg); padding:10px 24px; border-radius:8px; font-weight:600; z-index:100; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+    .toast.show { opacity:1; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -16,17 +42,17 @@
       </div>
     </nav>
 
-    <!-- Header -->
     <div class="battle-header">
       <div style="margin-bottom:12px;">
         <span class="tag" id="diff-tag"></span>
         <span class="tag tag-category" id="cat-tag"></span>
+        <span class="vote-count-label" id="total-votes"></span>
       </div>
       <h1 id="challenge-title"></h1>
       <p class="subtitle" id="challenge-desc"></p>
     </div>
 
-    <!-- Waiting state (< 2 models) -->
+    <!-- Waiting state -->
     <div class="battle-waiting" id="waiting" style="display:none;">
       <p>⏳ Waiting for more models to compete...</p>
       <p style="font-size:0.9em; margin-top:12px;">Only 1 model has entered this challenge so far.</p>
@@ -36,41 +62,53 @@
       <div id="solo-preview" style="margin-top:32px;"></div>
     </div>
 
-    <!-- Battle arena (>= 2 models) -->
+    <!-- Battle arena -->
     <div id="arena" style="display:none;">
       <div class="battle-arena">
         <div class="battle-side">
           <div class="battle-label" id="label-a">Model A</div>
+          <button class="fullscreen-btn" onclick="goFullscreen('iframe-a')" title="Fullscreen">⛶</button>
           <iframe class="battle-iframe" id="iframe-a" sandbox="allow-scripts allow-same-origin"></iframe>
-          <button class="btn btn-vote" id="vote-a" onclick="vote('a')">👈 Pick This One</button>
+          <button class="btn btn-vote" id="vote-a" onclick="vote('a')">👈 This One</button>
         </div>
         <div class="battle-side">
           <div class="battle-label" id="label-b">Model B</div>
+          <button class="fullscreen-btn" onclick="goFullscreen('iframe-b')" title="Fullscreen">⛶</button>
           <iframe class="battle-iframe" id="iframe-b" sandbox="allow-scripts allow-same-origin"></iframe>
-          <button class="btn btn-vote" id="vote-b" onclick="vote('b')">Pick This One 👉</button>
+          <button class="btn btn-vote" id="vote-b" onclick="vote('b')">This One 👉</button>
         </div>
       </div>
 
-      <!-- Results (after voting) -->
+      <!-- Results -->
       <div id="results" style="display:none;" class="fade-in">
-        <div style="text-align:center; margin: 24px 0 16px;">
-          <h3 style="color:var(--text-dim);">Community Votes</h3>
+        <div style="text-align:center; margin:24px 0 12px;">
+          <h3 style="color:var(--text-dim);">🏆 Community Votes</h3>
         </div>
-        <div class="progress-bar" id="progress"></div>
+        <div id="progress"></div>
         <div class="battle-actions">
           <button class="btn btn-primary" onclick="newPair()">🔀 New Pair</button>
-          <button class="btn btn-secondary" onclick="showGallery()">🖼️ All Results</button>
+          <button class="btn btn-secondary" onclick="showLeaderboard()">📊 Leaderboard</button>
+          <button class="btn btn-secondary" onclick="showGallery()">🖼️ Gallery</button>
           <button class="btn btn-secondary" onclick="share()">📤 Share</button>
         </div>
       </div>
     </div>
 
-    <!-- Gallery (hidden by default) -->
+    <!-- Leaderboard -->
+    <div id="leaderboard" style="display:none;" class="section fade-in">
+      <h2>📊 ELO Leaderboard</h2>
+      <div id="leaderboard-content"></div>
+      <div style="text-align:center; margin-top:24px;">
+        <button class="btn btn-primary" onclick="hideOverlay()">← Back to Battle</button>
+      </div>
+    </div>
+
+    <!-- Gallery -->
     <div id="gallery" style="display:none;" class="section">
-      <h2>All Submissions</h2>
+      <h2>🖼️ All Submissions</h2>
       <div class="card-grid" id="gallery-grid"></div>
       <div style="text-align:center; margin-top:24px;">
-        <button class="btn btn-primary" onclick="hideGallery()">← Back to Battle</button>
+        <button class="btn btn-primary" onclick="hideOverlay()">← Back to Battle</button>
       </div>
     </div>
 
@@ -79,11 +117,18 @@
     </footer>
   </div>
 
+  <div class="toast" id="toast"></div>
+
   <script>
+    // Config
+    const API_BASE = '/api';
+
     let meta = {};
     let modelA = '', modelB = '';
     let voted = false;
+    let leaderboardData = null;
 
+    // ── Init ──
     async function init() {
       try {
         const resp = await fetch('meta.json');
@@ -101,12 +146,13 @@
       diffTag.className = `tag tag-${meta.difficulty}`;
       document.getElementById('cat-tag').textContent = meta.category;
 
+      // Fetch leaderboard in background
+      fetchLeaderboard();
+
       if (!meta.models || meta.models.length < 2) {
         document.getElementById('waiting').style.display = 'block';
-        // Show solo preview if 1 model exists
         if (meta.models && meta.models.length === 1) {
-          const solo = document.getElementById('solo-preview');
-          solo.innerHTML = `
+          document.getElementById('solo-preview').innerHTML = `
             <h3 style="margin-bottom:12px;">${meta.models[0]}</h3>
             <iframe class="battle-iframe" src="results/${meta.models[0]}/index.html" sandbox="allow-scripts allow-same-origin" style="max-width:800px; margin:0 auto; display:block;"></iframe>
           `;
@@ -117,6 +163,24 @@
       }
     }
 
+    // ── Leaderboard fetch ──
+    async function fetchLeaderboard() {
+      try {
+        const resp = await fetch(`${API_BASE}/leaderboard/${meta.id}`);
+        if (resp.ok) {
+          leaderboardData = await resp.json();
+          const total = leaderboardData.totalVotes || 0;
+          if (total > 0) {
+            document.getElementById('total-votes').textContent = `${total} vote${total !== 1 ? 's' : ''} cast`;
+          }
+        }
+      } catch {
+        // API unavailable, fall back to localStorage
+        leaderboardData = null;
+      }
+    }
+
+    // ── New pair ──
     function newPair() {
       voted = false;
       document.getElementById('results').style.display = 'none';
@@ -124,6 +188,8 @@
       document.getElementById('vote-b').classList.remove('selected');
       document.getElementById('vote-a').disabled = false;
       document.getElementById('vote-b').disabled = false;
+      document.getElementById('vote-a').innerHTML = '👈 This One';
+      document.getElementById('vote-b').innerHTML = 'This One 👉';
       document.getElementById('label-a').textContent = 'Model A';
       document.getElementById('label-a').classList.remove('revealed');
       document.getElementById('label-b').textContent = 'Model B';
@@ -131,32 +197,32 @@
       document.getElementById('iframe-a').classList.remove('winner');
       document.getElementById('iframe-b').classList.remove('winner');
 
-      // Random pair
+      // Pick random pair
       const models = [...meta.models];
       const i = Math.floor(Math.random() * models.length);
       modelA = models.splice(i, 1)[0];
       modelB = models[Math.floor(Math.random() * models.length)];
-
-      // Random swap
       if (Math.random() > 0.5) [modelA, modelB] = [modelB, modelA];
 
       document.getElementById('iframe-a').src = `results/${modelA}/index.html`;
       document.getElementById('iframe-b').src = `results/${modelB}/index.html`;
     }
 
-    function vote(choice) {
+    // ── Vote ──
+    async function vote(choice) {
       if (voted) return;
       voted = true;
 
       const winner = choice === 'a' ? modelA : modelB;
+      const loser = choice === 'a' ? modelB : modelA;
 
-      // Save vote
-      const key = `oddity-vote-${meta.id}`;
-      const votes = JSON.parse(localStorage.getItem(key) || '{}');
-      votes[winner] = (votes[winner] || 0) + 1;
-      localStorage.setItem(key, JSON.stringify(votes));
+      // Disable buttons + show spinner
+      document.getElementById('vote-a').disabled = true;
+      document.getElementById('vote-b').disabled = true;
+      const btn = document.getElementById(choice === 'a' ? 'vote-a' : 'vote-b');
+      btn.innerHTML = `<span class="vote-spinner"></span> Voting...`;
 
-      // Reveal
+      // Reveal model names
       const labelA = document.getElementById('label-a');
       const labelB = document.getElementById('label-b');
       labelA.textContent = modelA;
@@ -165,31 +231,135 @@
       labelB.classList.add('revealed');
 
       // Highlight winner
-      document.getElementById(choice === 'a' ? 'vote-a' : 'vote-b').classList.add('selected');
+      btn.classList.add('selected');
       document.getElementById(choice === 'a' ? 'iframe-a' : 'iframe-b').classList.add('winner');
-      document.getElementById('vote-a').disabled = true;
-      document.getElementById('vote-b').disabled = true;
 
-      // Show results
-      showResults(votes);
+      // Find ELO for reveal
+      const eloA = getElo(modelA);
+      const eloB = getElo(modelB);
+      if (eloA) labelA.innerHTML = `${modelA} <span class="elo-badge">${eloA}</span>`;
+      if (eloB) labelB.innerHTML = `${modelB} <span class="elo-badge">${eloB}</span>`;
+
+      // Send vote to API
+      let apiSuccess = false;
+      try {
+        const resp = await fetch(`${API_BASE}/vote`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ challenge: meta.id, winner, loser }),
+        });
+        const data = await resp.json();
+        if (resp.ok && data.success) {
+          apiSuccess = true;
+          // Update leaderboard with returned tallies
+          if (data.tallies) {
+            showResultsFromAPI(data.tallies, winner, loser);
+          }
+          fetchLeaderboard(); // refresh in background
+        } else if (resp.status === 429) {
+          showToast('You already voted on this pair! Try a new one 🔀');
+        }
+      } catch {
+        // API fail — fallback to localStorage
+      }
+
+      // Fallback: localStorage
+      if (!apiSuccess) {
+        const key = `oddity-vote-${meta.id}`;
+        const votes = JSON.parse(localStorage.getItem(key) || '{}');
+        votes[winner] = (votes[winner] || 0) + 1;
+        localStorage.setItem(key, JSON.stringify(votes));
+        showResultsLocal(votes, winner, loser);
+      }
+
+      btn.innerHTML = choice === 'a' ? '👈 ✓ Voted!' : '✓ Voted! 👉';
     }
 
-    function showResults(votes) {
-      const total = Object.values(votes).reduce((a, b) => a + b, 0);
-      const progress = document.getElementById('progress');
-      let html = '';
-      // Sort by votes desc
-      const sorted = Object.entries(votes).sort((a, b) => b[1] - a[1]);
-      for (const [model, count] of sorted) {
-        const pct = Math.round(count / total * 100);
-        const cls = model === modelA ? 'progress-a' : 'progress-b';
-        html += `<div class="progress-fill ${cls}" style="width:${pct}%">${model} ${pct}%</div>`;
-      }
-      progress.innerHTML = html;
+    // ── Results display (API) ──
+    function showResultsFromAPI(tallies, winner, loser) {
+      const models = [winner, loser];
+      const totalWins = (tallies[winner]?.wins || 0) + (tallies[loser]?.wins || 0);
+      renderProgressBars(models.map(m => ({
+        model: m,
+        count: tallies[m]?.wins || 0,
+        isWinner: m === winner,
+      })), totalWins > 0 ? totalWins : 1);
       document.getElementById('results').style.display = 'block';
     }
 
+    // ── Results display (localStorage fallback) ──
+    function showResultsLocal(votes, winner, loser) {
+      const total = Object.values(votes).reduce((a, b) => a + b, 0);
+      const models = Object.entries(votes).sort((a, b) => b[1] - a[1]);
+      renderProgressBars(models.map(([model, count]) => ({
+        model,
+        count,
+        isWinner: model === winner,
+      })), total);
+      document.getElementById('results').style.display = 'block';
+    }
+
+    function renderProgressBars(items, total) {
+      const el = document.getElementById('progress');
+      el.innerHTML = items.map(({ model, count, isWinner }) => {
+        const pct = Math.max(Math.round(count / total * 100), 2);
+        const cls = isWinner ? 'winner-bar' : 'loser-bar';
+        return `<div class="progress-row">
+          <span class="model-name">${model}</span>
+          <div class="bar-wrap"><div class="bar-fill ${cls}" style="width:${pct}%">${count}</div></div>
+          <span class="pct">${pct}%</span>
+        </div>`;
+      }).join('');
+    }
+
+    // ── ELO helper ──
+    function getElo(model) {
+      if (!leaderboardData?.ratings) return null;
+      const r = leaderboardData.ratings.find(r => r.model === model);
+      return r ? r.rating : null;
+    }
+
+    // ── Leaderboard view ──
+    async function showLeaderboard() {
+      hideOverlay();
+      document.getElementById('arena').style.display = 'none';
+      document.getElementById('results').style.display = 'none';
+      const lb = document.getElementById('leaderboard');
+      lb.style.display = 'block';
+
+      // Refresh data
+      await fetchLeaderboard();
+
+      const content = document.getElementById('leaderboard-content');
+      if (!leaderboardData || !leaderboardData.ratings.length) {
+        content.innerHTML = '<p style="text-align:center; color:var(--text-dim);">No votes yet. Be the first to vote! 🗳️</p>';
+        return;
+      }
+
+      const rows = leaderboardData.ratings.map((r, i) => {
+        const wins = leaderboardData.wins[r.model] || 0;
+        const winRate = r.votes > 0 ? Math.round(wins / r.votes * 100) : 0;
+        return `<tr class="${i === 0 ? 'rank-1' : ''}">
+          <td>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
+          <td><strong>${r.model}</strong></td>
+          <td>${r.rating}</td>
+          <td>${wins}W / ${r.votes - wins}L</td>
+          <td>${winRate}%</td>
+        </tr>`;
+      }).join('');
+
+      content.innerHTML = `
+        <p class="vote-count-label">${leaderboardData.totalVotes} total votes</p>
+        <table>
+          <thead><tr><th>#</th><th>Model</th><th>ELO</th><th>Record</th><th>Win%</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    // ── Gallery ──
     function showGallery() {
+      hideOverlay();
       document.getElementById('arena').style.display = 'none';
       document.getElementById('results').style.display = 'none';
       const gallery = document.getElementById('gallery');
@@ -197,34 +367,58 @@
 
       const grid = document.getElementById('gallery-grid');
       grid.innerHTML = '';
-      const votes = JSON.parse(localStorage.getItem(`oddity-vote-${meta.id}`) || '{}');
-      const total = Object.values(votes).reduce((a, b) => a + b, 0);
 
-      for (const model of meta.models) {
-        const count = votes[model] || 0;
-        const pct = total > 0 ? Math.round(count / total * 100) : 0;
+      // Sort by ELO if available
+      let models = [...meta.models];
+      if (leaderboardData?.ratings?.length) {
+        const eloMap = Object.fromEntries(leaderboardData.ratings.map(r => [r.model, r.rating]));
+        models.sort((a, b) => (eloMap[b] || 1500) - (eloMap[a] || 1500));
+      }
+
+      for (const model of models) {
+        const elo = getElo(model);
+        const wins = leaderboardData?.wins?.[model] || 0;
+        const eloBadge = elo ? `<span class="elo-badge${elo >= 1550 ? ' top' : ''}">${elo} ELO</span>` : '';
         grid.innerHTML += `
           <div class="card">
-            <h3>${model}</h3>
-            <p style="color:var(--text-dim); font-size:0.85em; margin:8px 0;">${count} votes (${pct}%)</p>
+            <h3>${model} ${eloBadge}</h3>
+            <p style="color:var(--text-dim); font-size:0.85em; margin:8px 0;">${wins} wins</p>
             <iframe class="battle-iframe" src="results/${model}/index.html" sandbox="allow-scripts allow-same-origin" style="height:350px;"></iframe>
           </div>
         `;
       }
     }
 
-    function hideGallery() {
+    function hideOverlay() {
       document.getElementById('gallery').style.display = 'none';
+      document.getElementById('leaderboard').style.display = 'none';
       document.getElementById('arena').style.display = 'block';
     }
 
+    // ── Fullscreen ──
+    function goFullscreen(id) {
+      const el = document.getElementById(id);
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+
+    // ── Share ──
     function share() {
-      const text = `I just voted on "${meta.title}" in Oddity Arena — the playable AI model competition! 🛸\n\nCome play and vote: ${window.location.href}`;
+      const text = `I just voted on "${meta.title}" in Oddity Arena! 🛸\n\nCome play and vote:`;
+      const url = window.location.href;
       if (navigator.share) {
-        navigator.share({ title: `${meta.title} — Oddity Arena`, text, url: window.location.href });
+        navigator.share({ title: `${meta.title} — Oddity Arena`, text, url });
       } else {
-        window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text)}`, '_blank');
+        window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
       }
+    }
+
+    // ── Toast ──
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      setTimeout(() => el.classList.remove('show'), 3000);
     }
 
     init();
