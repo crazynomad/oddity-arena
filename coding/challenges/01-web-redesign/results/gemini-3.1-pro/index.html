@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillSync - Streamline Your Team's Workflow</title>
+    <meta name="description" content="SkillSync is the ultimate software for your team to manage tasks, collaborate on docs, and communicate efficiently in one central workspace.">
+    <style>
+        :root {
+            --primary: #4F46E5;
+            --primary-hover: #4338CA;
+            --secondary: #10B981;
+            --bg-color: #F9FAFB;
+            --surface: #FFFFFF;
+            --text-main: #111827;
+            --text-muted: #4B5563;
+            --border: #E5E7EB;
+            --focus-ring: #C7D2FE;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--text-main);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        button, a {
+            transition: all 0.2s ease;
+        }
+
+        button:focus-visible, a:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Announcement Bar */
+        .announcement {
+            background-color: var(--primary);
+            color: white;
+            text-align: center;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Navigation */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 4.5rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -0.025em;
+        }
+
+        .nav-links {
+            display: none;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 0.9375rem;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .menu-toggle {
+            display: block;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+            color: var(--text-main);
+        }
+
+        .menu-toggle svg {
+            width: 24px;
+            height: 24px;
+        }
+
+        .nav-actions {
+            display: none;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.625rem 1.25rem;
+            border-radius: 0.375rem;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-outline {
+            background-color: transparent;
+            color: var(--text-main);
+            border-color: var(--border);
+        }
+
+        .btn-outline:hover {
+            background-color: var(--bg-color);
+            border-color: var(--text-muted);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 5rem 0 6rem;
+            text-align: center;
+            background: linear-gradient(180deg, var(--surface) 0%, var(--bg-color) 100%);
+        }
+
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            line-height: 1.15;
+            letter-spacing: -0.025em;
+            color: var(--text-main);
+            margin-bottom: 1.5rem;
+        }
+
+        .hero p {
+            font-size: 1.125rem;
+            color: var(--text-muted);
+            max-width: 42rem;
+            margin: 0 auto 2.5rem;
+        }
+
+        .hero-cta {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hero-cta .btn {
+            width: 100%;
+            max-width: 280px;
+            padding: 0.875rem 1.5rem;
+            font-size: 1.0625rem;
+        }
+
+        /* Generic Section */
+        .section {
+            padding: 5rem 0;
+        }
+
+        .section-header {
+            text-align: center;
+            max-width: 48rem;
+            margin: 0 auto 3.5rem;
+        }
+
+        .section-header h2 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            font-size: 1.125rem;
+            color: var(--text-muted);
+        }
+
+        /* Features */
+        .features {
+            background-color: var(--surface);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .feature-card {
+            padding: 2rem;
+            background-color: var(--bg-color);
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background-color: #EEF2FF;
+            color: var(--primary);
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.25rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.9375rem;
+        }
+
+        /* About */
+        .about-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3rem;
+        }
+
+        .about-main p {
+            font-size: 1.125rem;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--primary);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Pricing */
+        .pricing {
+            background-color: var(--surface);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .plan {
+            background-color: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2.5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .plan-popular {
+            border: 2px solid var(--primary);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: scale(1.02);
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--primary);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .plan h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .plan-price {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .price-amount {
+            font-size: 3.5rem;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--text-main);
+        }
+
+        .price-period {
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .plan-features {
+            margin-bottom: 2.5rem;
+            flex-grow: 1;
+        }
+
+        .plan-features li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+        }
+
+        .plan-features svg {
+            flex-shrink: 0;
+            color: var(--secondary);
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-top: 0.125rem;
+        }
+
+        .plan .btn {
+            width: 100%;
+        }
+
+        /* Testimonials */
+        .testimonials-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .testimonial-card {
+            background-color: var(--surface);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .testimonial-quote {
+            font-size: 1.125rem;
+            color: var(--text-main);
+            font-style: italic;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .author-avatar {
+            width: 48px;
+            height: 48px;
+            background-color: var(--border);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--text-muted);
+        }
+
+        .author-info cite {
+            font-style: normal;
+            font-weight: 700;
+            display: block;
+        }
+
+        .author-info span {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        /* FAQ */
+        .faq {
+            background-color: var(--surface);
+        }
+
+        .faq-list {
+            max-width: 48rem;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+        }
+
+        .faq-item:last-child {
+            border-bottom: none;
+        }
+
+        .faq-question {
+            width: 100%;
+            text-align: left;
+            background: none;
+            border: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-main);
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .faq-answer {
+            margin-top: 1rem;
+            color: var(--text-muted);
+            display: none;
+        }
+
+        .faq-item.active .faq-answer {
+            display: block;
+        }
+
+        .faq-icon {
+            transition: transform 0.2s;
+        }
+
+        .faq-item.active .faq-icon {
+            transform: rotate(180deg);
+        }
+
+        /* Bottom CTA */
+        .cta-section {
+            background-color: var(--primary);
+            color: white;
+            text-align: center;
+            padding: 5rem 0;
+        }
+
+        .cta-section h2 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            font-size: 1.25rem;
+            opacity: 0.9;
+            max-width: 40rem;
+            margin: 0 auto 2.5rem;
+        }
+
+        .cta-section .btn {
+            background-color: white;
+            color: var(--primary);
+            font-size: 1.125rem;
+            padding: 1rem 2rem;
+        }
+
+        .cta-section .btn:hover {
+            background-color: var(--bg-color);
+        }
+
+        /* Footer */
+        .footer {
+            background-color: #111827;
+            color: #9CA3AF;
+            padding: 4rem 0 2rem;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand h3 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .footer-brand p {
+            max-width: 20rem;
+        }
+
+        .footer-links h4 {
+            color: white;
+            font-size: 0.9375rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links ul {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .footer-links a:hover {
+            color: white;
+        }
+
+        .footer-bottom {
+            border-top: 1px solid #374151;
+            padding-top: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            font-size: 0.875rem;
+        }
+
+        /* Mobile Menu */
+        .mobile-menu {
+            display: none;
+            position: absolute;
+            top: 4.5rem;
+            left: 0;
+            right: 0;
+            background-color: var(--surface);
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu.active {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .mobile-menu a {
+            display: block;
+            padding: 0.5rem 0;
+            font-weight: 500;
+        }
+
+        .mobile-menu .btn {
+            width: 100%;
+            margin-top: 0.5rem;
+        }
+
+        /* Media Queries */
+        @media (min-width: 640px) {
+            .hero h1 { font-size: 3rem; }
+            .hero-cta { flex-direction: row; }
+            .hero-cta .btn { width: auto; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            .testimonials-grid { grid-template-columns: repeat(2, 1fr); }
+            .footer-grid { grid-template-columns: repeat(2, 1fr); }
+            .footer-bottom { flex-direction: row; justify-content: space-between; }
+        }
+
+        @media (min-width: 768px) {
+            .about-layout { grid-template-columns: 3fr 2fr; align-items: center; }
+        }
+
+        @media (min-width: 1024px) {
+            .nav-links, .nav-actions { display: flex; }
+            .menu-toggle { display: none; }
+            .hero h1 { font-size: 4rem; }
+            .features-grid { grid-template-columns: repeat(3, 1fr); }
+            .pricing-grid { grid-template-columns: repeat(3, 1fr); align-items: center; }
+            .testimonials-grid { grid-template-columns: repeat(4, 1fr); }
+            .footer-grid { grid-template-columns: 2fr 1fr 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="announcement">
+        🚀 New: AI-powered automations are now available on all plans!
+    </div>
+
+    <header class="header">
+        <div class="container nav">
+            <a href="#" class="logo">SkillSync</a>
+            
+            <nav class="nav-links" aria-label="Main Navigation">
+                <a href="#features">Features</a>
+                <a href="#about">About</a>
+                <a href="#pricing">Pricing</a>
+                <a href="#testimonials">Testimonials</a>
+                <a href="#faq">FAQ</a>
+            </nav>
+
+            <div class="nav-actions">
+                <a href="#" class="btn btn-primary">Start Free Trial</a>
+            </div>
+
+            <button class="menu-toggle" aria-label="Toggle menu" onclick="toggleMenu()">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="mobile-menu" id="mobile-menu">
+            <a href="#features" onclick="toggleMenu()">Features</a>
+            <a href="#about" onclick="toggleMenu()">About</a>
+            <a href="#pricing" onclick="toggleMenu()">Pricing</a>
+            <a href="#testimonials" onclick="toggleMenu()">Testimonials</a>
+            <a href="#faq" onclick="toggleMenu()">FAQ</a>
+            <a href="#" class="btn btn-primary">Start Free Trial</a>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero" id="top">
+            <div class="container">
+                <div class="hero-content">
+                    <h1>A better way to manage team projects</h1>
+                    <p>SkillSync brings your team's tasks, docs, and communication into one unified workspace, eliminating the chaos of scattered tools.</p>
+                    <div class="hero-cta">
+                        <a href="#pricing" class="btn btn-primary">Start your 14-day free trial</a>
+                        <a href="#features" class="btn btn-outline">Explore Features</a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="features" class="section features">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Everything you need, nothing you don't</h2>
+                    <p>Powerful features designed to keep your team aligned and moving forward without the steep learning curve.</p>
+                </div>
+                <div class="features-grid">
+                    <article class="feature-card">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                        </div>
+                        <h3>Task Boards</h3>
+                        <p>Create tasks, assign owners, set due dates, and seamlessly move work across custom stages.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2"></path></svg>
+                        </div>
+                        <h3>Shared Docs</h3>
+                        <p>Collaboratively write project notes, meeting minutes, and operating guides right next to your tasks.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"></path></svg>
+                        </div>
+                        <h3>Team Chat</h3>
+                        <p>Keep conversations contextual with direct messages and channel updates that feature searchable history.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                        </div>
+                        <h3>Automated Reports</h3>
+                        <p>Gain visibility into progress with auto-generated weekly status summaries and workload distribution charts.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h3>Smart Automations</h3>
+                        <p>Save time by setting up rules for reminders, overdue alerts, handoffs, and recurring administrative tasks.</p>
+                    </article>
+                    <article class="feature-card">
+                        <div class="feature-icon">
+                            <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                        </div>
+                        <h3>Granular Permissions</h3>
+                        <p>Safely control workspace access levels for employees, external contractors, and read-only guests.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Built for modern teams</h2>
+                    <p>Our journey from an internal tool to a platform powering thousands.</p>
+                </div>
+                <div class="about-layout">
+                    <div class="about-main">
+                        <p>SkillSync originated in 2021 as a lightweight internal system created to solve our own team's fragmentation issues. As we evolved it, we realized other companies faced the same exact struggles.</p>
+                        <p>We gradually integrated document editing, status updates, and essential integrations, ensuring teams could execute their daily workflows natively in one environment.</p>
+                        <p>Today, diverse departments across the globe rely on SkillSync when they need powerful collaboration without the steep learning curve of enterprise behemoths.</p>
+                    </div>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <div class="stat-value">2021</div>
+                            <div class="stat-label">Founded</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">10k+</div>
+                            <div class="stat-label">Customers</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">38</div>
+                            <div class="stat-label">Countries</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">&lt;5d</div>
+                            <div class="stat-label">Avg. Rollout</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="pricing" class="section pricing">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Simple, transparent pricing</h2>
+                    <p>Start for free, upgrade when you need more power. Prices are per user, per month.</p>
+                </div>
+                <div class="pricing-grid">
+                    <article class="plan">
+                        <h3>Starter</h3>
+                        <div class="plan-price">
+                            <span class="price-amount">$12</span>
+                            <span class="price-period">/ user</span>
+                        </div>
+                        <ul class="plan-features">
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Up to 15 users</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Unlimited task boards</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Shared team docs</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Standard email support</li>
+                        </ul>
+                        <button class="btn btn-outline">Choose Starter</button>
+                    </article>
+
+                    <article class="plan plan-popular">
+                        <div class="popular-badge">Most Popular</div>
+                        <h3>Growth</h3>
+                        <div class="plan-price">
+                            <span class="price-amount">$29</span>
+                            <span class="price-period">/ user</span>
+                        </div>
+                        <ul class="plan-features">
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Unlimited users</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Advanced automation rules</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Custom reporting</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Priority 24/7 support</li>
+                        </ul>
+                        <button class="btn btn-primary">Start Free Trial</button>
+                    </article>
+
+                    <article class="plan">
+                        <h3>Enterprise</h3>
+                        <div class="plan-price">
+                            <span class="price-amount">$59</span>
+                            <span class="price-period">/ user</span>
+                        </div>
+                        <ul class="plan-features">
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Advanced permissions</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> SSO & Security controls</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Dedicated success manager</li>
+                            <li><svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg> Guided data migration</li>
+                        </ul>
+                        <button class="btn btn-outline">Contact Sales</button>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section id="testimonials" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Loved by teams worldwide</h2>
+                    <p>Don't just take our word for it. Here's what our users are saying.</p>
+                </div>
+                <div class="testimonials-grid">
+                    <blockquote class="testimonial-card">
+                        <p class="testimonial-quote">"SkillSync made our weekly planning meetings much shorter and significantly clearer for everyone involved."</p>
+                        <footer class="testimonial-author">
+                            <div class="author-avatar">JT</div>
+                            <div class="author-info">
+                                <cite>Jamie T.</cite>
+                                <span>Product Lead</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                    <blockquote class="testimonial-card">
+                        <p class="testimonial-quote">"The shared docs and integrated task boards allowed us to successfully replace three separate, clunky tools."</p>
+                        <footer class="testimonial-author">
+                            <div class="author-avatar">MR</div>
+                            <div class="author-info">
+                                <cite>Morgan R.</cite>
+                                <span>Operations Manager</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                    <blockquote class="testimonial-card">
+                        <p class="testimonial-quote">"Setup was incredibly fast. The team intuitively understood the interface and started using it on day one."</p>
+                        <footer class="testimonial-author">
+                            <div class="author-avatar">AP</div>
+                            <div class="author-info">
+                                <cite>Alex P.</cite>
+                                <span>Support Director</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                    <blockquote class="testimonial-card">
+                        <p class="testimonial-quote">"The automated reporting features finally gave leadership a clear, accurate view of our team's capacity."</p>
+                        <footer class="testimonial-author">
+                            <div class="author-avatar">DK</div>
+                            <div class="author-info">
+                                <cite>Dana K.</cite>
+                                <span>PMO</span>
+                            </div>
+                        </footer>
+                    </blockquote>
+                </div>
+            </div>
+        </section>
+
+        <section id="faq" class="section faq">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Frequently Asked Questions</h2>
+                    <p>Got questions? We've got answers.</p>
+                </div>
+                <div class="faq-list">
+                    <article class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+                            <span>Do you offer a free trial?</span>
+                            <svg class="faq-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Yes. All plans include a comprehensive 14-day free trial with no credit card required upfront. You can test all features before making a decision.</p>
+                        </div>
+                    </article>
+                    <article class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+                            <span>Can we migrate data from another tool?</span>
+                            <svg class="faq-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svgMCP ERROR (context7)[ERROR] MCP ERROR (context7)
+>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Absolutely. We support direct CSV imports for projects, tasks, and team members. Our Enterprise plan also includes dedicated assistance for complex migrations.</p>
+                        </div>
+                    </article>
+                    <article class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+                            <span>Does SkillSync include onboarding help?</span>
+                            <svg class="faq-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Yes! Growth and Enterprise plans include personalized guided onboarding sessions with our Customer Success team to ensure your workspace is set up perfectly for your workflow.</p>
+                        </div>
+                    </article>
+                    <article class="faq-item">
+                        <button class="faq-question" onclick="toggleFaq(this)" aria-expanded="false">
+                            <span>Is there an annual contract?</span>
+                            <svg class="faq-icon" width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </button>
+                        <div class="faq-answer">
+                            <p>No long-term contract is required. You can pay month-to-month and cancel anytime. However, if you choose annual billing, you'll receive a 20% discount on your subscription.</p>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta-section">
+            <div class="container">
+                <h2>Ready to transform your team's workflow?</h2>
+                <p>Join over 10,000 teams who have already switched to a more organized, efficient way of working.</p>
+                <a href="#pricing" class="btn">Create Your Free Account</a>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <h3>SkillSync</h3>
+                    <p>The centralized workspace that brings clarity to your team's daily projects, tasks, and documentation.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#">Integrations</a></li>
+                        <li><a href="#">Changelog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Service</a></li>
+                        <li><a href="#">Security</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2026 SkillSync Inc. All rights reserved.</p>
+                <p>Contact: support@skillsync.example | +1 (555) 013-2201</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        function toggleMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('active');
+        }
+
+        // FAQ accordion toggle
+        function toggleFaq(button) {
+            const item = button.parentElement;
+            const isExpanded = button.getAttribute('aria-expanded') === 'true';
+            
+            // Close all other FAQs
+            document.querySelectorAll('.faq-item').forEach(faq => {
+                faq.classList.remove('active');
+                faq.querySelector('.faq-question').setAttribute('aria-expanded', 'false');
+            });
+
+            // Toggle current FAQ
+            if (!isExpanded) {
+                item.classList.add('active');
+                button.setAttribute('aria-expanded', 'true');
+            }
+        }
+    </script>
+</body>
+</html>
