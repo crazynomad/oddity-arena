@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Oddity Arena — 不现实竞技场</title>
+  <meta name="description" content="AI models enter. You experience. You decide. The world's first playable AI model arena.">
+  <meta property="og:title" content="Oddity Arena — 不现实竞技场">
+  <meta property="og:description" content="Play two AI-generated apps. Vote for the better one. See which model wins.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Nav -->
+    <nav>
+      <a href="/" class="nav-brand">⚡ ODDITY ARENA</a>
+      <div class="nav-links">
+        <a href="#challenges">Challenges</a>
+        <a href="https://github.com/crazynomad/oddity-arena" target="_blank">GitHub</a>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="section" style="text-align:center; padding: 80px 0 40px;">
+      <h1>
+        ODDITY ARENA
+        <span class="brand-cn">不 现 实 竞 技 场</span>
+      </h1>
+      <p class="subtitle">AI models enter. You experience. You decide.</p>
+      <p style="color: var(--text-dim); margin-top: 24px; max-width: 600px; margin-left: auto; margin-right: auto;">
+        Not another chatbot benchmark. Here, AI models build real apps — games, 3D simulations, animations — and <strong style="color:var(--text)">you</strong> pick the winner.
+      </p>
+    </section>
+
+    <!-- Three Tracks -->
+    <section>
+      <div class="tracks">
+        <a href="#challenges" class="card track-card" style="text-decoration:none; color:inherit;">
+          <div class="emoji">🎨</div>
+          <h3>Coding</h3>
+          <p style="color:var(--text-dim); font-size:0.9em;">One prompt, full apps. Compare the code.</p>
+          <div style="margin-top:12px;"><span class="tag tag-category">6 challenges</span></div>
+        </a>
+        <div class="card track-card disabled">
+          <div class="emoji">🛠️</div>
+          <h3>Skills</h3>
+          <p style="color:var(--text-dim); font-size:0.9em;">Same tools, different models. Who uses them better?</p>
+          <div style="margin-top:12px;"><span class="tag tag-coming">Coming Soon</span></div>
+        </div>
+        <div class="card track-card disabled">
+          <div class="emoji">🤖</div>
+          <h3>Agent</h3>
+          <p style="color:var(--text-dim); font-size:0.9em;">One goal, full autonomy. Can the AI figure it out?</p>
+          <div style="margin-top:12px;"><span class="tag tag-coming">Coming Soon</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How it Works -->
+    <section class="section">
+      <h2 style="text-align:center;">How it Works</h2>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <h3>Experience</h3>
+          <p>Play two AI-generated apps side by side. Models are anonymous — no bias.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <h3>Vote</h3>
+          <p>Pick the better one. That's it. No technical knowledge required.</p>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <h3>Reveal</h3>
+          <p>See which AI model made which app. Check the community vote. Share your result.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Challenges -->
+    <section class="section" id="challenges">
+      <h2>Coding Challenges</h2>
+      <p class="subtitle" style="margin-bottom:24px;">Each challenge = one prompt, multiple AI models, real deployable apps.</p>
+      <div class="card-grid" id="challenge-list"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>Part of the <a href="https://github.com/crazynomad">Oddity</a> universe. 🛸</p>
+      <p style="margin-top:8px;">Built with curiosity. No frameworks were harmed.</p>
+    </footer>
+  </div>
+
+  <script>
+    const challenges = [
+      { id: '03-angry-birds', title: 'Angry Birds Clone', titleCn: '愤怒的小鸟', difficulty: 'medium', category: 'game', models: 1, description: 'Build a playable Angry Birds clone with physics engine' },
+      { id: '02-3d-solar-system', title: '3D Solar System', titleCn: '3D 太阳系沙盒', difficulty: 'hard', category: '3d', models: 1, description: 'Interactive 3D solar system with orbiting planets' },
+      { id: '06-tiyunzong', title: 'Tiyunzong 梯云纵', titleCn: '梯云纵', difficulty: 'medium', category: 'animation', models: 1, description: 'Wuxia martial arts animation — running up walls' },
+      { id: '01-web-redesign', title: 'Web Redesign', titleCn: '网页重构', difficulty: 'easy', category: 'frontend', models: 1, description: 'Redesign a webpage with modern CSS' },
+      { id: '05-munchausen', title: 'Baron Munchausen', titleCn: '闵希豪森男爵', difficulty: 'medium', category: 'animation', models: 1, description: 'Animated story of Baron Munchausen\'s adventures' },
+      { id: '04-laravel-to-nextjs', title: 'Laravel → Next.js', titleCn: '框架迁移', difficulty: 'hard', category: 'engineering', models: 0, description: 'Migrate a Laravel app to Next.js', comingSoon: true },
+    ];
+
+    const list = document.getElementById('challenge-list');
+    for (const ch of challenges) {
+      const diffClass = ch.difficulty === 'easy' ? 'tag-easy' : ch.difficulty === 'medium' ? 'tag-medium' : 'tag-hard';
+      const link = ch.comingSoon ? '#' : `coding/challenges/${ch.id}/battle.html`;
+      const opacity = ch.comingSoon ? 'opacity:0.5;' : '';
+      list.innerHTML += `
+        <a href="${link}" class="card" style="text-decoration:none; color:inherit; ${opacity}">
+          <div style="display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;">
+            <span class="tag ${diffClass}">${ch.difficulty}</span>
+            <span class="tag tag-category">${ch.category}</span>
+            ${ch.comingSoon ? '<span class="tag tag-coming">coming soon</span>' : ''}
+          </div>
+          <h3>${ch.title}</h3>
+          <p style="color:var(--text-dim); font-size:0.9em; margin-top:4px;">${ch.description}</p>
+          <p style="color:var(--text-dim); font-size:0.8em; margin-top:12px;">
+            ${ch.models > 0 ? `${ch.models} model${ch.models > 1 ? 's' : ''} competing` : 'Awaiting contestants'}
+          </p>
+        </a>
+      `;
+    }
+  </script>
+</body>
+</html>

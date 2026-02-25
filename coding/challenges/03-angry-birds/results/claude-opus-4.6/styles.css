@@ -1,0 +1,16 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #1a1a2e; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', Tahoma, sans-serif; overflow: hidden; }
+#game-container { position: relative; }
+canvas { display: block; border-radius: 8px; cursor: crosshair; }
+#ui-overlay { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 24px; padding: 12px 20px; z-index: 10; pointer-events: none; }
+#ui-overlay > * { pointer-events: auto; }
+#score-display, #birds-display { color: #fff; font-size: 20px; font-weight: 700; text-shadow: 2px 2px 4px rgba(0,0,0,.5); background: rgba(0,0,0,.4); padding: 6px 16px; border-radius: 20px; }
+#reset-btn { margin-left: auto; background: #e74c3c; color: #fff; border: none; padding: 8px 18px; border-radius: 20px; font-size: 16px; font-weight: 700; cursor: pointer; transition: transform .1s, background .2s; }
+#reset-btn:hover { background: #c0392b; transform: scale(1.05); }
+#message-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.6); display: flex; justify-content: center; align-items: center; z-index: 20; }
+#message-overlay.hidden { display: none; }
+#message-box { background: #fff; border-radius: 16px; padding: 40px 50px; text-align: center; box-shadow: 0 10px 40px rgba(0,0,0,.4); }
+#message-title { font-size: 32px; margin-bottom: 8px; }
+#message-text { font-size: 18px; color: #555; margin-bottom: 20px; }
+#message-btn { background: #27ae60; color: #fff; border: none; padding: 12px 32px; border-radius: 25px; font-size: 18px; font-weight: 700; cursor: pointer; transition: background .2s; }
+#message-btn:hover { background: #219a52; }

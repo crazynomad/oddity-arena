@@ -1,0 +1,53 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; overflow: hidden; cursor: pointer; font-family: 'STKaiti', 'KaiTi', 'Noto Serif SC', serif; }
+canvas { display: block; width: 100vw; height: 100vh; }
+
+#ui-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  pointer-events: none; z-index: 10;
+}
+
+#title-card, #end-card {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; color: #e8dcc8; transition: opacity 1.5s ease;
+}
+#title-card.hidden, #end-card.hidden { opacity: 0; pointer-events: none; }
+
+.title-cn {
+  font-size: clamp(4rem, 12vw, 10rem); font-weight: 900;
+  letter-spacing: 0.3em; text-shadow: 0 0 40px rgba(180,140,80,0.5);
+  animation: breathe 3s ease-in-out infinite;
+}
+.title-en {
+  font-size: clamp(0.8rem, 2vw, 1.4rem); letter-spacing: 0.5em;
+  text-transform: uppercase; margin-top: 1rem; opacity: 0.7;
+}
+.title-hint {
+  font-size: 0.9rem; margin-top: 2rem; opacity: 0.4;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.end-poem {
+  font-size: clamp(1.5rem, 4vw, 3rem); line-height: 1.8;
+  text-shadow: 0 0 30px rgba(180,140,80,0.4);
+}
+.end-sub {
+  font-size: 0.9rem; margin-top: 1.5rem; opacity: 0.6;
+  font-style: italic; font-family: Georgia, serif;
+}
+
+#step-indicator {
+  position: absolute; right: 2rem; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 12px; align-items: center;
+}
+.step-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(200,180,140,0.2); transition: all 0.5s ease;
+}
+.step-dot.active {
+  background: rgba(220,180,100,0.9); box-shadow: 0 0 12px rgba(220,180,100,0.6);
+  transform: scale(1.5);
+}
+
+@keyframes breathe { 0%,100% { opacity: 0.9; } 50% { opacity: 1; } }
+@keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.6; } }
