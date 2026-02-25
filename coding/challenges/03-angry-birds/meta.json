@@ -1,1 +1,1 @@
-{"id":"angry-birds","title":"Angry Birds Clone","titleCn":"愤怒的小鸟","difficulty":"medium","category":"game","description":"Build a playable Angry Birds clone with physics engine","models":["claude-opus-4.6","claude-sonnet-4","minimax-m2.5"]}
+{"id": "angry-birds", "title": "Angry Birds Clone", "titleCn": "\u6124\u6012\u7684\u5c0f\u9e1f", "difficulty": "medium", "category": "game", "description": "Build a playable Angry Birds clone with physics engine", "models": ["claude-opus-4.6", "claude-sonnet-4", "minimax-m2.5"]}

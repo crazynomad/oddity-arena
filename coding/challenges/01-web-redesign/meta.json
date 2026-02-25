@@ -1,1 +1,1 @@
-{"id":"web-redesign","title":"Web Redesign","titleCn":"网页重构","difficulty":"easy","category":"frontend","description":"Redesign a webpage with modern CSS and layout","models":["claude-opus-4.6","claude-sonnet-4","minimax-m2.5"]}
+{"id": "web-redesign", "title": "Web Redesign", "titleCn": "\u7f51\u9875\u91cd\u6784", "difficulty": "easy", "category": "frontend", "description": "Redesign a webpage with modern CSS and layout", "models": ["claude-opus-4.6", "claude-sonnet-4", "minimax-m2.5"]}
