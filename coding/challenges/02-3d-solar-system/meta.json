@@ -1,1 +1,13 @@
-{"id":"3d-solar-system","title":"3D Solar System","titleCn":"3D 太阳系沙盒","difficulty":"hard","category":"3d","description":"Interactive 3D solar system with orbiting planets and controls","models":["claude-opus-4.6","claude-opus-4.6-v2"]}
+{
+  "id": "3d-solar-system",
+  "title": "3D Solar System",
+  "titleCn": "3D 太阳系沙盒",
+  "difficulty": "hard",
+  "category": "3d",
+  "description": "Interactive 3D solar system with orbiting planets and controls",
+  "models": [
+    "claude-opus-4.6-v2",
+    "claude-opus-4.6",
+    "claude-sonnet-4"
+  ]
+}

@@ -1,1 +1,18 @@
-{"id": "munchausen", "title": "Baron Munchausen", "titleCn": "\u95f5\u5e0c\u8c6a\u68ee\u7537\u7235", "difficulty": "medium", "category": "animation", "description": "Animated story of Baron Munchausen adventures", "models": ["claude-opus-4.6", "claude-sonnet-4", "minimax-m2.5"]}
+{
+  "id": "munchausen",
+  "title": "Baron Munchausen",
+  "titleCn": "闵希豪森男爵",
+  "difficulty": "medium",
+  "category": "animation",
+  "description": "Animated story of Baron Munchausen adventures",
+  "models": [
+    "claude-opus-4.6",
+    "claude-sonnet-4",
+    "gemini-3.1-pro",
+    "glm-5",
+    "gpt-5.3-codex",
+    "kimi-k2.5",
+    "minimax-m2.5",
+    "qwen3.5-plus"
+  ]
+}
