@@ -364,22 +364,22 @@
 
       // Show next challenge button + auto-advance countdown
       const next = getNextChallenge();
+      const nextBtn = document.getElementById('btn-next-challenge');
       if (next) {
-        document.getElementById('btn-next-challenge').style.display = 'inline-block';
-        // Show round progress
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = i18n.t('battle.next_challenge');
         const idx = getCurrentChallengeIndex();
         arcade.renderProgress(idx + 1, CHALLENGE_SEQUENCE.length);
-        // Start auto-advance after 8 seconds
         setTimeout(() => startAutoNext(8), 2000);
       } else {
-        // Last challenge — show "All Clear" option
         const idx = getCurrentChallengeIndex();
         if (idx >= 0) arcade.renderProgress(idx + 1, CHALLENGE_SEQUENCE.length);
-        const nextBtn = document.getElementById('btn-next-challenge');
         nextBtn.style.display = 'inline-block';
         nextBtn.textContent = i18n.t('battle.all_clear');
         nextBtn.onclick = () => showAllClear();
       }
+      // Re-apply i18n to catch any newly visible elements
+      i18n.apply();
     }
 
     function showResultsFromAPI(tallies, winner, loser) {
