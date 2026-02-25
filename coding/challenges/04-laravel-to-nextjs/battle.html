@@ -1,10 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title id="page-title">Battle — Oddity Arena</title>
   <link rel="stylesheet" href="../../../assets/style.css">
+  <script src="../../../assets/i18n.js"></script>
   <style>
     .vote-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; margin-right:6px; vertical-align:middle; }
     @keyframes spin { to { transform:rotate(360deg); } }
@@ -17,9 +18,7 @@
     .progress-row .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding:0 8px; font-size:0.8em; font-weight:600; color:#fff; transition:width 0.6s ease; min-width:fit-content; }
     .progress-row .bar-fill.winner-bar { background:var(--accent); }
     .progress-row .bar-fill.loser-bar { background:var(--text-dim); opacity:0.6; }
-    .progress-row .bar-fill.neutral-bar { background:var(--text-dim); opacity:0.4; }
     .progress-row .pct { min-width:45px; font-size:0.85em; color:var(--text-dim); }
-    .leaderboard { margin:24px 0; }
     .leaderboard table { width:100%; border-collapse:collapse; }
     .leaderboard th { text-align:left; color:var(--text-dim); font-size:0.8em; text-transform:uppercase; letter-spacing:0.05em; padding:8px; border-bottom:1px solid var(--border); }
     .leaderboard td { padding:8px; border-bottom:1px solid var(--border); font-size:0.9em; }
@@ -37,8 +36,9 @@
     <nav>
       <a href="../../../" class="nav-brand">⚡ ODDITY ARENA</a>
       <div class="nav-links">
-        <a href="../../../#challenges">Challenges</a>
+        <a href="../../../#challenges" data-i18n="nav.challenges">挑战</a>
         <a href="../../../">Home</a>
+        <button id="lang-toggle" onclick="i18n.toggle()" style="background:none; border:1px solid var(--border); color:var(--text); padding:4px 12px; border-radius:4px; cursor:pointer; font-size:0.85em;">EN</button>
       </div>
     </nav>
 
@@ -54,10 +54,10 @@
 
     <!-- Waiting state -->
     <div class="battle-waiting" id="waiting" style="display:none;">
-      <p>⏳ Waiting for more models to compete...</p>
-      <p style="font-size:0.9em; margin-top:12px;">Only 1 model has entered this challenge so far.</p>
+      <p data-i18n="battle.waiting">⏳ 等待更多模型参赛...</p>
+      <p style="font-size:0.9em; margin-top:12px;" data-i18n="battle.waiting_desc">目前只有 1 个模型参加了这个挑战。</p>
       <div style="margin-top:24px;">
-        <a href="../../../" class="btn btn-secondary">← Back to Challenges</a>
+        <a href="../../../" class="btn btn-secondary" data-i18n="battle.back_home">← 返回挑战列表</a>
       </div>
       <div id="solo-preview" style="margin-top:32px;"></div>
     </div>
@@ -66,70 +66,68 @@
     <div id="arena" style="display:none;">
       <div class="battle-arena">
         <div class="battle-side">
-          <div class="battle-label" id="label-a">Model A</div>
-          <button class="fullscreen-btn" onclick="goFullscreen('iframe-a')" title="Fullscreen">⛶</button>
+          <div class="battle-label" id="label-a" data-i18n="battle.model_a">模型 A</div>
+          <button class="fullscreen-btn" onclick="goFullscreen('iframe-a')">⛶</button>
           <iframe class="battle-iframe" id="iframe-a" sandbox="allow-scripts allow-same-origin"></iframe>
-          <button class="btn btn-vote" id="vote-a" onclick="vote('a')">👈 This One</button>
+          <button class="btn btn-vote" id="vote-a" onclick="vote('a')" data-i18n="battle.pick_left">👈 选这个</button>
         </div>
         <div class="battle-side">
-          <div class="battle-label" id="label-b">Model B</div>
-          <button class="fullscreen-btn" onclick="goFullscreen('iframe-b')" title="Fullscreen">⛶</button>
+          <div class="battle-label" id="label-b" data-i18n="battle.model_b">模型 B</div>
+          <button class="fullscreen-btn" onclick="goFullscreen('iframe-b')">⛶</button>
           <iframe class="battle-iframe" id="iframe-b" sandbox="allow-scripts allow-same-origin"></iframe>
-          <button class="btn btn-vote" id="vote-b" onclick="vote('b')">This One 👉</button>
+          <button class="btn btn-vote" id="vote-b" onclick="vote('b')" data-i18n="battle.pick_right">选这个 👉</button>
         </div>
       </div>
 
-      <!-- Results -->
       <div id="results" style="display:none;" class="fade-in">
         <div style="text-align:center; margin:24px 0 12px;">
-          <h3 style="color:var(--text-dim);">🏆 Community Votes</h3>
+          <h3 style="color:var(--text-dim);" data-i18n="battle.community">🏆 社区投票</h3>
         </div>
         <div id="progress"></div>
         <div class="battle-actions">
-          <button class="btn btn-primary" onclick="newPair()">🔀 New Pair</button>
-          <button class="btn btn-secondary" onclick="showLeaderboard()">📊 Leaderboard</button>
-          <button class="btn btn-secondary" onclick="showGallery()">🖼️ Gallery</button>
-          <button class="btn btn-secondary" onclick="share()">📤 Share</button>
+          <button class="btn btn-primary" onclick="newPair()" data-i18n="battle.new_pair">🔀 换一对</button>
+          <button class="btn btn-secondary" onclick="showLeaderboard()" data-i18n="battle.leaderboard">📊 排行榜</button>
+          <button class="btn btn-secondary" onclick="showGallery()" data-i18n="battle.gallery">🖼️ 全部作品</button>
+          <button class="btn btn-secondary" onclick="share()" data-i18n="battle.share">📤 分享</button>
         </div>
       </div>
     </div>
 
     <!-- Leaderboard -->
-    <div id="leaderboard" style="display:none;" class="section fade-in">
-      <h2>📊 ELO Leaderboard</h2>
+    <div id="leaderboard" style="display:none;" class="section fade-in leaderboard">
+      <h2 data-i18n="battle.elo_title">📊 ELO 排行榜</h2>
       <div id="leaderboard-content"></div>
       <div style="text-align:center; margin-top:24px;">
-        <button class="btn btn-primary" onclick="hideOverlay()">← Back to Battle</button>
+        <button class="btn btn-primary" onclick="hideOverlay()" data-i18n="battle.back">← 返回对战</button>
       </div>
     </div>
 
     <!-- Gallery -->
     <div id="gallery" style="display:none;" class="section">
-      <h2>🖼️ All Submissions</h2>
+      <h2 data-i18n="battle.all_submissions">🖼️ 全部参赛作品</h2>
       <div class="card-grid" id="gallery-grid"></div>
       <div style="text-align:center; margin-top:24px;">
-        <button class="btn btn-primary" onclick="hideOverlay()">← Back to Battle</button>
+        <button class="btn btn-primary" onclick="hideOverlay()" data-i18n="battle.back">← 返回对战</button>
       </div>
     </div>
 
     <footer>
-      <p><a href="../../../">Oddity Arena</a> — Part of the <a href="https://github.com/crazynomad">Oddity</a> universe. 🛸</p>
+      <p data-i18n="footer.universe"><a href="https://github.com/crazynomad">Oddity</a> 宇宙的一部分。🛸</p>
     </footer>
   </div>
 
   <div class="toast" id="toast"></div>
 
   <script>
-    // Config
     const API_BASE = '/api';
-
     let meta = {};
     let modelA = '', modelB = '';
     let voted = false;
     let leaderboardData = null;
 
-    // ── Init ──
     async function init() {
+      i18n.init();
+
       try {
         const resp = await fetch('meta.json');
         meta = await resp.json();
@@ -137,16 +135,7 @@
         meta = { id: 'unknown', title: 'Challenge', difficulty: 'medium', category: 'coding', models: [], description: '' };
       }
 
-      document.getElementById('page-title').textContent = `${meta.title} — Oddity Arena`;
-      document.getElementById('challenge-title').textContent = meta.titleCn ? `${meta.title} / ${meta.titleCn}` : meta.title;
-      document.getElementById('challenge-desc').textContent = meta.description || '';
-
-      const diffTag = document.getElementById('diff-tag');
-      diffTag.textContent = meta.difficulty;
-      diffTag.className = `tag tag-${meta.difficulty}`;
-      document.getElementById('cat-tag').textContent = meta.category;
-
-      // Fetch leaderboard in background
+      updateTitle();
       fetchLeaderboard();
 
       if (!meta.models || meta.models.length < 2) {
@@ -161,9 +150,24 @@
         document.getElementById('arena').style.display = 'block';
         newPair();
       }
+
+      window.addEventListener('langchange', () => { updateTitle(); });
     }
 
-    // ── Leaderboard fetch ──
+    function updateTitle() {
+      const lang = i18n.lang;
+      const title = lang === 'zh' && meta.titleCn ? meta.titleCn : meta.title;
+      const desc = lang === 'zh' && meta.descCn ? meta.descCn : (meta.description || '');
+      document.getElementById('page-title').textContent = `${title} — Oddity Arena`;
+      document.getElementById('challenge-title').textContent = meta.titleCn ? `${meta.title} / ${meta.titleCn}` : meta.title;
+      document.getElementById('challenge-desc').textContent = desc;
+
+      const diffTag = document.getElementById('diff-tag');
+      diffTag.textContent = i18n.t(`diff.${meta.difficulty}`);
+      diffTag.className = `tag tag-${meta.difficulty}`;
+      document.getElementById('cat-tag').textContent = i18n.t(`cat.${meta.category}`);
+    }
+
     async function fetchLeaderboard() {
       try {
         const resp = await fetch(`${API_BASE}/leaderboard/${meta.id}`);
@@ -171,36 +175,31 @@
           leaderboardData = await resp.json();
           const total = leaderboardData.totalVotes || 0;
           if (total > 0) {
-            document.getElementById('total-votes').textContent = `${total} vote${total !== 1 ? 's' : ''} cast`;
+            document.getElementById('total-votes').textContent = i18n.t('battle.votes_cast', { n: total });
           }
         }
-      } catch {
-        // API unavailable, fall back to localStorage
-        leaderboardData = null;
-      }
+      } catch { leaderboardData = null; }
     }
 
-    // ── New pair ──
     function newPair() {
       voted = false;
       document.getElementById('results').style.display = 'none';
-      document.getElementById('vote-a').classList.remove('selected');
-      document.getElementById('vote-b').classList.remove('selected');
-      document.getElementById('vote-a').disabled = false;
-      document.getElementById('vote-b').disabled = false;
-      document.getElementById('vote-a').innerHTML = '👈 This One';
-      document.getElementById('vote-b').innerHTML = 'This One 👉';
-      document.getElementById('label-a').textContent = 'Model A';
-      document.getElementById('label-a').classList.remove('revealed');
-      document.getElementById('label-b').textContent = 'Model B';
-      document.getElementById('label-b').classList.remove('revealed');
+      const va = document.getElementById('vote-a');
+      const vb = document.getElementById('vote-b');
+      va.classList.remove('selected'); vb.classList.remove('selected');
+      va.disabled = false; vb.disabled = false;
+      va.innerHTML = i18n.t('battle.pick_left');
+      vb.innerHTML = i18n.t('battle.pick_right');
+      const la = document.getElementById('label-a');
+      const lb = document.getElementById('label-b');
+      la.textContent = i18n.t('battle.model_a'); la.classList.remove('revealed');
+      lb.textContent = i18n.t('battle.model_b'); lb.classList.remove('revealed');
       document.getElementById('iframe-a').classList.remove('winner');
       document.getElementById('iframe-b').classList.remove('winner');
 
-      // Pick random pair
       const models = [...meta.models];
-      const i = Math.floor(Math.random() * models.length);
-      modelA = models.splice(i, 1)[0];
+      const idx = Math.floor(Math.random() * models.length);
+      modelA = models.splice(idx, 1)[0];
       modelB = models[Math.floor(Math.random() * models.length)];
       if (Math.random() > 0.5) [modelA, modelB] = [modelB, modelA];
 
@@ -208,7 +207,6 @@
       document.getElementById('iframe-b').src = `results/${modelB}/index.html`;
     }
 
-    // ── Vote ──
     async function vote(choice) {
       if (voted) return;
       voted = true;
@@ -216,31 +214,25 @@
       const winner = choice === 'a' ? modelA : modelB;
       const loser = choice === 'a' ? modelB : modelA;
 
-      // Disable buttons + show spinner
       document.getElementById('vote-a').disabled = true;
       document.getElementById('vote-b').disabled = true;
       const btn = document.getElementById(choice === 'a' ? 'vote-a' : 'vote-b');
-      btn.innerHTML = `<span class="vote-spinner"></span> Voting...`;
+      btn.innerHTML = `<span class="vote-spinner"></span> ${i18n.t('battle.voting')}`;
 
-      // Reveal model names
+      // Reveal
       const labelA = document.getElementById('label-a');
       const labelB = document.getElementById('label-b');
-      labelA.textContent = modelA;
-      labelA.classList.add('revealed');
-      labelB.textContent = modelB;
-      labelB.classList.add('revealed');
-
-      // Highlight winner
+      labelA.textContent = modelA; labelA.classList.add('revealed');
+      labelB.textContent = modelB; labelB.classList.add('revealed');
       btn.classList.add('selected');
       document.getElementById(choice === 'a' ? 'iframe-a' : 'iframe-b').classList.add('winner');
 
-      // Find ELO for reveal
-      const eloA = getElo(modelA);
-      const eloB = getElo(modelB);
+      // ELO badges
+      const eloA = getElo(modelA), eloB = getElo(modelB);
       if (eloA) labelA.innerHTML = `${modelA} <span class="elo-badge">${eloA}</span>`;
       if (eloB) labelB.innerHTML = `${modelB} <span class="elo-badge">${eloB}</span>`;
 
-      // Send vote to API
+      // API vote
       let apiSuccess = false;
       try {
         const resp = await fetch(`${API_BASE}/vote`, {
@@ -251,19 +243,13 @@
         const data = await resp.json();
         if (resp.ok && data.success) {
           apiSuccess = true;
-          // Update leaderboard with returned tallies
-          if (data.tallies) {
-            showResultsFromAPI(data.tallies, winner, loser);
-          }
-          fetchLeaderboard(); // refresh in background
+          if (data.tallies) showResultsFromAPI(data.tallies, winner, loser);
+          fetchLeaderboard();
         } else if (resp.status === 429) {
-          showToast('You already voted on this pair! Try a new one 🔀');
+          showToast(i18n.t('battle.duplicate'));
         }
-      } catch {
-        // API fail — fallback to localStorage
-      }
+      } catch {}
 
-      // Fallback: localStorage
       if (!apiSuccess) {
         const key = `oddity-vote-${meta.id}`;
         const votes = JSON.parse(localStorage.getItem(key) || '{}');
@@ -272,75 +258,57 @@
         showResultsLocal(votes, winner, loser);
       }
 
-      btn.innerHTML = choice === 'a' ? '👈 ✓ Voted!' : '✓ Voted! 👉';
+      btn.innerHTML = choice === 'a' ? i18n.t('battle.voted_left') : i18n.t('battle.voted_right');
     }
 
-    // ── Results display (API) ──
     function showResultsFromAPI(tallies, winner, loser) {
       const models = [winner, loser];
       const totalWins = (tallies[winner]?.wins || 0) + (tallies[loser]?.wins || 0);
-      renderProgressBars(models.map(m => ({
-        model: m,
-        count: tallies[m]?.wins || 0,
-        isWinner: m === winner,
-      })), totalWins > 0 ? totalWins : 1);
+      renderBars(models.map(m => ({ model: m, count: tallies[m]?.wins || 0, isWinner: m === winner })), totalWins || 1);
       document.getElementById('results').style.display = 'block';
     }
 
-    // ── Results display (localStorage fallback) ──
     function showResultsLocal(votes, winner, loser) {
       const total = Object.values(votes).reduce((a, b) => a + b, 0);
-      const models = Object.entries(votes).sort((a, b) => b[1] - a[1]);
-      renderProgressBars(models.map(([model, count]) => ({
-        model,
-        count,
-        isWinner: model === winner,
-      })), total);
+      renderBars(Object.entries(votes).sort((a, b) => b[1] - a[1]).map(([m, c]) => ({ model: m, count: c, isWinner: m === winner })), total);
       document.getElementById('results').style.display = 'block';
     }
 
-    function renderProgressBars(items, total) {
-      const el = document.getElementById('progress');
-      el.innerHTML = items.map(({ model, count, isWinner }) => {
+    function renderBars(items, total) {
+      document.getElementById('progress').innerHTML = items.map(({ model, count, isWinner }) => {
         const pct = Math.max(Math.round(count / total * 100), 2);
-        const cls = isWinner ? 'winner-bar' : 'loser-bar';
         return `<div class="progress-row">
           <span class="model-name">${model}</span>
-          <div class="bar-wrap"><div class="bar-fill ${cls}" style="width:${pct}%">${count}</div></div>
+          <div class="bar-wrap"><div class="bar-fill ${isWinner ? 'winner-bar' : 'loser-bar'}" style="width:${pct}%">${count}</div></div>
           <span class="pct">${pct}%</span>
         </div>`;
       }).join('');
     }
 
-    // ── ELO helper ──
     function getElo(model) {
       if (!leaderboardData?.ratings) return null;
       const r = leaderboardData.ratings.find(r => r.model === model);
       return r ? r.rating : null;
     }
 
-    // ── Leaderboard view ──
     async function showLeaderboard() {
       hideOverlay();
       document.getElementById('arena').style.display = 'none';
       document.getElementById('results').style.display = 'none';
-      const lb = document.getElementById('leaderboard');
-      lb.style.display = 'block';
-
-      // Refresh data
+      document.getElementById('leaderboard').style.display = 'block';
       await fetchLeaderboard();
 
       const content = document.getElementById('leaderboard-content');
       if (!leaderboardData || !leaderboardData.ratings.length) {
-        content.innerHTML = '<p style="text-align:center; color:var(--text-dim);">No votes yet. Be the first to vote! 🗳️</p>';
+        content.innerHTML = `<p style="text-align:center; color:var(--text-dim);">${i18n.t('battle.no_votes')}</p>`;
         return;
       }
 
-      const rows = leaderboardData.ratings.map((r, i) => {
+      const rows = leaderboardData.ratings.map((r, idx) => {
         const wins = leaderboardData.wins[r.model] || 0;
         const winRate = r.votes > 0 ? Math.round(wins / r.votes * 100) : 0;
-        return `<tr class="${i === 0 ? 'rank-1' : ''}">
-          <td>${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}</td>
+        return `<tr class="${idx === 0 ? 'rank-1' : ''}">
+          <td>${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : idx + 1}</td>
           <td><strong>${r.model}</strong></td>
           <td>${r.rating}</td>
           <td>${wins}W / ${r.votes - wins}L</td>
@@ -349,44 +317,36 @@
       }).join('');
 
       content.innerHTML = `
-        <p class="vote-count-label">${leaderboardData.totalVotes} total votes</p>
+        <p class="vote-count-label">${i18n.t('battle.total_votes', { n: leaderboardData.totalVotes })}</p>
         <table>
-          <thead><tr><th>#</th><th>Model</th><th>ELO</th><th>Record</th><th>Win%</th></tr></thead>
+          <thead><tr><th>${i18n.t('table.rank')}</th><th>${i18n.t('table.model')}</th><th>${i18n.t('table.elo')}</th><th>${i18n.t('table.record')}</th><th>${i18n.t('table.winrate')}</th></tr></thead>
           <tbody>${rows}</tbody>
-        </table>
-      `;
+        </table>`;
     }
 
-    // ── Gallery ──
     function showGallery() {
       hideOverlay();
       document.getElementById('arena').style.display = 'none';
       document.getElementById('results').style.display = 'none';
-      const gallery = document.getElementById('gallery');
-      gallery.style.display = 'block';
+      document.getElementById('gallery').style.display = 'block';
 
-      const grid = document.getElementById('gallery-grid');
-      grid.innerHTML = '';
-
-      // Sort by ELO if available
       let models = [...meta.models];
       if (leaderboardData?.ratings?.length) {
         const eloMap = Object.fromEntries(leaderboardData.ratings.map(r => [r.model, r.rating]));
         models.sort((a, b) => (eloMap[b] || 1500) - (eloMap[a] || 1500));
       }
 
-      for (const model of models) {
+      const grid = document.getElementById('gallery-grid');
+      grid.innerHTML = models.map(model => {
         const elo = getElo(model);
         const wins = leaderboardData?.wins?.[model] || 0;
         const eloBadge = elo ? `<span class="elo-badge${elo >= 1550 ? ' top' : ''}">${elo} ELO</span>` : '';
-        grid.innerHTML += `
-          <div class="card">
-            <h3>${model} ${eloBadge}</h3>
-            <p style="color:var(--text-dim); font-size:0.85em; margin:8px 0;">${wins} wins</p>
-            <iframe class="battle-iframe" src="results/${model}/index.html" sandbox="allow-scripts allow-same-origin" style="height:350px;"></iframe>
-          </div>
-        `;
-      }
+        return `<div class="card">
+          <h3>${model} ${eloBadge}</h3>
+          <p style="color:var(--text-dim); font-size:0.85em; margin:8px 0;">${i18n.t('battle.wins', { n: wins })}</p>
+          <iframe class="battle-iframe" src="results/${model}/index.html" sandbox="allow-scripts allow-same-origin" style="height:350px;"></iframe>
+        </div>`;
+      }).join('');
     }
 
     function hideOverlay() {
@@ -395,25 +355,26 @@
       document.getElementById('arena').style.display = 'block';
     }
 
-    // ── Fullscreen ──
     function goFullscreen(id) {
       const el = document.getElementById(id);
       if (el.requestFullscreen) el.requestFullscreen();
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
     }
 
-    // ── Share ──
     function share() {
-      const text = `I just voted on "${meta.title}" in Oddity Arena! 🛸\n\nCome play and vote:`;
+      const lang = i18n.lang;
+      const title = lang === 'zh' && meta.titleCn ? meta.titleCn : meta.title;
+      const text = lang === 'zh'
+        ? `我刚在 Oddity Arena 投票了「${title}」！🛸\n\n来玩来投票：`
+        : `I just voted on "${title}" in Oddity Arena! 🛸\n\nCome play and vote:`;
       const url = window.location.href;
       if (navigator.share) {
-        navigator.share({ title: `${meta.title} — Oddity Arena`, text, url });
+        navigator.share({ title: `${title} — Oddity Arena`, text, url });
       } else {
         window.open(`https://x.com/intent/tweet?text=${encodeURIComponent(text + ' ' + url)}`, '_blank');
       }
     }
 
-    // ── Toast ──
     function showToast(msg) {
       const el = document.getElementById('toast');
       el.textContent = msg;
