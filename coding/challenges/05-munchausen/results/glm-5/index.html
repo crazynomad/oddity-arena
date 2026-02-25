@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Baron Munchausen's Impossible Escape</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0f;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Georgia, serif;
+            overflow: hidden;
+        }
+        
+        #container {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 16/9;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            box-shadow: 0 0 60px rgba(139, 90, 43, 0.3);
+        }
+        
+        #caption {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f4e4c1;
+            font-size: clamp(14px, 2.5vw, 20px);
+            text-align: center;
+            padding: 12px 24px;
+            background: rgba(20, 15, 10, 0.85);
+            border-radius: 4px;
+            border: 1px solid rgba(244, 228, 193, 0.2);
+            min-width: 200px;
+            transition: opacity 0.3s;
+            letter-spacing: 0.5px;
+        }
+        
+        #instruction {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: rgba(244, 228, 193, 0.6);
+            font-size: 14px;
+            font-style: italic;
+        }
+        
+        #title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #d4a853;
+            font-size: clamp(16px, 2vw, 22px);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        <div id="title">The Adventures of Baron Munchausen</div>
+        <div id="caption">A most extraordinary tale...</div>
+        <div id="instruction">Click to advance</div>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const caption = document.getElementById('caption');
+        
+        let W, H;
+        let time = 0;
+        let scene = 0;
+        let sceneTime = 0;
+        let autoAdvance = true;
+        
+        const SCENES = [
+            { duration: 4000, caption: "Baron Munchausen, returning from another adventure..." },
+            { duration: 3500, caption: "Terror! The treacherous swamp claims another victim!" },
+            { duration: 2500, caption: "But wait... an impossible idea forms..." },
+            { duration: 4000, caption: "Why, I shall pull myself up by my own hair!" },
+            { duration: 5000, caption: "With tremendous effort, he rises... impossibly!" },
+            { duration: 4000, caption: "Victory! The Baron triumphs over nature itself!" }
+        ];
+        
+        function resize() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = rect.height * window.devicePixelRatio;
+            W = canvas.width;
+            H = canvas.height;
+            ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+        
+        // Particles
+        let particles = [];
+        
+        class Particle {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.type = type;
+                this.vx = (Math.random() - 0.5) * 3;
+                this.vy = -Math.random() * 4 - 2;
+                this.life = 1;
+                this.decay = 0.01 + Math.random() * 0.02;
+                this.size = 3 + Math.random() * 8;
+                this.rotation = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.2;
+                
+                if (type === 'mud') {
+                    this.color = `hsl(${25 + Math.random() * 15}, ${40 + Math.random() * 20}%, ${15 + Math.random() * 15}%)`;
+                } else if (type === 'bubble') {
+                    this.size = 5 + Math.random() * 15;
+                    this.vy = -Math.random() * 2 - 1;
+                    this.vx = (Math.random() - 0.5) * 0.5;
+                } else if (type === 'sparkle') {
+                    this.size = 2 + Math.random() * 4;
+                    this.vy = -Math.random() * 1 - 0.5;
+                    this.vx = (Math.random() - 0.5) * 2;
+                    this.decay = 0.015 + Math.random() * 0.015;
+                }
+            }
+            
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.rotation += this.rotSpeed;
+                
+                if (this.type === 'mud') {
+                    this.vy += 0.15;
+                } else if (this.type === 'bubble') {
+                    this.vx += Math.sin(time * 0.05 + this.x * 0.1) * 0.1;
+                }
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                
+                if (this.type === 'mud') {
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotation);
+                    ctx.fillStyle = this.color;
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.size, this.size * 0.7, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'bubble') {
+                    ctx.strokeStyle = `rgba(180, 200, 180, ${this.life * 0.5})`;
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.stroke();
+                    
+                    ctx.fillStyle = `rgba(220, 240, 220, ${this.life * 0.3})`;
+                    ctx.beginPath();
+                    ctx.arc(this.x - this.size * 0.3, this.y - this.size * 0.3, this.size * 0.2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (this.type === 'sparkle') {
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.rotation);
+                    ctx.fillStyle = `hsl(${45 + Math.random() * 15}, 100%, ${70 + Math.random() * 20}%)`;
+                    
+                    for (let i = 0; i < 4; i++) {
+                        ctx.rotate(Math.PI / 2);
+                        ctx.beginPath();
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(this.size, 0);
+                        ctx.lineTo(0, this.size * 0.3);
+                        ctx.closePath();
+                        ctx.fill();
+                    }
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        // Baron Munchausen
+        const Baron = {
+            x: 0,
+            y: 0,
+            sinkDepth: 0,
+            armAngle: 0,
+            legPhase: 0,
+            expression: 'confident',
+            hairPull: 0,
+            rising: false,
+            riseProgress: 0,
+            
+            draw(ctx, scale = 1) {
+                ctx.save();
+                ctx.translate(this.x * scale, this.y * scale);
+                ctx.scale(scale, scale);
+                
+                const sink = this.sinkDepth;
+                
+                // Clip for swamp
+                if (sink > 0) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.rect(-500, sink, 1000, 1000);
+                    ctx.clip();
+                }
+                
+                // Legs
+                ctx.save();
+                ctx.translate(0, 50);
+                
+                const legSpread = Math.sin(this.legPhase) * 20;
+                
+                // Left leg
+                ctx.save();
+                ctx.translate(-15, 0);
+                ctx.rotate(Math.sin(this.legPhase) * 0.3);
+                ctx.fillStyle = '#2a1a0a';
+                ctx.fillRect(-8, 0, 16, 50);
+                ctx.fillStyle = '#1a0a00';
+                ctx.fillRect(-10, 45, 20, 15);
+                ctx.restore();
+                
+                // Right leg
+                ctx.save();
+                ctx.translate(15, 0);
+                ctx.rotate(-Math.sin(this.legPhase) * 0.3);
+                ctx.fillStyle = '#2a1a0a';
+                ctx.fillRect(-8, 0, 16, 50);
+                ctx.fillStyle = '#1a0a00';
+                ctx.fillRect(-10, 45, 20, 15);
+                ctx.restore();
+                
+                ctx.restore();
+                
+                // Body
+                ctx.fillStyle = '#8b1a1a';
+                ctx.beginPath();
+                ctx.moveTo(-30, -40);
+                ctx.lineTo(-25, 50);
+                ctx.lineTo(25, 50);
+                ctx.lineTo(30, -40);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Coat details
+                ctx.strokeStyle = '#6b0a0a';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -40);
+                ctx.lineTo(0, 50);
+                ctx.stroke();
+                
+                // Gold buttons
+                ctx.fillStyle = '#d4a853';
+                for (let i = 0; i < 4; i++) {
+                    ctx.beginPath();
+                    ctx.arc(-10, -20 + i * 18, 4, 0, Math.PI * 2);
+                    ctx.arc(10, -20 + i * 18, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Arms
+                ctx.save();
+                ctx.translate(-35, -25);
+                ctx.rotate(this.armAngle - 0.3);
+                ctx.fillStyle = '#8b1a1a';
+                ctx.fillRect(-8, 0, 16, 45);
+                ctx.fillStyle = '#e8c8a8';
+                ctx.beginPath();
+                ctx.arc(0, 48, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
+                ctx.save();
+                ctx.translate(35, -25);
+                ctx.rotate(-this.armAngle + 0.3);
+                ctx.fillStyle = '#8b1a1a';
+                ctx.fillRect(-8, 0, 16, 45);
+                ctx.fillStyle = '#e8c8a8';
+                ctx.beginPath();
+                ctx.arc(0, 48, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                
+                // Head
+                ctx.fillStyle = '#e8c8a8';
+                ctx.beginPath();
+                ctx.ellipse(0, -55, 22, 28, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Expression
+                this.drawFace(ctx);
+                
+                // Hair (magnificent!)
+                this.drawHair(ctx);
+                
+                if (sink > 0) {
+                    ctx.restore();
+                }
+                
+                ctx.restore();
+            },
+            
+            drawFace(ctx) {
+                const expr = this.expression;
+                
+                // Eyebrows
+                ctx.strokeStyle = '#4a3020';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                
+                if (expr === 'confident') {
+                    ctx.beginPath();
+                    ctx.moveTo(-15, -65);
+                    ctx.lineTo(-5, -63);
+                    ctx.moveTo(5, -63);
+                    ctx.lineTo(15, -65);
+                    ctx.stroke();
+                } else if (expr === 'panic') {
+                    ctx.beginPath();
+                    ctx.arc(-10, -68, 8, 0.2, Math.PI - 0.2, true);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.arc(10, -68, 8, 0.2, Math.PI - 0.2, true);
+                    ctx.stroke();
+                } else if (expr === 'idea' || expr === 'determined') {
+                    ctx.beginPath();
+                    ctx.moveTo(-15, -62);
+                    ctx.lineTo(-5, -65);
+                    ctx.moveTo(5, -65);
+                    ctx.lineTo(15, -62);
+                    ctx.stroke();
+                } else if (expr === 'triumphant') {
+                    ctx.beginPath();
+                    ctx.moveTo(-15, -68);
+                    ctx.lineTo(-5, -62);
+                    ctx.moveTo(5, -62);
+                    ctx.lineTo(15, -68);
+                    ctx.stroke();
+                }
+                
+                // Eyes
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.ellipse(-10, -55, 7, 5, 0, 0, Math.PI * 2);
+                ctx.ellipse(10, -55, 7, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#2a1a0a';
+                if (expr === 'panic') {
+                    ctx.beginPath();
+                    ctx.arc(-10, -55, 4, 0, Math.PI * 2);
+                    ctx.arc(10, -55, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (expr === 'idea') {
+                    ctx.beginPath();
+                    ctx.arc(-8, -54, 4, 0, Math.PI * 2);
+                    ctx.arc(12, -54, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(-10, -55, 3, 0, Math.PI * 2);
+                    ctx.arc(10, -55, 3, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Nose
+                ctx.strokeStyle = '#c8a888';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -52);
+                ctx.lineTo(-3, -45);
+                ctx.lineTo(3, -45);
+                ctx.stroke();
+                
+                // Mouth
+                ctx.strokeStyle = '#8b5a4a';
+                ctx.lineWidth = 2;
+                if (expr === 'confident') {
+                    ctx.beginPath();
+                    ctx.arc(0, -40, 8, 0.1, Math.PI - 0.1);
+                    ctx.stroke();
+                } else if (expr === 'panic') {
+                    ctx.beginPath();
+                    ctx.ellipse(0, -38, 8, 10, 0, 0, Math.PI * 2);
+                    ctx.stroke();
+                    ctx.fillStyle = '#3a2020';
+                    ctx.fill();
+                } else if (expr === 'idea') {
+                    ctx.beginPath();
+                    ctx.arc(0, -40, 6, 0, Math.PI * 2);
+                    ctx.stroke();
+                } else if (expr === 'determined') {
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -40);
+                    ctx.lineTo(10, -40);
+                    ctx.stroke();
+                } else if (expr === 'triumphant') {
+                    ctx.beginPath();
+                    ctx.arc(0, -42, 12, 0.2, Math.PI - 0.2);
+                    ctx.stroke();
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                }
+                
+                // Mustache
+                ctx.fillStyle = '#3a2010';
+                ctx.beginPath();
+                ctx.moveTo(-20, -42);
+                ctx.quadraticCurveTo(-5, -38, 0, -42);
+                ctx.quadraticCurveTo(5, -38, 20, -42);
+                ctx.quadraticCurveTo(15, -45, 0, -44);
+                ctx.quadraticCurveTo(-15, -45, -20, -42);
+                ctx.fill();
+            },
+            
+            drawHair(ctx) {
+                ctx.save();
+                
+                const pull = this.hairPull;
+                
+                // Main hair mass
+                ctx.fillStyle = '#f5f0e0';
+                
+                // Back hair
+                ctx.beginPath();
+                ctx.moveTo(-25, -75);
+                ctx.quadraticCurveTo(-35, -95, -20, -110);
+                ctx.quadraticCurveTo(0, -120, 20, -110);
+                ctx.quadraticCurveTo(35, -95, 25, -75);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Pulled hair (when grabbing)
+                if (pull > 0) {
+                    ctx.save();
+                    ctx.translate(0, -95);
+                    ctx.rotate(-0.2 * pull);
+                    
+                    // Arm reaching up to hair
+                    ctx.fillStyle = '#e8c8a8';
+                    ctx.beginPath();
+                    ctx.ellipse(-15 * pull, -30 * pull, 10, 12, 0.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Hair being pulled
+                    ctx.fillStyle = '#f5f0e0';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 0);
+                    ctx.quadraticCurveTo(-20 - 40 * pull, -30 - 60 * pull, -15, -80 * pull);
+                    ctx.quadraticCurveTo(0, -85 * pull, 10, 0);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.restore();
+                }
+                
+                // Side curls
+                ctx.fillStyle = '#f5f0e0';
+                ctx.beginPath();
+                ctx.ellipse(-28, -60, 8, 15, -0.3, 0, Math.PI * 2);
+                ctx.ellipse(28, -60, 8, 15, 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Queue (ponytail)
+                ctx.beginPath();
+                ctx.moveTo(0, -85);
+                ctx.quadraticCurveTo(30, -80, 35, -60 - pull * 20);
+                ctx.quadraticCurveTo(32, -50, 25, -55);
+                ctx.quadraticCurveTo(20, -70, 0, -80);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        };
+        
+        // Horse (simplified, behind Baron)
+        const Horse = {
+            x: 0,
+            y: 0,
+            sinkDepth: 0,
+            panic: 0,
+            
+            draw(ctx, scale = 1) {
+                ctx.save();
+                ctx.translate(this.x * scale, this.y * scale);
+                ctx.scale(scale, scale);
+                
+                const sink = this.sinkDepth;
+                const panic = this.panic;
+                
+                // Body
+                ctx.fillStyle = '#5a4030';
+                ctx.beginPath();
+                ctx.ellipse(0, 20, 45, 30, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Neck
+                ctx.beginPath();
+                ctx.moveTo(35, 10);
+                ctx.quadraticCurveTo(55, -20, 50, -50);
+                ctx.lineTo(40, -45);
+                ctx.quadraticCurveTo(45, -15, 30, 15);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Head
+                ctx.save();
+                ctx.translate(50, -55);
+                ctx.rotate(-0.3 + Math.sin(time * 0.1) * panic * 0.2);
+                
+                ctx.fillStyle = '#5a4030';
+                ctx.beginPath();
+                ctx.ellipse(15, 0, 25, 15, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Ear
+                ctx.beginPath();
+                ctx.moveTo(5, -12);
+                ctx.lineTo(10, -25);
+                ctx.lineTo(15, -12);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Eye
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.ellipse(20, -3, 6, 5, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#1a0a00';
+                ctx.beginPath();
+                ctx.arc(22, -2, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Nostril
+                ctx.fillStyle = '#3a2820';
+                ctx.beginPath();
+                ctx.ellipse(38, 5, 4, 3, 0.2, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Mane
+                ctx.fillStyle = '#2a1a10';
+                ctx.beginPath();
+                ctx.moveTo(-5, -10);
+                for (let i = 0; i < 8; i++) {
+                    ctx.lineTo(-10 - i * 3, -25 + i * 8 + Math.sin(time * 0.05 + i) * panic * 3);
+                }
+                ctx.lineTo(-5, 30);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+                
+                // Legs
+                ctx.fillStyle = '#4a3020';
+                const legPhase = time * 0.08;
+                
+                for (let i = 0; i < 4; i++) {
+                    const lx = -30 + i * 20;
+                    const ly = 45;
+                    const bend = Math.sin(legPhase + i * 0.5) * panic * 15;
+                    
+                    ctx.save();
+                    ctx.translate(lx, ly);
+                    ctx.rotate(bend * 0.02);
+                    ctx.fillRect(-6, 0, 12, 40);
+                    ctx.fillRect(-8, 35, 16, 10);
+                    ctx.restore();
+                }
+                
+                // Tail
+                ctx.fillStyle = '#2a1a10';
+                ctx.beginPath();
+                ctx.moveTo(-45, 15);
+                const tailWag = Math.sin(time * 0.03) * panic * 10;
+                ctx.quadraticCurveTo(-70 + tailWag, 30, -65 + tailWag, 60);
+                ctx.quadraticCurveTo(-60, 55, -45, 25);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        };
+        
+        // Swamp environment
+        function drawSwamp(ctx, w, h, waterLevel) {
+            // Sky gradient
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.6);
+            skyGrad.addColorStop(0, '#1a2030');
+            skyGrad.addColorStop(0.5, '#2a3545');
+            skyGrad.addColorStop(1, '#3a4555');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, w, h);
+            
+            // Moon
+            ctx.fillStyle = '#e8e0d0';
+            ctx.beginPath();
+            ctx.arc(w * 0.8, h * 0.15, 30, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'rgba(232, 224, 208, 0.1)';
+            ctx.beginPath();
+            ctx.arc(w * 0.8, h * 0.15, 50, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Distant trees
+            ctx.fillStyle = '#1a2520';
+            for (let i = 0; i < 15; i++) {
+                const tx = i * w / 12 - 50;
+                const th = 80 + Math.random() * 60;
+                ctx.beginPath();
+                ctx.moveTo(tx, h * 0.55);
+                ctx.lineTo(tx + 15, h * 0.55 - th);
+                ctx.lineTo(tx + 30, h * 0.55);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Swamp water
+            const swampGrad = ctx.createLinearGradient(0, waterLevel, 0, h);
+            swampGrad.addColorStop(0, '#2a3525');
+            swampGrad.addColorStop(0.3, '#1a2515');
+            swampGrad.addColorStop(1, '#0a1508');
+            ctx.fillStyle = swampGrad;
+            ctx.fillRect(0, waterLevel, w, h - waterLevel);
+            
+            // Water surface effect
+            ctx.strokeStyle = 'rgba(60, 80, 60, 0.5)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 5; i++) {
+                ctx.beginPath();
+                for (let x = 0; x < w; x += 20) {
+                    const y = waterLevel + Math.sin(x * 0.02 + time * 0.02 + i) * 3 + i * 5;
+                    if (x === 0) ctx.moveTo(x, y);
+                    else ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+            }
+            
+            // Reeds
+            ctx.strokeStyle = '#3a4530';
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 20; i++) {
+                const rx = 50 + i * 45 + Math.sin(i) * 20;
+                const rh = 40 + Math.sin(i * 2) * 20;
+                const sway = Math.sin(time * 0.01 + i * 0.5) * 5;
+                
+                ctx.beginPath();
+                ctx.moveTo(rx, waterLevel + 10);
+                ctx.quadraticCurveTo(rx + sway, waterLevel - rh / 2, rx + sway * 2, waterLevel - rh);
+                ctx.stroke();
+            }
+            
+            // Fog
+            ctx.fillStyle = 'rgba(180, 200, 180, 0.05)';
+            for (let i = 0; i < 10; i++) {
+                const fx = (time * 0.5 + i * 200) % (w + 200) - 100;
+                const fy = waterLevel + 20 + Math.sin(i) * 30;
+                ctx.beginPath();
+                ctx.ellipse(fx, fy, 80, 20, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function drawGround(ctx, w, h, groundLevel) {
+            // Solid ground on the right
+            const groundGrad = ctx.createLinearGradient(w * 0.5, groundLevel, w, groundLevel);
+            groundGrad.addColorStop(0, '#2a3018');
+            groundGrad.addColorStop(1, '#3a4028');
+            ctx.fillStyle = groundGrad;
+            
+            ctx.beginPath();
+            ctx.moveTo(w * 0.5, h);
+            ctx.quadraticCurveTo(w * 0.6, groundLevel + 20, w * 0.7, groundLevel);
+            ctx.lineTo(w, groundLevel);
+            ctx.lineTo(w, h);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Grass tufts
+            ctx.strokeStyle = '#4a5540';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < 15; i++) {
+                const gx = w * 0.7 + i * 15;
+                const gy = groundLevel;
+                
+                for (let j = 0; j < 3; j++) {
+                    const sway = Math.sin(time * 0.02 + i + j) * 3;
+                    ctx.beginPath();
+                    ctx.moveTo(gx + j * 4, gy);
+                    ctx.lineTo(gx + j * 4 + sway, gy - 15 - Math.random() * 10);
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        // Animation logic
+        function updateScene(dt) {
+            sceneTime += dt;
+            
+            const baseX = W * 0.35;
+            const baseY = H * 0.55;
+            const waterLevel = H * 0.55;
+            
+            switch (scene) {
+                case 0: // Walking confidently, then sinking
+                    Baron.x = baseX - 100 + Math.min(sceneTime / 50, 100);
+                    Baron.y = baseY - 50;
+                    Baron.sinkDepth = Math.max(0, (sceneTime - 2000) / 20);
+                    Baron.legPhase = time * 0.1;
+                    Baron.armAngle = Math.sin(time * 0.08) * 0.2;
+                    Baron.expression = sceneTime < 2000 ? 'confident' : 'panic';
+                    Baron.hairPull = 0;
+                    
+                    Horse.x = Baron.x - 80;
+                    Horse.y = baseY - 30;
+                    Horse.sinkDepth = Baron.sinkDepth * 0.8;
+                    Horse.panic = sceneTime > 2000 ? 1 : 0;
+                    
+                    if (sceneTime > 1500 && sceneTime < 4000) {
+                        if (Math.random() < 0.1) {
+                            particles.push(new Particle(Baron.x, waterLevel + 20, 'mud'));
+                        }
+                    }
+                    break;
+                    
+                case 1: // Panic! Sinking deeper
+                    Baron.x = baseX;
+                    Baron.y = baseY - 30 + Math.sin(time * 0.1) * 5;
+                    Baron.sinkDepth = 60 + Math.sin(time * 0.05) * 10;
+                    Baron.legPhase = time * 0.2;
+                    Baron.armAngle = Math.sin(time * 0.15) * 0.8;
+                    Baron.expression = 'panic';
+                    
+                    Horse.x = baseX - 80;
+                    Horse.y = baseY - 10;
+                    Horse.sinkDepth = 80;
+                    Horse.panic = 1;
+                    
+                    if (Math.random() < 0.15) {
+                        particles.push(new Particle(Baron.x + (Math.random() - 0.5) * 60, waterLevel + 30, 'bubble'));
+                    }
+                    if (Math.random() < 0.08) {
+                        particles.push(new Particle(Baron.x + (Math.random() - 0.5) * 40, waterLevel + 10, 'mud'));
+                    }
+                    break;
+                    
+                case 2: // Eureka moment
+                    Baron.x = baseX;
+                    Baron.y = baseY - 20;
+                    Baron.sinkDepth = 50;
+                    Baron.legPhase = 0;
+                    Baron.armAngle = -0.5;
+                    Baron.expression = 'idea';
+                    Baron.hairPull = 0;
+                    
+                    Horse.x = baseX - 80;
+                    Horse.y = baseY;
+                    Horse.sinkDepth = 70;
+                    Horse.panic = 0.3;
+                    
+                    // Idea sparkles
+                    if (sceneTime < 2000 && Math.random() < 0.2) {
+                        particles.push(new Particle(Baron.x + 30, Baron.y - 100 + Math.random() * 30, 'sparkle'));
+                    }
+                    break;
+                    
+                case 3: // Grabbing hair
+                    Baron.x = baseX;
+                    Baron.y = baseY - 20;
+                    Baron.sinkDepth = 50;
+                    Baron.armAngle = -1.2;
+                    Baron.expression = 'determined';
+                    Baron.hairPull = Math.min(1, sceneTime / 1500);
+                    
+                    Horse.x = baseX - 80;
+                    Horse.y = baseY;
+                    Horse.sinkDepth = 70;
+                    Horse.panic = 0.2;
+                    break;
+                    
+                case 4: // Rising
+                    const riseProgress = Math.min(1, sceneTime / 3000);
+                    Baron.x = baseX + riseProgress * 150;
+                    Baron.y = baseY - 20 - riseProgress * 60;
+                    Baron.sinkDepth = 50 * (1 - riseProgress);
+                    Baron.armAngle = -1.2 - riseProgress * 0.3;
+                    Baron.expression = 'determined';
+                    Baron.hairPull = 1;
+                    Baron.riseProgress = riseProgress;
+                    
+                    Horse.x = baseX - 80 + riseProgress * 100;
+                    Horse.y = baseY - riseProgress * 30;
+                    Horse.sinkDepth = 70 * (1 - riseProgress);
+                    Horse.panic = 0.1;
+                    
+                    // Rising mud and bubbles
+                    if (Math.random() < 0.3) {
+                        particles.push(new Particle(Baron.x + (Math.random() - 0.5) * 40, waterLevel + Baron.sinkDepth, 'mud'));
+                    }
+                    if (Math.random() < 0.15) {
+                        particles.push(new Particle(Horse.x + (Math.random() - 0.5) * 60, waterLevel + Horse.sinkDepth, 'bubble'));
+                    }
+                    
+                    // Sparkles as he rises
+                    if (riseProgress > 0.5 && Math.random() < 0.15) {
+                        particles.push(new Particle(Baron.x + (Math.random() - 0.5) * 80, Baron.y - 80 + Math.random() * 40, 'sparkle'));
+                    }
+                    break;
+                    
+                case 5: // Triumphant
+                    Baron.x = baseX + 150;
+                    Baron.y = baseY - 80;
+                    Baron.sinkDepth = 0;
+                    Baron.armAngle = Math.sin(time * 0.05) * 0.3 + 0.5;
+                    Baron.expression = 'triumphant';
+                    Baron.hairPull = 0;
+                    Baron.legPhase = 0;
+                    
+                    Horse.x = baseX + 70;
+                    Horse.y = baseY - 30;
+                    Horse.sinkDepth = 0;
+                    Horse.panic = 0;
+                    
+                    // Victory sparkles
+                    if (Math.random() < 0.1) {
+                        particles.push(new Particle(Baron.x + (Math.random() - 0.5) * 100, Baron.y - 50 + Math.random() * 80, 'sparkle'));
+                    }
+                    break;
+            }
+            
+            // Update particles
+            particles = particles.filter(p => {
+                p.update();
+                return p.life > 0;
+            });
+            
+            // Auto advance
+            if (autoAdvance && sceneTime > SCENES[scene].duration) {
+                if (scene < SCENES.length - 1) {
+                    scene++;
+                    sceneTime = 0;
+                    particles = [];
+                } else {
+                    autoAdvance = false;
+                }
+            }
+        }
+        
+        function draw() {
+            const w = W / window.devicePixelRatio;
+            const h = H / window.devicePixelRatio;
+            
+            ctx.clearRect(0, 0, w, h);
+            
+            const waterLevel = h * 0.55;
+            const groundLevel = h * 0.7;
+            
+            // Background
+            drawSwamp(ctx, w, h, waterLevel);
+            
+            // Ground
+            drawGround(ctx, w, h, groundLevel);
+            
+            // Horse (behind Baron)
+            Horse.draw(ctx);
+            
+            // Swamp overlay (muddy water in front of sunk parts)
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, waterLevel, w, h);
+            ctx.clip();
+            
+            // Horse water overlay
+            if (Horse.sinkDepth > 0) {
+                ctx.fillStyle = 'rgba(30, 40, 25, 0.6)';
+                ctx.beginPath();
+                ctx.ellipse(Horse.x, waterLevel + 30, 70, 40, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            ctx.restore();
+            
+            // Baron
+            Baron.draw(ctx);
+            
+            // Particles
+            particles.forEach(p => p.draw(ctx));
+            
+            // Scene-specific effects
+            if (scene === 2 && sceneTime < 2000) {
+                // Lightbulb effect
+                ctx.save();
+                ctx.globalAlpha = 0.3 + Math.sin(time * 0.1) * 0.2;
+                ctx.fillStyle = '#ffff88';
+                ctx.beginPath();
+                ctx.arc(Baron.x + 40, Baron.y - 110, 20, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            
+            if (scene === 5) {
+                // Victory rays
+                ctx.save();
+                ctx.globalAlpha = 0.1;
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 3;
+                for (let i = 0; i < 12; i++) {
+                    const angle = (i / 12) * Math.PI * 2 + time * 0.01;
+                    ctx.beginPath();
+                    ctx.moveTo(Baron.x, Baron.y - 50);
+                    ctx.lineTo(Baron.x + Math.cos(angle) * 150, Baron.y - 50 + Math.sin(angle) * 150);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+        
+        let lastTime = 0;
+        function animate(timestamp) {
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+            
+            time++;
+            updateScene(dt);
+            draw();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        // Caption updates
+        function updateCaption() {
+            caption.textContent = SCENES[scene].caption;
+        }
+        
+        // Click to advance/replay
+        canvas.addEventListener('click', () => {
+            if (scene < SCENES.length - 1) {
+                scene++;
+                sceneTime = 0;
+                particles = [];
+                updateCaption();
+            } else {
+                // Replay
+                scene = 0;
+                sceneTime = 0;
+                particles = [];
+                autoAdvance = true;
+                updateCaption();
+            }
+        });
+        
+        // Initialize
+        updateCaption();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
