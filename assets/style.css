@@ -1,249 +1,502 @@
-/* Oddity Arena — Anthropic-inspired warm theme */
+/* ============================================
+   Oddity Arena — FBI Classified Dossier Theme
+   Adapted from 不现实商店 Design System
+   ============================================ */
 
+/* Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&family=Noto+Serif+SC:wght@400;700;900&family=Noto+Sans+SC:wght@400;700&family=Ma+Shan+Zheng&family=Black+Ops+One&display=swap');
+
+/* Theme Variables */
 :root {
-  --bg: #faf9f5;
-  --bg-card: #ffffff;
-  --bg-hover: #f0eee6;
-  --bg-subtle: #f5f4ef;
-  --text: #141413;
-  --text-dim: #87867f;
-  --text-mid: #3d3d3a;
-  --accent: #c6613f;
-  --accent-hover: #d97757;
-  --accent-light: rgba(198, 97, 63, 0.1);
-  --gold: #c6613f;
-  --easy: #3d8c5c;
-  --medium: #b8860b;
-  --hard: #c6613f;
-  --border: #e8e6dc;
-  --border-strong: #d3d1c7;
-  --font: Georgia, "Times New Roman", serif;
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --paper: #F5F0E1;
+  --paper-dark: #E8E3D4;
+  --paper-manila: #D4C8A8;
+  --ink: #1A1A1A;
+  --ink-light: #4A4A4A;
+  --ink-gray: #666666;
+  --brand-yellow: #FFE500;
+  --highlight: rgba(255, 229, 0, 0.4);
+  --stamp-red: #C41E3A;
+  --redacted: #1A1A1A;
+
+  /* Semantic aliases for battle components */
+  --bg: var(--paper);
+  --surface: var(--paper-dark);
+  --text: var(--ink);
+  --text-dim: var(--ink-gray);
+  --accent: var(--stamp-red);
+  --accent-yellow: var(--brand-yellow);
+  --border: var(--ink);
 }
 
+/* Base */
 * { margin: 0; padding: 0; box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font);
-  line-height: 1.7;
+  font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
+  background: var(--paper);
+  color: var(--ink);
   min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-/* ── Layout ── */
-.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
-.section { padding: 64px 0; }
+/* Paper texture */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  opacity: 0.04;
+  pointer-events: none;
+  z-index: 1000;
+}
 
-/* ── Typography ── */
-h1 { font-size: 3.2em; font-weight: 400; letter-spacing: -0.02em; line-height: 1.1; }
-h2 { font-size: 2em; font-weight: 400; margin-bottom: 16px; letter-spacing: -0.01em; }
-h3 { font-size: 1.15em; font-weight: 600; font-family: var(--font-sans); }
-p { font-size: 1.05em; }
-.subtitle { color: var(--text-dim); font-size: 1.15em; margin-top: 12px; font-style: italic; }
+/* Vignette */
+body::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(139, 90, 43, 0.08) 100%);
+  pointer-events: none;
+  z-index: 999;
+}
+
+::selection {
+  background: var(--brand-yellow);
+  color: var(--ink);
+}
+
+a { color: var(--ink); }
+a:hover { color: var(--stamp-red); }
+
+/* ============================================
+   Typography
+   ============================================ */
+.font-typewriter { font-family: 'Special Elite', 'Courier Prime', monospace; }
+.font-mono { font-family: 'Courier Prime', 'Courier New', monospace; }
+.font-stamp { font-family: 'Black Ops One', 'Special Elite', monospace; text-transform: uppercase; }
+
+/* ============================================
+   Layout
+   ============================================ */
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+/* ============================================
+   Navigation
+   ============================================ */
+nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 0;
+  border-bottom: 2px solid var(--ink);
+  margin-bottom: 0;
+}
+
+.nav-brand {
+  font-family: 'Special Elite', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.15em;
+  text-decoration: none;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.nav-links a {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.8rem;
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-light);
+  transition: color 0.2s;
+}
+
+.nav-links a:hover { color: var(--stamp-red); }
+
+/* ============================================
+   Hero
+   ============================================ */
 .brand-cn {
-  font-size: 0.35em;
-  color: var(--text-dim);
-  font-weight: 400;
   display: block;
-  margin-top: 8px;
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.35em;
   letter-spacing: 0.3em;
+  color: var(--ink-light);
+  margin-top: 8px;
 }
 
-/* ── Cards ── */
+h1 {
+  font-family: 'Black Ops One', 'Special Elite', monospace;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+h2 {
+  font-family: 'Special Elite', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+}
+
+.subtitle {
+  font-family: 'Courier Prime', monospace;
+  font-size: 1rem;
+  color: var(--ink-light);
+  letter-spacing: 0.05em;
+}
+
+/* ============================================
+   Section
+   ============================================ */
+.section {
+  padding: 3rem 0;
+  border-bottom: 1px dashed var(--ink-gray);
+}
+
+/* ============================================
+   Cards
+   ============================================ */
 .card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 24px;
-  transition: all 0.2s;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 2rem;
+  position: relative;
+  transition: all 0.3s ease;
 }
-.card:hover { border-color: var(--border-strong); box-shadow: 0 2px 12px rgba(0,0,0,0.06); transform: translateY(-1px); }
-.card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 20px; }
 
-/* ── Tags ── */
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.card h3 {
+  font-family: 'Special Elite', monospace;
+  font-size: 1rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
+}
+
+/* ============================================
+   Track Cards
+   ============================================ */
+.tracks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.25rem;
+  padding: 2rem 0;
+}
+
+.track-card {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+}
+
+.track-card .emoji {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.track-card.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ============================================
+   Tags — Classification Badges
+   ============================================ */
 .tag {
   display: inline-block;
-  padding: 3px 12px;
-  border-radius: 20px;
-  font-size: 0.72em;
-  font-weight: 600;
-  font-family: var(--font-sans);
+  font-family: 'Special Elite', monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  padding: 0.3rem 0.75rem;
+  border: 1px solid var(--ink);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
-.tag-easy { background: rgba(61,140,92,0.1); color: var(--easy); }
-.tag-medium { background: rgba(184,134,11,0.1); color: var(--medium); }
-.tag-hard { background: var(--accent-light); color: var(--hard); }
-.tag-category { background: var(--bg-subtle); color: var(--text-dim); }
-.tag-coming { background: var(--bg-subtle); color: var(--text-dim); font-style: italic; }
 
-/* ── Buttons ── */
-.btn {
+.tag-easy {
+  background: var(--brand-yellow);
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+.tag-medium {
+  background: transparent;
+  color: var(--ink);
+}
+
+.tag-hard {
+  background: var(--stamp-red);
+  color: #fff;
+  border-color: var(--stamp-red);
+}
+
+.tag-category {
+  background: var(--paper-dark);
+  border-color: var(--ink-gray);
+  color: var(--ink-light);
+}
+
+.tag-coming {
+  background: transparent;
+  border: 1px dashed var(--ink-gray);
+  color: var(--ink-gray);
+}
+
+/* ============================================
+   Steps — How it Works
+   ============================================ */
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.step {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.step-num {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 0.95em;
-  font-weight: 600;
-  font-family: var(--font-sans);
-  border: none;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--ink);
+  font-family: 'Black Ops One', monospace;
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.step h3 {
+  font-family: 'Special Elite', monospace;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.step p {
+  font-size: 0.9rem;
+  color: var(--ink-light);
+  line-height: 1.5;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+.btn {
+  display: inline-block;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid var(--ink);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
   text-decoration: none;
-  color: inherit;
+  text-transform: uppercase;
 }
-.btn-primary { background: var(--accent); color: white; }
-.btn-primary:hover { background: var(--accent-hover); }
-.btn-vote {
+
+.btn-primary {
+  background: var(--brand-yellow);
+  color: var(--ink);
+}
+
+.btn-primary:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.btn-secondary {
   background: transparent;
-  border: 2px solid var(--accent);
-  color: var(--accent);
-  padding: 14px 32px;
-  font-size: 1.05em;
+  color: var(--ink);
+}
+
+.btn-secondary:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.btn-vote {
   width: 100%;
-  justify-content: center;
-  border-radius: 10px;
+  margin-top: 12px;
+  background: var(--brand-yellow);
+  color: var(--ink);
+  font-size: 0.9rem;
+  padding: 0.85rem;
 }
-.btn-vote:hover { background: var(--accent); color: white; }
-.btn-vote.selected { background: var(--accent); color: white; pointer-events: none; }
-.btn-secondary { background: var(--bg-subtle); color: var(--text-mid); border: 1px solid var(--border); }
-.btn-secondary:hover { border-color: var(--border-strong); background: var(--bg-hover); }
 
-/* ── Progress bar ── */
-.progress-bar {
-  display: flex;
-  height: 36px;
-  border-radius: 10px;
-  overflow: hidden;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border);
+.btn-vote:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 var(--ink);
 }
-.progress-fill {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85em;
-  font-weight: 600;
-  font-family: var(--font-sans);
-  transition: width 0.6s ease;
-  min-width: 60px;
-}
-.progress-a { background: var(--accent); color: white; }
-.progress-b { background: #e3dac0; color: var(--text); }
 
-/* ── Battle layout ── */
-.battle-header { text-align: center; padding: 40px 0 20px; }
-.battle-arena { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 20px 0; }
-.battle-side { display: flex; flex-direction: column; gap: 12px; }
+.btn-vote:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-vote.selected {
+  background: var(--stamp-red);
+  color: #fff;
+  border-color: var(--stamp-red);
+}
+
+/* ============================================
+   Battle Arena
+   ============================================ */
+.battle-header {
+  text-align: center;
+  padding: 2.5rem 0 1.5rem;
+  border-bottom: 2px solid var(--ink);
+}
+
+.battle-arena {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding: 1.5rem 0;
+}
+
+@media (max-width: 768px) {
+  .battle-arena {
+    grid-template-columns: 1fr;
+  }
+}
+
+.battle-side {
+  position: relative;
+}
+
 .battle-label {
   text-align: center;
-  font-size: 1.3em;
-  font-weight: 400;
-  color: var(--text-dim);
-  padding: 8px;
-  font-family: var(--font);
+  font-family: 'Special Elite', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  padding: 0.75rem;
+  background: var(--paper-dark);
+  border: 1px solid var(--ink);
+  border-bottom: none;
+  text-transform: uppercase;
 }
-.battle-label.revealed { color: var(--text); font-weight: 600; font-family: var(--font-sans); animation: revealSlide 0.5s ease; }
+
+.battle-label.revealed {
+  background: var(--brand-yellow);
+  font-weight: 700;
+}
+
 .battle-iframe {
   width: 100%;
   height: 500px;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  background: white;
+  border: 2px solid var(--ink);
+  background: #fff;
 }
-.battle-iframe.winner { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
-.battle-actions { display: flex; gap: 12px; justify-content: center; padding: 24px 0; flex-wrap: wrap; }
+
+.battle-iframe.winner {
+  border-color: var(--stamp-red);
+  box-shadow: 0 0 0 3px var(--stamp-red);
+}
+
 .battle-waiting {
   text-align: center;
-  padding: 80px 24px;
-  color: var(--text-dim);
-  font-size: 1.15em;
+  padding: 4rem 2rem;
+  font-family: 'Courier Prime', monospace;
 }
-.vs-divider {
+
+.battle-actions {
   display: flex;
-  align-items: center;
+  gap: 0.75rem;
   justify-content: center;
-  font-size: 1.5em;
-  color: var(--text-dim);
-  font-weight: 300;
+  flex-wrap: wrap;
+  margin-top: 1.5rem;
 }
 
-/* ── Reveal animation ── */
-@keyframes revealSlide {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.fade-in { animation: fadeIn 0.4s ease; }
-
-/* ── How it works ── */
-.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; margin-top: 40px; }
-.step { text-align: center; }
-.step-num {
-  width: 44px;
-  height: 44px;
+/* ============================================
+   Stamp Effect (for special elements)
+   ============================================ */
+.stamp {
+  border: 4px solid var(--stamp-red);
   border-radius: 50%;
-  background: var(--accent);
-  color: white;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.1em;
-  font-weight: 700;
-  font-family: var(--font-sans);
-  margin-bottom: 16px;
+  font-family: 'Black Ops One', monospace;
+  color: var(--stamp-red);
+  transform: rotate(-15deg);
+  opacity: 0.85;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
-.step h3 { margin-bottom: 8px; }
-.step p { color: var(--text-dim); font-size: 0.95em; }
 
-/* ── Track cards ── */
-.tracks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 48px 0; }
-.track-card { text-align: center; padding: 36px 24px; }
-.track-card .emoji { font-size: 2.5em; margin-bottom: 16px; }
-.track-card.disabled { opacity: 0.45; pointer-events: none; }
-
-/* ── Nav ── */
-nav {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 0;
-  border-bottom: 1px solid var(--border);
-}
-nav a { color: var(--text-dim); text-decoration: none; font-weight: 500; font-family: var(--font-sans); font-size: 0.95em; transition: color 0.15s; }
-nav a:hover { color: var(--text); }
-.nav-brand { font-weight: 400; color: var(--text); font-size: 1.1em; font-family: var(--font); letter-spacing: 0.02em; }
-.nav-links { display: flex; gap: 24px; }
-
-/* ── Footer ── */
+/* ============================================
+   Footer
+   ============================================ */
 footer {
-  padding: 48px 0;
-  border-top: 1px solid var(--border);
+  padding: 2rem 0;
+  margin-top: 2rem;
+  border-top: 2px solid var(--ink);
+  font-family: 'Courier Prime', monospace;
+  font-size: 0.8rem;
+  color: var(--ink-gray);
   text-align: center;
-  color: var(--text-dim);
-  font-size: 0.9em;
 }
-footer a { color: var(--accent); text-decoration: none; }
-footer a:hover { text-decoration: underline; }
 
-/* ── Divider ── */
-hr { border: none; border-top: 1px solid var(--border); margin: 48px 0; }
+footer a { color: var(--ink-light); text-decoration: underline; }
+footer a:hover { color: var(--stamp-red); }
 
-/* ── Responsive ── */
+/* ============================================
+   Animations
+   ============================================ */
+.fade-in {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stamp-in {
+  0% { transform: scale(2) rotate(-15deg); opacity: 0; }
+  50% { transform: scale(1.1) rotate(-15deg); opacity: 0.8; }
+  100% { transform: scale(1) rotate(-15deg); opacity: 0.85; }
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
 @media (max-width: 768px) {
-  h1 { font-size: 2.2em; }
-  .battle-arena { grid-template-columns: 1fr; }
-  .battle-iframe { height: 400px; }
-  .steps { grid-template-columns: 1fr; gap: 24px; }
-  .tracks { grid-template-columns: 1fr; }
+  .container { padding: 0 1rem; }
+  h1 { font-size: 2rem; }
+  .card { padding: 1.5rem; }
   .card-grid { grid-template-columns: 1fr; }
-  .nav-links { gap: 16px; font-size: 0.85em; }
-  .container { padding: 0 16px; }
+  .battle-iframe { height: 350px; }
+  .battle-actions { flex-direction: column; align-items: center; }
+  .btn { width: 100%; text-align: center; }
 }
