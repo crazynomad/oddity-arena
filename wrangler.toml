@@ -1,0 +1,8 @@
+name = "oddity-arena"
+compatibility_date = "2024-12-01"
+pages_build_output_dir = "."
+
+[[d1_databases]]
+binding = "DB"
+database_name = "oddity-arena-db"
+database_id = "e15b802d-8e35-4a3b-be2b-b4d913e04fe4"
