@@ -89,6 +89,15 @@ const i18n = {
     'table.record': { zh: '战绩', en: 'Record' },
     'table.winrate': { zh: '胜率', en: 'Win%' },
 
+    // Auto-advance
+    'battle.next_challenge': { zh: '⚡ 下一关', en: '⚡ Next Challenge' },
+    'battle.next_pair': { zh: '🔀 同关换对手', en: '🔀 New Pair (Same Challenge)' },
+    'battle.all_clear': { zh: '🏆 全部通关！', en: '🏆 ALL CLEAR!' },
+    'battle.all_clear_desc': { zh: '你已体验完所有挑战！', en: "You've completed all challenges!" },
+    'battle.replay': { zh: '🔄 再来一轮', en: '🔄 Play Again' },
+    'battle.auto_next': { zh: '秒后自动进入下一关...', en: 's to next challenge...' },
+    'battle.round': { zh: '第 {n} 关', en: 'ROUND {n}' },
+
     // Lang toggle
     'lang.switch': { zh: 'EN', en: '中文' },
   },

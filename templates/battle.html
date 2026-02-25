@@ -87,11 +87,13 @@
         </div>
         <div id="progress"></div>
         <div class="battle-actions">
-          <button class="btn btn-primary" onclick="newPair()" data-i18n="battle.new_pair">🔀 换一对</button>
-          <button class="btn btn-secondary" onclick="showLeaderboard()" data-i18n="battle.leaderboard">📊 排行榜</button>
-          <button class="btn btn-secondary" onclick="showGallery()" data-i18n="battle.gallery">🖼️ 全部作品</button>
-          <button class="btn btn-secondary" onclick="share()" data-i18n="battle.share">📤 分享</button>
+          <button class="btn btn-primary" onclick="goNextChallenge()" id="btn-next-challenge" data-i18n="battle.next_challenge" style="display:none;">⚡ 下一关</button>
+          <button class="btn btn-secondary" onclick="clearAutoNext(); newPair()" data-i18n="battle.next_pair">🔀 同关换对手</button>
+          <button class="btn btn-secondary" onclick="clearAutoNext(); showLeaderboard()" data-i18n="battle.leaderboard">📊 排行榜</button>
+          <button class="btn btn-secondary" onclick="clearAutoNext(); showGallery()" data-i18n="battle.gallery">🖼️ 全部作品</button>
+          <button class="btn btn-secondary" onclick="clearAutoNext(); share()" data-i18n="battle.share">📤 分享</button>
         </div>
+        <div id="auto-next-countdown" style="display:none; text-align:center; margin-top:12px; font-family:'Courier Prime',monospace; font-size:0.85rem; color:var(--stamp-red);"></div>
       </div>
     </div>
 
@@ -126,6 +128,82 @@
     let modelA = '', modelB = '';
     let voted = false;
     let leaderboardData = null;
+    let autoNextTimer = null;
+
+    // Challenge sequence for arcade progression
+    const CHALLENGE_SEQUENCE = [
+      { id: '03-angry-birds', path: '/coding/challenges/03-angry-birds/battle.html' },
+      { id: '06-tiyunzong', path: '/coding/challenges/06-tiyunzong/battle.html' },
+      { id: '05-munchausen', path: '/coding/challenges/05-munchausen/battle.html' },
+      { id: '01-web-redesign', path: '/coding/challenges/01-web-redesign/battle.html' },
+      { id: '02-3d-solar-system', path: '/coding/challenges/02-3d-solar-system/battle.html' },
+    ];
+
+    function getCurrentChallengeIndex() {
+      const path = window.location.pathname;
+      return CHALLENGE_SEQUENCE.findIndex(c => path.includes(c.id));
+    }
+
+    function getNextChallenge() {
+      const idx = getCurrentChallengeIndex();
+      if (idx < 0 || idx >= CHALLENGE_SEQUENCE.length - 1) return null;
+      return CHALLENGE_SEQUENCE[idx + 1];
+    }
+
+    function goNextChallenge() {
+      clearAutoNext();
+      const next = getNextChallenge();
+      if (next) {
+        window.location.href = next.path;
+      } else {
+        // All clear!
+        showAllClear();
+      }
+    }
+
+    function startAutoNext(seconds = 8) {
+      clearAutoNext();
+      const countdownEl = document.getElementById('auto-next-countdown');
+      if (!countdownEl) return;
+      let remaining = seconds;
+      countdownEl.textContent = `${remaining}${i18n.t('battle.auto_next')}`;
+      countdownEl.style.display = 'block';
+
+      autoNextTimer = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) {
+          clearAutoNext();
+          goNextChallenge();
+        } else {
+          countdownEl.textContent = `${remaining}${i18n.t('battle.auto_next')}`;
+        }
+      }, 1000);
+    }
+
+    function clearAutoNext() {
+      if (autoNextTimer) { clearInterval(autoNextTimer); autoNextTimer = null; }
+      const el = document.getElementById('auto-next-countdown');
+      if (el) el.style.display = 'none';
+    }
+
+    function showAllClear() {
+      const arena = document.getElementById('arena');
+      arena.innerHTML = `
+        <div style="text-align:center; padding:4rem 2rem;" class="fade-in">
+          <div style="font-size:4rem; margin-bottom:1rem;">🏆</div>
+          <h2 style="font-family:'Black Ops One',monospace; font-size:2rem; letter-spacing:0.1em;">${i18n.t('battle.all_clear')}</h2>
+          <p style="color:var(--ink-light); margin:1rem 0; font-family:'Courier Prime',monospace;">${i18n.t('battle.all_clear_desc')}</p>
+          <p style="font-family:'Special Elite',monospace; color:var(--stamp-red); font-size:1.2rem; margin:1.5rem 0;">
+            COMBO: ${arcade.combo} | VOTES: ${arcade.totalVotes}
+          </p>
+          <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-top:2rem;">
+            <a href="${CHALLENGE_SEQUENCE[0].path}" class="btn btn-primary">${i18n.t('battle.replay')}</a>
+            <a href="../../../" class="btn btn-secondary">${i18n.t('battle.back_home')}</a>
+          </div>
+        </div>
+      `;
+      arcade.confetti(5000);
+    }
 
     async function init() {
       i18n.init();
@@ -154,6 +232,12 @@
       }
 
       window.addEventListener('langchange', () => { updateTitle(); });
+
+      // Show round progress in arcade mode
+      const idx = getCurrentChallengeIndex();
+      if (idx >= 0) {
+        arcade.renderProgress(idx, CHALLENGE_SEQUENCE.length);
+      }
     }
 
     function updateTitle() {
@@ -271,11 +355,30 @@
 
       // Health bars
       setTimeout(() => {
-        const wPct = Math.random() * 40 + 30; // placeholder until real data
+        const wPct = Math.random() * 40 + 30;
         arcade.renderHealthBars(modelA, modelB,
           choice === 'a' ? 100 : 100 - wPct,
           choice === 'b' ? 100 : 100 - wPct);
       }, 800);
+
+      // Show next challenge button + auto-advance countdown
+      const next = getNextChallenge();
+      if (next) {
+        document.getElementById('btn-next-challenge').style.display = 'inline-block';
+        // Show round progress
+        const idx = getCurrentChallengeIndex();
+        arcade.renderProgress(idx + 1, CHALLENGE_SEQUENCE.length);
+        // Start auto-advance after 8 seconds
+        setTimeout(() => startAutoNext(8), 2000);
+      } else {
+        // Last challenge — show "All Clear" option
+        const idx = getCurrentChallengeIndex();
+        if (idx >= 0) arcade.renderProgress(idx + 1, CHALLENGE_SEQUENCE.length);
+        const nextBtn = document.getElementById('btn-next-challenge');
+        nextBtn.style.display = 'inline-block';
+        nextBtn.textContent = i18n.t('battle.all_clear');
+        nextBtn.onclick = () => showAllClear();
+      }
     }
 
     function showResultsFromAPI(tallies, winner, loser) {
