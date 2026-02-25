@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title id="page-title">Battle — Oddity Arena</title>
   <link rel="stylesheet" href="../../../assets/style.css">
+  <link rel="stylesheet" href="../../../assets/arcade.css">
   <script src="../../../assets/i18n.js"></script>
+  <script src="../../../assets/arcade.js"></script>
   <style>
     .vote-spinner { display:inline-block; width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; margin-right:6px; vertical-align:middle; }
     @keyframes spin { to { transform:rotate(360deg); } }
@@ -205,6 +207,9 @@
 
       document.getElementById('iframe-a').src = `results/${modelA}/index.html`;
       document.getElementById('iframe-b').src = `results/${modelB}/index.html`;
+
+      // Arcade: VS splash
+      arcade.showVS(i18n.t('battle.model_a'), i18n.t('battle.model_b'), arcade.totalVotes + 1);
     }
 
     async function vote(choice) {
@@ -259,6 +264,18 @@
       }
 
       btn.innerHTML = choice === 'a' ? i18n.t('battle.voted_left') : i18n.t('battle.voted_right');
+
+      // Arcade effects
+      const winnerSide = document.querySelector(`.battle-side:${choice === 'a' ? 'first' : 'last'}-child`);
+      arcade.onVote(choice, winner, loser, winnerSide);
+
+      // Health bars
+      setTimeout(() => {
+        const wPct = Math.random() * 40 + 30; // placeholder until real data
+        arcade.renderHealthBars(modelA, modelB,
+          choice === 'a' ? 100 : 100 - wPct,
+          choice === 'b' ? 100 : 100 - wPct);
+      }, 800);
     }
 
     function showResultsFromAPI(tallies, winner, loser) {
