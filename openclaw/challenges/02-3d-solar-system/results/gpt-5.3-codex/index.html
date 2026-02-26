@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Challenge 02 · 3D 太阳系沙盒</title>
+  <style>
+    :root {
+      --bg: #070b14;
+      --panel: rgba(12, 18, 30, 0.88);
+      --line: rgba(255, 255, 255, 0.14);
+      --text: #e9f0ff;
+      --muted: #9fb0d1;
+      --accent: #67e8f9;
+      --warn: #ff7a7a;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: radial-gradient(circle at 20% 20%, #0f1b33, var(--bg) 45%, #04070d); color: var(--text); font: 13px/1.4 "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; }
+    #app { position: fixed; inset: 0; }
+    #panel {
+      position: fixed; left: 12px; top: 12px; z-index: 10;
+      width: min(350px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow: auto;
+      background: var(--panel); border: 1px solid var(--line); border-radius: 12px; backdrop-filter: blur(8px);
+      padding: 12px;
+    }
+    h1 { margin: 0 0 10px; font-size: 15px; letter-spacing: .2px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .block { border: 1px solid var(--line); border-radius: 10px; padding: 8px; margin-bottom: 8px; }
+    .title { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+    input, button {
+      width: 100%; border-radius: 8px; border: 1px solid var(--line);
+      background: rgba(255,255,255,.04); color: var(--text); padding: 7px 8px; outline: none;
+    }
+    input[type="range"] { padding: 0; }
+    button { cursor: pointer; transition: .18s ease; }
+    button:hover { border-color: rgba(103,232,249,.7); background: rgba(103,232,249,.08); }
+    .btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .btns2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+    .checks { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 12px; color: var(--muted); }
+    .checks label { display: flex; gap: 6px; align-items: center; margin: 0; }
+    .checks input { width: auto; }
+    #bodyList { display: grid; gap: 6px; }
+    .body-item {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: rgba(255,255,255,.02);
+    }
+    .small { color: var(--muted); font-size: 11px; }
+    .danger:hover { border-color: var(--warn); background: rgba(255,122,122,.1); }
+    #hud {
+      position: fixed; right: 12px; top: 12px; z-index: 9; font-size: 12px;
+      background: rgba(8, 13, 24, .7); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--muted);
+    }
+    @media (max-width: 720px) {
+      #panel { width: calc(100vw - 16px); left: 8px; top: 8px; max-height: 56vh; }
+      #hud { right: 8px; top: auto; bottom: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <aside id="panel">
+    <h1>3D 太阳系沙盒</h1>
+
+    <div class="block">
+      <div class="title">控制</div>
+      <div class="btns">
+        <button id="toggleRun">暂停</button>
+        <button id="resetBtn">重置</button>
+        <button id="randomBtn">随机系统</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div>
+          <label>引力强度 G: <span id="gVal"></span></label>
+          <input id="gSlider" type="range" min="0.05" max="3" step="0.01" value="0.8" />
+        </div>
+        <div>
+          <label>模拟速度: <span id="speedVal"></span></label>
+          <input id="speedSlider" type="range" min="0.1" max="4" step="0.1" value="1" />
+        </div>
+      </div>
+      <div>
+        <label>轨迹长度: <span id="trailVal"></span></label>
+        <input id="trailSlider" type="range" min="20" max="400" step="10" value="140" />
+      </div>
+      <div class="checks" style="margin-top:8px">
+        <label><input id="showTrails" type="checkbox" checked /> 轨迹</label>
+        <label><input id="showGrid" type="checkbox" checked /> 曲率网格</label>
+        <label><input id="showAxes" type="checkbox" /> 坐标轴</label>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="title">添加天体</div>
+      <div class="row">
+        <div><label>名称</label><input id="nameInput" value="Body" /></div>
+        <div><label>质量</label><input id="massInput" type="number" value="20" step="1" min="1" /></div>
+      </div>
+      <div class="row3">
+        <div><label>x</label><input id="pxInput" type="number" value="70" step="1" /></div>
+        <div><label>y</label><input id="pyInput" type="number" value="0" step="1" /></div>
+        <div><label>z</label><input id="pzInput" type="number" value="0" step="1" /></div>
+      </div>
+      <div class="row3">
+        <div><label>vx</label><input id="vxInput" type="number" value="0" step="0.1" /></div>
+        <div><label>vy</label><input id="vyInput" type="number" value="0.9" step="0.1" /></div>
+        <div><label>vz</label><input id="vzInput" type="number" value="0" step="0.1" /></div>
+      </div>
+      <div class="btns2">
+        <button id="addBtn">添加</button>
+        <button id="sampleBtn">填充随机参数</button>
+      </div>
+    </div>
+
+    <div class="block">
+      <div class="title">天体列表</div>
+      <div id="bodyList"></div>
+    </div>
+  </aside>
+
+  <div id="hud">Bodies: <span id="hudBodies">0</span> · dt: <span id="hudDt">0</span> · FPS: <span id="hudFps">0</span></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/controls/OrbitControls.js"></script>
+  <script>
+    (() => {
+      const app = document.getElementById("app");
+      const ui = {
+        toggleRun: document.getElementById("toggleRun"),
+        resetBtn: document.getElementById("resetBtn"),
+        randomBtn: document.getElementById("randomBtn"),
+        gSlider: document.getElementById("gSlider"),
+        speedSlider: document.getElementById("speedSlider"),
+        trailSlider: document.getElementById("trailSlider"),
+        gVal: document.getElementById("gVal"),
+        speedVal: document.getElementById("speedVal"),
+        trailVal: document.getElementById("trailVal"),
+        showTrails: document.getElementById("showTrails"),
+        showGrid: document.getElementById("showGrid"),
+        showAxes: document.getElementById("showAxes"),
+        nameInput: document.getElementById("nameInput"),
+        massInput: document.getElementById("massInput"),
+        pxInput: document.getElementById("pxInput"),
+        pyInput: document.getElementById("pyInput"),
+        pzInput: document.getElementById("pzInput"),
+        vxInput: document.getElementById("vxInput"),
+        vyInput: document.getElementById("vyInput"),
+        vzInput: document.getElementById("vzInput"),
+        addBtn: document.getElementById("addBtn"),
+        sampleBtn: document.getElementById("sampleBtn"),
+        bodyList: document.getElementById("bodyList"),
+        hudBodies: document.getElementById("hudBodies"),
+        hudDt: document.getElementById("hudDt"),
+        hudFps: document.getElementById("hudFps")
+      };
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x040810, 0.0035);
+
+      const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 2500);
+      camera.position.set(170, 120, 170);
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+      renderer.setSize(innerWidth, innerHeight);
+      app.appendChild(renderer.domElement);
+
+      const controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.06;
+      controls.target.set(0, 0, 0);
+      controls.maxDistance = 900;
+      controls.minDistance = 12;
+      controls.update();
+
+      scene.add(new THREE.AmbientLight(0x8aa6ff, 0.34));
+      const keyLight = new THREE.DirectionalLight(0xffffff, 0.95);
+      keyLight.position.set(120, 180, 80);
+      scene.add(keyLight);
+
+      const axes = new THREE.AxesHelper(120);
+      axes.visible = false;
+      scene.add(axes);
+
+      const stars = (() => {
+        const g = new THREE.BufferGeometry();
+        const count = 2000;
+        const arr = new Float32Array(count * 3);
+        for (let i = 0; i < count; i++) {
+          const r = 700 + Math.random() * 900;
+          const t = Math.random() * Math.PI * 2;
+          const p = Math.acos(2 * Math.random() - 1);
+          arr[i * 3] = r * Math.sin(p) * Math.cos(t);
+          arr[i * 3 + 1] = r * Math.cos(p);
+          arr[i * 3 + 2] = r * Math.sin(p) * Math.sin(t);
+        }
+        g.setAttribute("position", new THREE.BufferAttribute(arr, 3));
+        return new THREE.Points(g, new THREE.PointsMaterial({ color: 0xbfd7ff, size: 1.1, transparent: true, opacity: 0.85 }));
+      })();
+      scene.add(stars);
+
+      const gridSize = 340, gridSeg = 84;
+      const curvatureGeo = new THREE.PlaneGeometry(gridSize, gridSize, gridSeg, gridSeg);
+      curvatureGeo.rotateX(-Math.PI / 2);
+      const baseGrid = curvatureGeo.attributes.position.array.slice();
+      const curvature = new THREE.Mesh(
+        curvatureGeo,
+        new THREE.MeshBasicMaterial({ color: 0x5dc6ff, wireframe: true, transparent: true, opacity: 0.32 })
+      );
+      curvature.position.y = -18;
+      scene.add(curvature);
+
+      function haloTexture() {
+        const c = document.createElement("canvas");
+        c.width = c.height = 128;
+        const ctx = c.getContext("2d");
+        const g = ctx.createRadialGradient(64, 64, 8, 64, 64, 62);
+        g.addColorStop(0, "rgba(255,255,255,0.9)");
+        g.addColorStop(0.25, "rgba(140,200,255,0.5)");
+        g.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, 128, 128);
+        return new THREE.CanvasTexture(c);
+      }
+      const haloMap = haloTexture();
+
+      let running = true;
+      let G = +ui.gSlider.value;
+      let speed = +ui.speedSlider.value;
+      let trailMax = +ui.trailSlider.value;
+      const eps2 = 20;
+      const maxAccel = 120;
+      let idSeq = 1;
+      const bodies = [];
+
+      function massToRadius(m) { return Math.max(1.2, Math.cbrt(m) * 1.85); }
+      function randomColor() {
+        const h = Math.random();
+        const c = new THREE.Color().setHSL(h, 0.75, 0.58);
+        return c;
+      }
+
+      function makeTrail(color) {
+        const g = new THREE.BufferGeometry();
+        g.setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+        const m = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.72 });
+        const line = new THREE.Line(g, m);
+        scene.add(line);
+        return line;
+      }
+
+      function createBody(opts) {
+        const mass = Math.max(0.1, +opts.mass);
+        const radius = massToRadius(mass);
+        const color = (opts.color || randomColor()).clone();
+
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(radius, 20, 20),
+          new THREE.MeshStandardMaterial({
+            color: color.clone(),
+            emissive: 0x000000,
+            metalness: 0.02,
+            roughness: 0.55
+          })
+        );
+        mesh.position.copy(opts.position);
+        scene.add(mesh);
+
+        const halo = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: haloMap, transparent: true, depthWrite: false, opacity: 0.2, color: 0xa9d8ff
+        }));
+        halo.scale.set(radius * 6, radius * 6, 1);
+        mesh.add(halo);
+
+        const trail = makeTrail(color);
+        const body = {
+          id: idSeq++,
+          name: opts.name || `Body-${idSeq}`,
+          mass, radius,
+          pos: opts.position.clone(),
+          vel: opts.velocity.clone(),
+          acc: new THREE.Vector3(),
+          mesh, halo, trail,
+          trailPoints: [opts.position.clone()],
+          baseColor: color.clone()
+        };
+        bodies.push(body);
+        updateBodyList();
+        return body;
+      }
+
+      function destroyBody(body) {
+        scene.remove(body.mesh);
+        scene.remove(body.trail);
+        body.mesh.geometry.dispose();
+        body.mesh.material.dispose();
+        body.trail.geometry.dispose();
+        body.trail.material.dispose();
+      }
+
+      function removeBodyById(id) {
+        const i = bodies.findIndex(b => b.id === id);
+        if (i < 0) return;
+        destroyBody(bodies[i]);
+        bodies.splice(i, 1);
+        updateBodyList();
+      }
+
+      function updateTrail(body) {
+        body.trailPoints.push(body.pos.clone());
+        if (body.trailPoints.length > trailMax) body.trailPoints.shift();
+        body.trail.geometry.setFromPoints(body.trailPoints);
+        body.trail.visible = ui.showTrails.checked;
+      }
+
+      function mergeBodies(a, b) {
+        const m = a.mass + b.mass;
+        const p = a.pos.clone().multiplyScalar(a.mass).add(b.pos.clone().multiplyScalar(b.mass)).divideScalar(m);
+        const v = a.vel.clone().multiplyScalar(a.mass).add(b.vel.clone().multiplyScalar(b.mass)).divideScalar(m);
+        const blended = a.baseColor.clone().multiplyScalar(a.mass / m).add(b.baseColor.clone().multiplyScalar(b.mass / m));
+
+        a.mass = m;
+        a.radius = massToRadius(m);
+        a.pos.copy(p);
+        a.vel.copy(v);
+        a.baseColor.copy(blended);
+        a.mesh.geometry.dispose();
+        a.mesh.geometry = new THREE.SphereGeometry(a.radius, 22, 22);
+        a.mesh.position.copy(a.pos);
+        a.halo.scale.set(a.radius * 6, a.radius * 6, 1);
+        a.trailPoints = [a.pos.clone()];
+
+        const idx = bodies.indexOf(b);
+        if (idx >= 0) {
+          destroyBody(b);
+          bodies.splice(idx, 1);
+        }
+      }
+
+      function updateBodyList() {
+        ui.bodyList.innerHTML = "";
+        bodies.forEach(b => {
+          const item = document.createElement("div");
+          item.className = "body-item";
+          const label = document.createElement("div");
+          label.innerHTML = `<div>${b.name}</div><div class="small">m=${b.mass.toFixed(1)} | r=${b.radius.toFixed(1)}</div>`;
+          const del = document.createElement("button");
+          del.className = "danger";
+          del.textContent = "删除";
+          del.onclick = () => removeBodyById(b.id);
+          item.append(label, del);
+          ui.bodyList.appendChild(item);
+        });
+      }
+
+      function updateCurvature() {
+        if (!ui.showGrid.checked) return;
+        const arr = curvatureGeo.attributes.position.array;
+        for (let i = 0; i < arr.length; i += 3) {
+          const x = baseGrid[i], z = baseGrid[i + 2];
+          let depth = 0;
+          for (let j = 0; j < bodies.length; j++) {
+            const b = bodies[j];
+            const dx = x - b.pos.x, dz = z - b.pos.z, dy = -b.pos.y;
+            const d = Math.sqrt(dx * dx + dy * dy + dz * dz + 35);
+            depth += b.mass / d;
+          }
+          arr[i + 1] = Math.max(-60, Math.min(8, -0.36 * depth));
+        }
+        curvatureGeo.attributes.position.needsUpdate = true;
+      }
+
+      function localPotential(i) {
+        const bi = bodies[i];
+        let phi = 0;
+        for (let j = 0; j < bodies.length; j++) {
+          if (i === j) continue;
+          const bj = bodies[j];
+          const d = bi.pos.distanceTo(bj.pos) + 6;
+          phi += G * bj.mass / d;
+        }
+        return phi;
+      }
+
+      function step(dt) {
+        for (let i = 0; i < bodies.length; i++) bodies[i].acc.set(0, 0, 0);
+
+        for (let i = 0; i < bodies.length; i++) {
+          const bi = bodies[i];
+          for (let j = i + 1; j < bodies.length; j++) {
+            const bj = bodies[j];
+            const r = bj.pos.clone().sub(bi.pos);
+            const d2 = r.lengthSq() + eps2;
+            const invD = 1 / Math.sqrt(d2);
+            const invD3 = invD * invD * invD;
+            const f = r.multiplyScalar(G * invD3);
+            bi.acc.addScaledVector(f, bj.mass);
+            bj.acc.addScaledVector(f, -bi.mass);
+          }
+        }
+
+        for (let i = 0; i < bodies.length; i++) {
+          const b = bodies[i];
+          if (b.acc.lengthSq() > maxAccel * maxAccel) b.acc.setLength(maxAccel);
+          b.vel.addScaledVector(b.acc, dt);
+          b.pos.addScaledVector(b.vel, dt);
+          b.mesh.position.copy(b.pos);
+        }
+
+        let mergedAny = true;
+        while (mergedAny) {
+          mergedAny = false;
+          outer: for (let i = 0; i < bodies.length; i++) {
+            for (let j = i + 1; j < bodies.length; j++) {
+              const a = bodies[i], b = bodies[j];
+              if (a.pos.distanceTo(b.pos) <= a.radius + b.radius) {
+                mergeBodies(a.mass >= b.mass ? a : b, a.mass >= b.mass ? b : a);
+                mergedAny = true;
+                break outer;
+              }
+            }
+          }
+        }
+
+        for (let i = 0; i < bodies.length; i++) {
+          const b = bodies[i];
+          const phi = localPotential(i);
+          const shift = Math.min(1, phi * 0.018); // relativity-inspired redshift
+          const c = b.baseColor.clone().lerp(new THREE.Color(0xff4f3d), shift * 0.58);
+          b.mesh.material.color.copy(c);
+          b.mesh.material.emissive.setRGB(0.16 * shift, 0.05 * shift, 0.03 * shift);
+          b.halo.material.opacity = 0.1 + shift * 0.45;
+          b.halo.scale.setScalar(b.radius * (4.5 + 7 * shift));
+          updateTrail(b);
+        }
+
+        ui.hudBodies.textContent = String(bodies.length);
+      }
+
+      function defaultSystem() {
+        bodies.slice().forEach(destroyBody);
+        bodies.length = 0;
+        idSeq = 1;
+
+        createBody({
+          name: "Sun", mass: 1300,
+          position: new THREE.Vector3(0, 0, 0),
+          velocity: new THREE.Vector3(0, 0, 0),
+          color: new THREE.Color(0xffcc66)
+        });
+        createBody({
+          name: "Earth", mass: 16,
+          position: new THREE.Vector3(90, 0, 0),
+          velocity: new THREE.Vector3(0, 1.6, 0),
+          color: new THREE.Color(0x6bb8ff)
+        });
+        createBody({
+          name: "Mars", mass: 9,
+          position: new THREE.Vector3(130, 0, 0),
+          velocity: new THREE.Vector3(0, 1.25, 0.35),
+          color: new THREE.Color(0xff8d6b)
+        });
+        createBody({
+          name: "Venus", mass: 13,
+          position: new THREE.Vector3(65, 0, 0),
+          velocity: new THREE.Vector3(0, 1.95, -0.2),
+          color: new THREE.Color(0xffd6a0)
+        });
+        createBody({
+          name: "Jupiter", mass: 95,
+          position: new THREE.Vector3(-180, 0, 0),
+          velocity: new THREE.Vector3(0, -0.9, 0),
+          color: new THREE.Color(0xd8b894)
+        });
+      }
+
+      function randomSystem() {
+        bodies.slice().forEach(destroyBody);
+        bodies.length = 0;
+        idSeq = 1;
+        createBody({
+          name: "Core",
+          mass: 900 + Math.random() * 500,
+          position: new THREE.Vector3(0, 0, 0),
+          velocity: new THREE.Vector3(0, 0, 0),
+          color: new THREE.Color(0xffcb74)
+        });
+        const n = 6 + Math.floor(Math.random() * 10);
+        for (let i = 0; i < n; i++) {
+          const r = 45 + Math.random() * 220;
+          const a = Math.random() * Math.PI * 2;
+          const y = (Math.random() - 0.5) * 40;
+          const pos = new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+          const tang = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).normalize();
+          const speed0 = Math.sqrt((G * bodies[0].mass) / Math.max(r, 1)) * (0.65 + Math.random() * 0.5);
+          const vel = tang.multiplyScalar(speed0).add(new THREE.Vector3((Math.random()-0.5)*0.2, (Math.random()-0.5)*0.2, (Math.random()-0.5)*0.2));
+          createBody({
+            name: `P${i + 1}`,
+            mass: 4 + Math.random() * 38,
+            position: pos,
+            velocity: vel
+          });
+        }
+      }
+
+      function fillRandomInput() {
+        ui.nameInput.value = "Body" + Math.floor(Math.random() * 999);
+        ui.massInput.value = (3 + Math.random() * 60).toFixed(1);
+        ui.pxInput.value = ((Math.random() - 0.5) * 260).toFixed(1);
+        ui.pyInput.value = ((Math.random() - 0.5) * 70).toFixed(1);
+        ui.pzInput.value = ((Math.random() - 0.5) * 260).toFixed(1);
+        ui.vxInput.value = ((Math.random() - 0.5) * 2.2).toFixed(2);
+        ui.vyInput.value = ((Math.random() - 0.5) * 2.2).toFixed(2);
+        ui.vzInput.value = ((Math.random() - 0.5) * 2.2).toFixed(2);
+      }
+
+      ui.toggleRun.onclick = () => {
+        running = !running;
+        ui.toggleRun.textContent = running ? "暂停" : "继续";
+      };
+      ui.resetBtn.onclick = defaultSystem;
+      ui.randomBtn.onclick = randomSystem;
+      ui.sampleBtn.onclick = fillRandomInput;
+
+      ui.addBtn.onclick = () => {
+        createBody({
+          name: ui.nameInput.value.trim() || `Body-${idSeq}`,
+          mass: +ui.massInput.value,
+          position: new THREE.Vector3(+ui.pxInput.value, +ui.pyInput.value, +ui.pzInput.value),
+          velocity: new THREE.Vector3(+ui.vxInput.value, +ui.vyInput.value, +ui.vzInput.value)
+        });
+      };
+
+      function syncText() {
+        ui.gVal.textContent = (+ui.gSlider.value).toFixed(2);
+        ui.speedVal.textContent = (+ui.speedSlider.value).toFixed(1) + "x";
+        ui.trailVal.textContent = ui.trailSlider.value;
+      }
+      [ui.gSlider, ui.speedSlider, ui.trailSlider].forEach(el => el.addEventListener("input", syncText));
+      ui.gSlider.addEventListener("input", () => G = +ui.gSlider.value);
+      ui.speedSlider.addEventListener("input", () => speed = +ui.speedSlider.value);
+      ui.trailSlider.addEventListener("input", () => trailMax = +ui.trailSlider.value);
+      ui.showAxes.addEventListener("change", () => axes.visible = ui.showAxes.checked);
+      ui.showGrid.addEventListener("change", () => curvature.visible = ui.showGrid.checked);
+      syncText();
+
+      addEventListener("resize", () => {
+        camera.aspect = innerWidth / innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+      });
+
+      defaultSystem();
+
+      let last = performance.now(), fpsTimer = 0, fpsFrames = 0, frameCount = 0;
+      function animate(now) {
+        requestAnimationFrame(animate);
+        controls.update();
+
+        let dt = Math.min(0.028, (now - last) / 1000);
+        last = now;
+        const simDt = dt * speed;
+        ui.hudDt.textContent = simDt.toFixed(4);
+
+        if (running) {
+          const substeps = Math.max(1, Math.min(8, Math.ceil(speed * 2)));
+          const h = simDt / substeps;
+          for (let i = 0; i < substeps; i++) step(h);
+        }
+
+        frameCount++;
+        if (frameCount % 2 === 0) updateCurvature();
+
+        fpsTimer += dt;
+        fpsFrames++;
+        if (fpsTimer >= 0.4) {
+          ui.hudFps.textContent = Math.round(fpsFrames / fpsTimer);
+          fpsTimer = 0; fpsFrames = 0;
+        }
+
+        renderer.render(scene, camera);
+      }
+      requestAnimationFrame(animate);
+    })();
+  </script>
+</body>
+</html>
