@@ -3,31 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>梯云纵 · Tiyunzong</title>
+<title>梯云纵 - Tiyunzong</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #0a0a0a; overflow: hidden; cursor: pointer; }
 canvas { display: block; }
-#poem {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  text-align: center; font-family: 'STKaiti', 'KaiTi', serif;
-  color: rgba(220, 200, 170, 0); font-size: clamp(18px, 3vw, 32px);
-  padding: 40px 20px; letter-spacing: 0.3em;
-  transition: color 2s ease; pointer-events: none;
-  text-shadow: 0 0 20px rgba(180, 150, 100, 0.3);
-}
-#poem.show { color: rgba(220, 200, 170, 0.9); }
-#hint {
-  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  font-family: 'STKaiti', 'KaiTi', serif; color: rgba(200, 180, 150, 0.6);
-  font-size: 20px; pointer-events: none; transition: opacity 1s;
-}
+#hint { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); color: rgba(200,180,150,0.6); font-family: 'STKaiti','KaiTi',serif; font-size: 16px; pointer-events: none; opacity: 0; transition: opacity 1s; }
+#hint.show { opacity: 1; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="poem">踏虚蹈空上九天，一步一生一念间</div>
-<div id="hint" style="display:none">点击重新开始</div>
+<div id="hint">点击重放</div>
 <script>
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
@@ -38,474 +25,513 @@ addEventListener('resize', resize);
 
 // --- State ---
 let time = 0, phase = 'setup', phaseTime = 0, cameraY = 0, targetCameraY = 0;
-let particles = [], afterimages = [], shockwaves = [], inkSplashes = [];
-let heroX, heroY, heroVY = 0, heroFrame = 0, stepCount = 0;
-const TOTAL_STEPS = 7;
-const STEP_HEIGHT = 120;
-let groundY, startY;
-let finished = false, started = false;
+let running = true, showHint = false;
 
-// --- Parallax layers ---
+// --- Character ---
+const char = { x: 0, y: 0, vy: 0, stepCount: 0, maxSteps: 7, landed: false };
+const GROUND_Y = 200; // from bottom
+let stepEvents = []; // {time, x, y} for shockwaves
+let afterimages = []; // {x, y, alpha, pose}
+let particles = []; // ink splashes
+let qiBursts = []; // {x, y, radius, alpha}
+
+// --- Background layers ---
 const mountains = [];
 const bamboos = [];
 const clouds = [];
-let moonX, moonY;
+let moon = { x: 0, y: 0 };
 
-function init() {
+function initScene() {
   time = 0; phase = 'setup'; phaseTime = 0; cameraY = 0; targetCameraY = 0;
-  particles = []; afterimages = []; shockwaves = []; inkSplashes = [];
-  stepCount = 0; heroFrame = 0; finished = false;
-  groundY = H * 0.78; startY = groundY;
-  heroX = W * 0.5; heroY = groundY; heroVY = 0;
-  moonX = W * 0.75; moonY = H * 0.15;
-  document.getElementById('poem').classList.remove('show');
-  document.getElementById('hint').style.display = 'none';
+  char.x = W * 0.5; char.y = H - GROUND_Y; char.vy = 0; char.stepCount = 0; char.landed = false;
+  stepEvents = []; afterimages = []; particles = []; qiBursts = [];
+  showHint = false;
+  document.getElementById('hint').classList.remove('show');
 
   mountains.length = 0;
-  for (let i = 0; i < 8; i++) {
-    mountains.push({ x: W * (i / 7 - 0.05), h: 150 + Math.random() * 200, w: 200 + Math.random() * 300 });
+  for (let i = 0; i < 5; i++) {
+    mountains.push({ x: W * (i / 4 - 0.1), h: 200 + Math.random() * 300, w: 300 + Math.random() * 200 });
   }
   bamboos.length = 0;
   for (let i = 0; i < 20; i++) {
-    bamboos.push({ x: Math.random() * W * 1.4 - W * 0.2, h: 200 + Math.random() * 400, sway: Math.random() * Math.PI * 2 });
+    bamboos.push({ x: Math.random() * W * 1.5 - W * 0.25, h: 300 + Math.random() * 500, depth: 0.3 + Math.random() * 0.7 });
   }
   clouds.length = 0;
   for (let i = 0; i < 12; i++) {
-    clouds.push({ x: Math.random() * W * 1.5 - W * 0.25, y: -200 + Math.random() * H * 2, w: 100 + Math.random() * 200, speed: 0.1 + Math.random() * 0.3, depth: 0.1 + Math.random() * 0.5 });
+    clouds.push({ x: Math.random() * W * 2 - W * 0.5, y: -500 - Math.random() * 3000, w: 100 + Math.random() * 200, speed: 0.1 + Math.random() * 0.3 });
   }
+  moon.x = W * 0.75; moon.y = -800;
 }
 
 // --- Drawing helpers ---
-function inkColor(a = 1) { return `rgba(30, 25, 20, ${a})`; }
-function paperColor(a = 1) { return `rgba(235, 220, 195, ${a})`; }
+function inkColor(a = 1) { return `rgba(30,25,20,${a})`; }
+function parchment(a = 1) { return `rgba(235,220,195,${a})`; }
 
-function drawMoon(cx, cy, camY) {
-  const y = cy - camY * 0.05;
-  const g = ctx.createRadialGradient(cx, y, 0, cx, y, 60);
-  g.addColorStop(0, 'rgba(255, 245, 220, 0.9)');
-  g.addColorStop(0.5, 'rgba(255, 240, 200, 0.4)');
-  g.addColorStop(1, 'rgba(255, 240, 200, 0)');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(cx, y, 60, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = 'rgba(255, 248, 230, 0.95)';
-  ctx.beginPath(); ctx.arc(cx, y, 28, 0, Math.PI * 2); ctx.fill();
+function drawMoon(cy) {
+  const sy = moon.y - cy * 0.05;
+  const gradient = ctx.createRadialGradient(moon.x, sy, 0, moon.x, sy, 80);
+  gradient.addColorStop(0, 'rgba(255,250,230,0.9)');
+  gradient.addColorStop(0.5, 'rgba(255,240,200,0.3)');
+  gradient.addColorStop(1, 'rgba(255,240,200,0)');
+  ctx.fillStyle = gradient;
+  ctx.beginPath(); ctx.arc(moon.x, sy, 80, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,248,230,0.85)';
+  ctx.beginPath(); ctx.arc(moon.x, sy, 35, 0, Math.PI * 2); ctx.fill();
 }
 
-function drawMountains(camY) {
+function drawMountains(cy) {
   mountains.forEach((m, i) => {
-    const depth = 0.1 + (i % 3) * 0.05;
-    const y = groundY + 50 - camY * depth;
-    const alpha = 0.15 + (i % 3) * 0.08;
-    ctx.fillStyle = `rgba(40, 35, 30, ${alpha})`;
+    const parallax = 0.1 + i * 0.05;
+    const sy = H - cy * parallax;
+    const alpha = 0.15 + i * 0.05;
+    ctx.fillStyle = `rgba(40,35,30,${alpha})`;
     ctx.beginPath();
-    ctx.moveTo(m.x, y);
-    ctx.quadraticCurveTo(m.x + m.w * 0.3, y - m.h * 0.8, m.x + m.w * 0.5, y - m.h);
-    ctx.quadraticCurveTo(m.x + m.w * 0.7, y - m.h * 0.7, m.x + m.w, y);
+    ctx.moveTo(m.x - m.w / 2, sy);
+    ctx.quadraticCurveTo(m.x, sy - m.h, m.x + m.w / 2, sy);
     ctx.fill();
   });
 }
 
-function drawBamboo(camY) {
+function drawBamboo(cy) {
   bamboos.forEach(b => {
-    const depth = 0.3;
-    const baseY = groundY + 20 - camY * depth;
-    const sway = Math.sin(time * 0.001 + b.sway) * 8;
-    ctx.strokeStyle = 'rgba(50, 60, 40, 0.3)';
-    ctx.lineWidth = 3;
+    const parallax = b.depth * 0.4;
+    const bx = b.x;
+    const by = H - cy * parallax;
+    const sway = Math.sin(time * 0.5 + b.x * 0.01) * 5 * b.depth;
+    ctx.strokeStyle = `rgba(60,80,50,${0.2 + b.depth * 0.3})`;
+    ctx.lineWidth = 2 + b.depth * 2;
     ctx.beginPath();
-    ctx.moveTo(b.x, baseY);
-    ctx.quadraticCurveTo(b.x + sway * 0.5, baseY - b.h * 0.5, b.x + sway, baseY - b.h);
+    ctx.moveTo(bx, by);
+    ctx.quadraticCurveTo(bx + sway, by - b.h / 2, bx + sway * 1.5, by - b.h);
     ctx.stroke();
+    // nodes
+    for (let n = 0; n < 5; n++) {
+      const ny = by - b.h * (n + 1) / 6;
+      const nx = bx + sway * (n + 1) / 6;
+      ctx.strokeStyle = `rgba(50,70,40,${0.3 + b.depth * 0.2})`;
+      ctx.lineWidth = 3 + b.depth * 2;
+      ctx.beginPath(); ctx.moveTo(nx - 3, ny); ctx.lineTo(nx + 3, ny); ctx.stroke();
+    }
     // leaves
-    for (let j = 0.3; j < 1; j += 0.15) {
-      const lx = b.x + sway * j;
-      const ly = baseY - b.h * j;
-      ctx.fillStyle = 'rgba(50, 65, 40, 0.2)';
-      ctx.save();
-      ctx.translate(lx, ly);
-      ctx.rotate(Math.sin(time * 0.002 + j * 5) * 0.3);
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 15, 4, 0.5, 0, Math.PI * 2);
-      ctx.fill();
+    ctx.fillStyle = `rgba(60,90,45,${0.15 + b.depth * 0.15})`;
+    for (let l = 0; l < 3; l++) {
+      const ly = by - b.h * (0.6 + l * 0.15);
+      const lx = bx + sway * (0.6 + l * 0.15);
+      ctx.save(); ctx.translate(lx, ly); ctx.rotate(Math.sin(time + l) * 0.3);
+      ctx.beginPath(); ctx.ellipse(10, 0, 20, 3, 0.3, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
   });
 }
 
-function drawClouds(camY) {
+function drawClouds(cy) {
   clouds.forEach(c => {
-    const x = (c.x + time * c.speed * 0.02) % (W + c.w * 2) - c.w;
-    const y = c.y - camY * c.depth;
-    ctx.fillStyle = `rgba(200, 190, 170, ${0.08 + c.depth * 0.06})`;
+    c.x += c.speed;
+    if (c.x > W + 200) c.x = -300;
+    const sy = c.y - cy * 0.15;
+    if (sy < -200 || sy > H + 200) return;
+    ctx.fillStyle = 'rgba(200,190,175,0.08)';
     ctx.beginPath();
-    ctx.ellipse(x, y, c.w, c.w * 0.25, 0, 0, Math.PI * 2);
+    ctx.ellipse(c.x, sy, c.w, c.w * 0.3, 0, 0, Math.PI * 2);
     ctx.fill();
   });
 }
 
-function drawGround(camY) {
-  const y = groundY - camY;
-  if (y > H + 50) return;
-  ctx.fillStyle = 'rgba(60, 50, 40, 0.4)';
-  ctx.fillRect(0, y, W, H - y + 500);
-  // ink wash edge
-  ctx.strokeStyle = 'rgba(40, 30, 25, 0.5)';
+function drawGround(cy) {
+  const gy = H - GROUND_Y - cy;
+  if (gy > H + 50) return;
+  ctx.fillStyle = 'rgba(60,50,40,0.3)';
+  ctx.fillRect(0, gy, W, H - gy + 500);
+  ctx.strokeStyle = 'rgba(40,30,20,0.5)';
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(0, y);
-  for (let x = 0; x <= W; x += 20) {
-    ctx.lineTo(x, y + Math.sin(x * 0.02 + time * 0.001) * 3);
+  ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+  // ink wash ground texture
+  for (let i = 0; i < 8; i++) {
+    ctx.strokeStyle = `rgba(40,30,20,${0.1 - i * 0.01})`;
+    ctx.beginPath();
+    ctx.moveTo(0, gy + i * 8);
+    for (let x = 0; x < W; x += 30) {
+      ctx.lineTo(x, gy + i * 8 + Math.sin(x * 0.02 + i) * 3);
+    }
+    ctx.stroke();
   }
-  ctx.stroke();
 }
 
-// --- Hero (ink figure) ---
-function drawHero(x, y, camY, frame, alpha = 1) {
-  const sy = y - camY;
+// --- Character drawing ---
+function drawCharacter(x, y, cy, posePhase, alpha = 1) {
+  const sy = y - cy;
   if (sy < -100 || sy > H + 100) return;
   ctx.save();
-  ctx.translate(x, sy);
   ctx.globalAlpha = alpha;
+  ctx.translate(x, sy);
 
-  // Body - simple ink brush figure
-  const breathe = Math.sin(time * 0.005) * 2;
-  const lean = phase === 'step' ? Math.sin(phaseTime * 0.1) * 0.1 : 0;
-  ctx.rotate(lean);
+  // Robe body
+  ctx.fillStyle = inkColor(0.85 * alpha);
+  ctx.strokeStyle = inkColor(0.9 * alpha);
+  ctx.lineWidth = 2;
 
-  // Robe / body
-  ctx.fillStyle = inkColor(0.85);
+  const legSpread = Math.sin(posePhase * 3) * 15;
+  const armAngle = Math.sin(posePhase * 2) * 0.5;
+
+  // Flowing robe
   ctx.beginPath();
-  ctx.moveTo(0, -45 + breathe);
-  ctx.quadraticCurveTo(-18, -20, -22, 15);
-  ctx.lineTo(-15, 25);
-  ctx.lineTo(15, 25);
-  ctx.lineTo(22, 15);
-  ctx.quadraticCurveTo(18, -20, 0, -45 + breathe);
-  ctx.fill();
-
-  // Robe flowing
-  ctx.fillStyle = inkColor(0.6);
-  ctx.beginPath();
-  ctx.moveTo(-15, 25);
-  ctx.quadraticCurveTo(-25, 35 + breathe, -20 + (phase === 'step' ? -10 : 0), 50);
-  ctx.lineTo(20 + (phase === 'step' ? 10 : 0), 50);
-  ctx.quadraticCurveTo(25, 35 + breathe, 15, 25);
+  ctx.moveTo(0, -40);
+  ctx.quadraticCurveTo(-15, -20, -12 - legSpread, 20);
+  ctx.lineTo(-5, 20);
+  ctx.lineTo(0, 5);
+  ctx.lineTo(5, 20);
+  ctx.lineTo(12 + legSpread, 20);
+  ctx.quadraticCurveTo(15, -20, 0, -40);
   ctx.fill();
 
   // Head
-  ctx.fillStyle = inkColor(0.9);
-  ctx.beginPath();
-  ctx.arc(0, -55, 12, 0, Math.PI * 2);
-  ctx.fill();
+  ctx.beginPath(); ctx.arc(0, -50, 10, 0, Math.PI * 2); ctx.fill();
 
-  // Hair ribbon
-  ctx.strokeStyle = inkColor(0.7);
+  // Hair ribbon flowing
+  ctx.strokeStyle = `rgba(80,20,20,${0.7 * alpha})`;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(-5, -65);
-  ctx.quadraticCurveTo(-20, -70 + breathe, -30 + (phase === 'step' ? -15 : 0), -60);
+  ctx.moveTo(0, -55);
+  ctx.quadraticCurveTo(-20 + Math.sin(posePhase) * 10, -65, -35 + Math.sin(posePhase * 1.5) * 15, -60);
   ctx.stroke();
 
   // Arms
-  const armAngle = phase === 'step' ? Math.sin(phaseTime * 0.15) * 0.5 : 0;
-  ctx.strokeStyle = inkColor(0.8);
+  ctx.strokeStyle = inkColor(0.8 * alpha);
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.moveTo(-12, -25);
-  ctx.quadraticCurveTo(-30, -10 + armAngle * 20, -35, 5 + armAngle * 15);
+  ctx.moveTo(-8, -30);
+  ctx.quadraticCurveTo(-25, -20 + Math.sin(armAngle) * 10, -30, -35 + Math.sin(posePhase) * 8);
   ctx.stroke();
   ctx.beginPath();
-  ctx.moveTo(12, -25);
-  ctx.quadraticCurveTo(30, -10 - armAngle * 20, 35, 5 - armAngle * 15);
+  ctx.moveTo(8, -30);
+  ctx.quadraticCurveTo(25, -20 - Math.cos(armAngle) * 10, 30, -35 - Math.cos(posePhase) * 8);
   ctx.stroke();
 
-  // Legs / feet
-  if (phase === 'step' || phase === 'leap') {
-    // Dynamic leg pose
-    const legPhase = Math.sin(phaseTime * 0.2);
-    ctx.strokeStyle = inkColor(0.7);
-    ctx.lineWidth = 3;
-    // left leg
+  // Robe trailing wisps
+  ctx.strokeStyle = `rgba(30,25,20,${0.3 * alpha})`;
+  ctx.lineWidth = 1;
+  for (let i = 0; i < 3; i++) {
     ctx.beginPath();
-    ctx.moveTo(-8, 45);
-    ctx.quadraticCurveTo(-12, 60 + legPhase * 10, -5, 75);
+    ctx.moveTo(-5 + i * 5, 20);
+    ctx.quadraticCurveTo(-10 + i * 5 + Math.sin(posePhase + i) * 10, 35, -15 + i * 5 + Math.sin(posePhase * 0.7 + i) * 15, 45);
     ctx.stroke();
-    // right leg (stepping)
-    ctx.beginPath();
-    ctx.moveTo(8, 45);
-    ctx.quadraticCurveTo(12, 55 - legPhase * 10, 10, 70);
-    ctx.stroke();
-  } else {
-    ctx.strokeStyle = inkColor(0.7);
-    ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(-8, 45); ctx.lineTo(-10, 75); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(8, 45); ctx.lineTo(10, 75); ctx.stroke();
   }
 
   ctx.restore();
 }
 
-// --- Particles ---
-function spawnQiBurst(x, y, count = 20) {
+function drawFoot(x, y, cy, side) {
+  const sy = y - cy;
+  ctx.save();
+  ctx.translate(x + side * 8, sy + 20);
+  ctx.fillStyle = inkColor(0.7);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 8, 4, side * 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// --- Effects ---
+function spawnInkSplash(x, y, count, speed) {
   for (let i = 0; i < count; i++) {
     const angle = Math.random() * Math.PI * 2;
-    const speed = 1 + Math.random() * 4;
+    const v = speed * (0.5 + Math.random());
     particles.push({
-      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed - 2,
+      x, y, vx: Math.cos(angle) * v, vy: Math.sin(angle) * v - 2,
       life: 1, decay: 0.01 + Math.random() * 0.02,
-      size: 2 + Math.random() * 4, type: 'qi'
+      size: 2 + Math.random() * 4
     });
   }
 }
 
-function spawnInkSplash(x, y, count = 15) {
-  for (let i = 0; i < count; i++) {
-    const angle = -Math.PI * 0.5 + (Math.random() - 0.5) * Math.PI;
-    const speed = 2 + Math.random() * 6;
-    inkSplashes.push({
-      x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-      life: 1, decay: 0.008 + Math.random() * 0.015,
-      size: 3 + Math.random() * 8
-    });
-  }
-}
-
-function spawnShockwave(x, y) {
-  shockwaves.push({ x, y, radius: 5, maxRadius: 80 + Math.random() * 40, life: 1 });
-}
-
-function addAfterimage(x, y) {
-  afterimages.push({ x, y, life: 1, frame: heroFrame });
+function spawnQiBurst(x, y) {
+  qiBursts.push({ x, y, radius: 5, alpha: 0.8, speed: 3 + Math.random() * 2 });
 }
 
 function updateParticles(dt) {
-  particles = particles.filter(p => {
-    p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life -= p.decay;
-    return p.life > 0;
-  });
-  inkSplashes = inkSplashes.filter(p => {
-    p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.vx *= 0.98; p.life -= p.decay;
-    return p.life > 0;
-  });
-  shockwaves = shockwaves.filter(s => {
-    s.radius += 3; s.life = 1 - s.radius / s.maxRadius;
-    return s.life > 0;
-  });
-  afterimages = afterimages.filter(a => { a.life -= 0.02; return a.life > 0; });
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    p.vy += 0.05 * dt;
+    p.life -= p.decay * dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
 }
 
-function drawParticles(camY) {
-  // Qi particles
+function drawParticles(cy) {
   particles.forEach(p => {
-    const sy = p.y - camY;
-    ctx.fillStyle = `rgba(200, 180, 140, ${p.life * 0.8})`;
+    const sy = p.y - cy;
+    ctx.fillStyle = `rgba(30,25,20,${p.life * 0.7})`;
     ctx.beginPath(); ctx.arc(p.x, sy, p.size * p.life, 0, Math.PI * 2); ctx.fill();
-  });
-  // Ink splashes
-  inkSplashes.forEach(p => {
-    const sy = p.y - camY;
-    ctx.fillStyle = `rgba(30, 25, 20, ${p.life * 0.6})`;
-    ctx.beginPath(); ctx.arc(p.x, sy, p.size * p.life, 0, Math.PI * 2); ctx.fill();
-  });
-  // Shockwaves
-  shockwaves.forEach(s => {
-    const sy = s.y - camY;
-    ctx.strokeStyle = `rgba(200, 180, 140, ${s.life * 0.5})`;
-    ctx.lineWidth = 2 * s.life;
-    ctx.beginPath(); ctx.arc(s.x, sy, s.radius, 0, Math.PI * 2); ctx.stroke();
-  });
-  // Afterimages
-  afterimages.forEach(a => {
-    drawHero(a.x, a.y, camY, a.frame, a.life * 0.3);
   });
 }
 
-// --- Step marker (foot platform) ---
-function drawStepMarker(x, y, camY, alpha) {
-  const sy = y - camY;
-  if (sy < -50 || sy > H + 50) return;
+function updateQiBursts(dt) {
+  for (let i = qiBursts.length - 1; i >= 0; i--) {
+    const q = qiBursts[i];
+    q.radius += q.speed * dt;
+    q.alpha -= 0.015 * dt;
+    if (q.alpha <= 0) qiBursts.splice(i, 1);
+  }
+}
+
+function drawQiBursts(cy) {
+  qiBursts.forEach(q => {
+    const sy = q.y - cy;
+    ctx.strokeStyle = `rgba(180,160,120,${q.alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(q.x, sy, q.radius, 0, Math.PI * 2); ctx.stroke();
+    // inner ring
+    ctx.strokeStyle = `rgba(220,200,160,${q.alpha * 0.5})`;
+    ctx.beginPath(); ctx.arc(q.x, sy, q.radius * 0.6, 0, Math.PI * 2); ctx.stroke();
+  });
+}
+
+function drawAfterimages(cy) {
+  afterimages.forEach(a => {
+    a.alpha -= 0.008;
+    if (a.alpha > 0) drawCharacter(a.x, a.y, cy, a.pose, a.alpha * 0.4);
+  });
+  afterimages = afterimages.filter(a => a.alpha > 0);
+}
+
+// --- Poem ---
+function drawPoem(alpha) {
+  if (alpha <= 0) return;
   ctx.save();
   ctx.globalAlpha = alpha;
-  // Ink ring
-  ctx.strokeStyle = 'rgba(180, 160, 120, 0.6)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.ellipse(x, sy, 25, 8, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  // Qi glow
-  const g = ctx.createRadialGradient(x, sy, 0, x, sy, 30);
-  g.addColorStop(0, 'rgba(220, 200, 160, 0.3)');
-  g.addColorStop(1, 'rgba(220, 200, 160, 0)');
-  ctx.fillStyle = g;
-  ctx.beginPath(); ctx.arc(x, sy, 30, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = parchment(1);
+  ctx.font = '28px "STKaiti","KaiTi","Noto Serif SC",serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('踏虚蹈空上九天', W / 2, H / 2 - 20);
+  ctx.fillText('一步一生一念间', W / 2, H / 2 + 25);
   ctx.restore();
 }
 
-const stepMarkers = [];
-
 // --- Animation phases ---
-function updatePhase(dt) {
+const SETUP_DUR = 60;    // frames for setup
+const LEAP_DUR = 30;
+const STEP_DUR = 25;     // per step
+const PEAK_DUR = 80;
+const FALL_DUR = 120;
+const POEM_DUR = 180;
+
+let totalStepHeight = 0;
+let poemAlpha = 0;
+let stepTimer = 0;
+let currentStep = 0;
+
+function update(dt) {
   phaseTime += dt;
 
-  switch (phase) {
-    case 'setup':
-      if (phaseTime > 1500) {
-        phase = 'leap'; phaseTime = 0;
-        heroVY = -8;
-        spawnQiBurst(heroX, heroY + 50, 30);
-        spawnInkSplash(heroX, heroY + 50, 20);
-        shockwaves.push({ x: heroX, y: heroY + 50, radius: 5, maxRadius: 100, life: 1 });
-      }
-      break;
+  if (phase === 'setup') {
+    // Character stands, slight breathing
+    char.x = W * 0.5;
+    char.y = H - GROUND_Y;
+    targetCameraY = 0;
+    if (phaseTime > SETUP_DUR) { phase = 'leap'; phaseTime = 0; }
+  }
+  else if (phase === 'leap') {
+    // Initial leap
+    const t = phaseTime / LEAP_DUR;
+    char.vy = -18;
+    char.y += char.vy * dt;
+    char.x += Math.sin(phaseTime * 0.1) * 0.5;
+    targetCameraY = -(char.y - (H - GROUND_Y)) * 0.6;
 
-    case 'leap':
-      heroY += heroVY;
-      heroVY += 0.15;
-      targetCameraY = Math.min(0, heroY - groundY + 200);
-      if (phaseTime > 600) {
-        phase = 'step'; phaseTime = 0; stepCount = 0;
-        heroVY = 0;
-      }
-      break;
+    if (phaseTime === 1) {
+      spawnInkSplash(char.x, H - GROUND_Y, 20, 4);
+      spawnQiBurst(char.x, H - GROUND_Y);
+    }
+    if (phaseTime > LEAP_DUR) {
+      phase = 'steps'; phaseTime = 0; currentStep = 0; stepTimer = 0;
+    }
+  }
+  else if (phase === 'steps') {
+    stepTimer += dt;
+    if (stepTimer >= STEP_DUR && currentStep < char.maxSteps) {
+      // Perform a 梯云纵 step!
+      currentStep++;
+      stepTimer = 0;
 
-    case 'step':
-      if (stepCount < TOTAL_STEPS) {
-        const stepDuration = 400 - stepCount * 20;
-        if (phaseTime > stepDuration) {
-          // Execute step
-          const offsetX = (Math.random() - 0.5) * 30;
-          addAfterimage(heroX, heroY);
-          heroY -= STEP_HEIGHT;
-          heroX += offsetX;
-          heroX = Math.max(W * 0.3, Math.min(W * 0.7, heroX));
-          stepCount++;
+      // Step effect: foot appears, character gets another boost
+      const side = currentStep % 2 === 0 ? 1 : -1;
+      stepEvents.push({ time: time, x: char.x + side * 8, y: char.y + 20, side });
 
-          // Effects
-          spawnQiBurst(heroX, heroY + 60, 25);
-          spawnInkSplash(heroX, heroY + 60, 12);
-          spawnShockwave(heroX, heroY + 60);
-          stepMarkers.push({ x: heroX, y: heroY + 60, life: 1 });
+      // Boost upward
+      char.vy = -14 - currentStep * 1.5;
 
-          phaseTime = 0;
-        }
-        // Slight hover between steps
-        heroY += Math.sin(phaseTime * 0.01) * 0.3;
-      } else {
-        phase = 'peak'; phaseTime = 0;
-        // Big burst at peak
-        spawnQiBurst(heroX, heroY, 50);
-        spawnInkSplash(heroX, heroY, 30);
-        spawnShockwave(heroX, heroY);
-        spawnShockwave(heroX, heroY);
-      }
-      targetCameraY = heroY - H * 0.5;
-      break;
+      // Visual effects
+      spawnInkSplash(char.x, char.y + 15, 15 + currentStep * 3, 3 + currentStep * 0.5);
+      spawnQiBurst(char.x, char.y + 15);
+      spawnQiBurst(char.x, char.y + 10);
 
-    case 'peak':
-      heroY += Math.sin(phaseTime * 0.003) * 0.5;
-      if (phaseTime > 2000) {
-        phase = 'descend'; phaseTime = 0;
-        heroVY = 2;
-      }
-      break;
+      // Afterimage
+      afterimages.push({ x: char.x, y: char.y, alpha: 0.8, pose: time });
+    }
 
-    case 'descend':
-      heroVY += 0.12;
-      heroY += heroVY;
-      targetCameraY = heroY - H * 0.5;
-      if (phaseTime % 100 < 16) addAfterimage(heroX, heroY);
-      if (heroY >= groundY) {
-        heroY = groundY;
-        phase = 'landing'; phaseTime = 0;
-        spawnQiBurst(heroX, heroY + 50, 40);
-        spawnInkSplash(heroX, heroY + 50, 25);
-        spawnShockwave(heroX, heroY + 50);
-        targetCameraY = 0;
-      }
-      break;
+    char.y += char.vy * dt;
+    char.vy += 0.3 * dt; // gravity, reduced during steps
+    char.x += Math.sin(phaseTime * 0.15) * 1.5;
 
-    case 'landing':
-      if (phaseTime > 1000) {
-        document.getElementById('poem').classList.add('show');
+    targetCameraY = -(char.y - (H - GROUND_Y)) * 0.7;
+
+    if (currentStep >= char.maxSteps && stepTimer > STEP_DUR) {
+      phase = 'peak'; phaseTime = 0;
+      char.vy = -5;
+    }
+  }
+  else if (phase === 'peak') {
+    char.y += char.vy * dt;
+    char.vy += 0.05 * dt;
+    char.x += Math.sin(phaseTime * 0.05) * 0.5;
+
+    targetCameraY = -(char.y - (H - GROUND_Y)) * 0.7;
+
+    if (phaseTime === 1) {
+      // Big burst at peak
+      spawnInkSplash(char.x, char.y, 40, 6);
+      for (let i = 0; i < 3; i++) spawnQiBurst(char.x, char.y);
+      afterimages.push({ x: char.x, y: char.y, alpha: 1, pose: time });
+    }
+
+    if (phaseTime > PEAK_DUR) {
+      phase = 'fall'; phaseTime = 0;
+      char.vy = 2;
+    }
+  }
+  else if (phase === 'fall') {
+    char.y += char.vy * dt;
+    char.vy += 0.4 * dt;
+    char.x += Math.sin(phaseTime * 0.08) * 0.8;
+
+    if (phaseTime % 8 < 1) {
+      afterimages.push({ x: char.x, y: char.y, alpha: 0.5, pose: time });
+    }
+
+    const groundY = H - GROUND_Y;
+    if (char.y >= groundY) {
+      char.y = groundY;
+      char.vy = 0;
+      if (!char.landed) {
+        char.landed = true;
+        spawnInkSplash(char.x, groundY, 30, 5);
+        spawnQiBurst(char.x, groundY);
       }
-      if (phaseTime > 3000 && !finished) {
-        finished = true;
-        setTimeout(() => {
-          document.getElementById('hint').style.display = 'block';
-          document.getElementById('hint').style.opacity = '1';
-        }, 500);
-      }
-      break;
+    }
+
+    targetCameraY = -(char.y - (H - GROUND_Y)) * 0.5;
+    if (targetCameraY > 0) targetCameraY = 0;
+
+    if (phaseTime > FALL_DUR) { phase = 'poem'; phaseTime = 0; poemAlpha = 0; }
+  }
+  else if (phase === 'poem') {
+    poemAlpha = Math.min(1, phaseTime / 60);
+    targetCameraY = 0;
+    if (phaseTime > POEM_DUR) {
+      running = false;
+      showHint = true;
+      document.getElementById('hint').classList.add('show');
+    }
   }
 
   // Smooth camera
-  cameraY += (targetCameraY - cameraY) * 0.06;
+  cameraY += (targetCameraY - cameraY) * 0.05 * dt;
 
-  // Decay step markers
-  stepMarkers.forEach(s => s.life -= 0.003);
+  updateParticles(dt);
+  updateQiBursts(dt);
+
+  // Clean old step events
+  stepEvents = stepEvents.filter(s => time - s.time < 60);
 }
 
-// --- Main loop ---
-let lastTime = 0;
-function loop(ts) {
-  const dt = lastTime ? ts - lastTime : 16;
-  lastTime = ts;
-  time = ts;
-
-  if (started) updatePhase(dt);
-  updateParticles(dt);
-
-  // -- Draw --
-  // Background gradient (parchment)
-  const bgG = ctx.createLinearGradient(0, 0, 0, H);
-  bgG.addColorStop(0, '#1a1812');
-  bgG.addColorStop(0.3, '#2a2418');
-  bgG.addColorStop(0.7, '#1e1a14');
-  bgG.addColorStop(1, '#151210');
-  ctx.fillStyle = bgG;
+function draw() {
+  // Background - parchment
+  const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#1a1815');
+  bgGrad.addColorStop(0.5, '#2a2520');
+  bgGrad.addColorStop(1, '#1f1c18');
+  ctx.fillStyle = bgGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // Parchment texture overlay
-  ctx.fillStyle = 'rgba(200, 185, 160, 0.03)';
-  ctx.fillRect(0, 0, W, H);
+  // Subtle paper texture
+  ctx.fillStyle = 'rgba(200,185,160,0.03)';
+  for (let i = 0; i < 30; i++) {
+    const tx = (i * 137 + time * 0.01) % (W + 100) - 50;
+    const ty = (i * 211) % H;
+    ctx.fillRect(tx, ty, 100, 1);
+  }
 
-  drawMoon(moonX, moonY, cameraY);
-  drawClouds(cameraY);
-  drawMountains(cameraY);
-  drawBamboo(cameraY);
-  drawGround(cameraY);
+  const cy = cameraY;
 
-  // Step markers
-  stepMarkers.forEach(s => {
-    if (s.life > 0) drawStepMarker(s.x, s.y, cameraY, s.life);
+  drawMoon(cy);
+  drawClouds(cy);
+  drawMountains(cy);
+  drawBamboo(cy);
+  drawGround(cy);
+
+  // Step footprints
+  stepEvents.forEach(s => {
+    const age = time - s.time;
+    const alpha = Math.max(0, 1 - age / 60);
+    const sy = s.y - cy;
+    ctx.fillStyle = `rgba(150,130,100,${alpha * 0.5})`;
+    ctx.beginPath();
+    ctx.ellipse(s.x, sy, 10, 5, s.side * 0.2, 0, Math.PI * 2);
+    ctx.fill();
+    // Qi circle
+    ctx.strokeStyle = `rgba(200,180,140,${alpha * 0.3})`;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(s.x, sy, 10 + age * 0.8, 0, Math.PI * 2);
+    ctx.stroke();
   });
 
-  drawParticles(cameraY);
-  drawHero(heroX, heroY, cameraY, heroFrame);
+  drawAfterimages(cy);
+  drawQiBursts(cy);
+  drawParticles(cy);
+
+  // Draw character
+  drawCharacter(char.x, char.y, cy, time * 0.1);
+
+  // Step label during steps
+  if (phase === 'steps' && currentStep > 0) {
+    const sy = char.y - cy;
+    ctx.fillStyle = `rgba(200,180,150,${0.6 + Math.sin(time * 0.3) * 0.3})`;
+    ctx.font = '16px "STKaiti","KaiTi",serif';
+    ctx.textAlign = 'center';
+    const stepNames = ['一','二','三','四','五','六','七'];
+    ctx.fillText(`第${stepNames[currentStep-1] || currentStep}步`, char.x, sy - 70);
+  }
+
+  // Draw poem
+  if (phase === 'poem') drawPoem(poemAlpha);
 
   // Vignette
-  const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.8);
+  const vg = ctx.createRadialGradient(W/2, H/2, W*0.3, W/2, H/2, W*0.8);
   vg.addColorStop(0, 'rgba(0,0,0,0)');
   vg.addColorStop(1, 'rgba(0,0,0,0.4)');
   ctx.fillStyle = vg;
   ctx.fillRect(0, 0, W, H);
+}
 
+function loop() {
+  if (!running) { draw(); return; }
+  time++;
+  update(1);
+  draw();
   requestAnimationFrame(loop);
 }
 
-// --- Start ---
-init();
-started = true;
-requestAnimationFrame(loop);
-
+// Click to replay
 addEventListener('click', () => {
-  if (phase !== 'setup' && phase !== 'leap') {
-    stepMarkers.length = 0;
-    init();
-    started = true;
-    lastTime = 0;
-  }
+  initScene();
+  running = true;
+  loop();
 });
+
+initScene();
+loop();
 </script>
 </body>
 </html>

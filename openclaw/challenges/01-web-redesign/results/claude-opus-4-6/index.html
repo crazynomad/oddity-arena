@@ -3,498 +3,198 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Velora — Ship Faster, Scale Smarter</title>
-<meta name="description" content="Velora is the modern deployment platform that helps teams ship 10x faster with zero-downtime deploys, instant rollbacks, and built-in observability.">
+<title>Velox — Ship Faster, Scale Smarter</title>
+<meta name="description" content="The modern deployment platform that helps engineering teams ship 10x faster with zero-downtime deploys, instant rollbacks, and built-in observability.">
 <style>
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-:root {
-  --c-bg: #0b0f1a;
-  --c-surface: #131826;
-  --c-surface-2: #1a2035;
-  --c-border: rgba(255,255,255,0.08);
-  --c-text: #e2e8f0;
-  --c-text-muted: #94a3b8;
-  --c-primary: #6366f1;
-  --c-primary-light: #818cf8;
-  --c-primary-glow: rgba(99,102,241,0.25);
-  --c-accent: #22d3ee;
-  --c-accent-glow: rgba(34,211,238,0.2);
-  --c-success: #34d399;
-  --c-white: #ffffff;
-  --font: 'Inter', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 24px;
-  --shadow: 0 4px 24px rgba(0,0,0,0.3);
-  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --color-bg:#0b0f1a;
+  --color-surface:#131825;
+  --color-surface-2:#1a2035;
+  --color-border:#242d44;
+  --color-text:#e4e8f1;
+  --color-text-muted:#8892a8;
+  --color-primary:#6366f1;
+  --color-primary-light:#818cf8;
+  --color-primary-dark:#4f46e5;
+  --color-accent:#22d3ee;
+  --color-accent-dark:#06b6d4;
+  --color-success:#34d399;
+  --color-warning:#fbbf24;
+  --font-sans:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --font-mono:'SF Mono',SFMono-Regular,ui-monospace,'Cascadia Code',monospace;
+  --space-xs:0.25rem;--space-sm:0.5rem;--space-md:1rem;--space-lg:1.5rem;--space-xl:2rem;--space-2xl:3rem;--space-3xl:4rem;--space-4xl:6rem;
+  --radius-sm:6px;--radius-md:10px;--radius-lg:16px;--radius-xl:24px;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:0 4px 12px rgba(0,0,0,.4);
+  --shadow-lg:0 8px 30px rgba(0,0,0,.5);
+  --transition:200ms cubic-bezier(.4,0,.2,1);
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-html { scroll-behavior: smooth; }
-body {
-  font-family: var(--font);
-  background: var(--c-bg);
-  color: var(--c-text);
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
-}
-
-a { color: inherit; text-decoration: none; }
-button { font-family: inherit; cursor: pointer; border: none; }
-img { max-width: 100%; display: block; }
-
-.container { width: 100%; max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+html{scroll-behavior:smooth;font-size:16px}
+body{font-family:var(--font-sans);background:var(--color-bg);color:var(--color-text);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+img{max-width:100%;display:block}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+ul{list-style:none}
+h1,h2,h3,h4{line-height:1.2;font-weight:700}
+h1{font-size:clamp(2.2rem,5vw,3.75rem);letter-spacing:-0.03em}
+h2{font-size:clamp(1.6rem,3.5vw,2.5rem);letter-spacing:-0.02em}
+h3{font-size:clamp(1.1rem,2vw,1.35rem)}
+.container{width:100%;max-width:1180px;margin:0 auto;padding:0 var(--space-lg)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-sm);font-weight:600;border-radius:var(--radius-sm);padding:.75rem 1.5rem;transition:all var(--transition);font-size:.95rem;white-space:nowrap}
+.btn-primary{background:var(--color-primary);color:#fff;box-shadow:0 0 20px rgba(99,102,241,.25)}
+.btn-primary:hover,.btn-primary:focus-visible{background:var(--color-primary-light);box-shadow:0 0 30px rgba(99,102,241,.4);transform:translateY(-1px)}
+.btn-secondary{border:1.5px solid var(--color-border);color:var(--color-text);background:var(--color-surface)}
+.btn-secondary:hover,.btn-secondary:focus-visible{border-color:var(--color-primary);color:var(--color-primary-light);background:var(--color-surface-2)}
+.btn-ghost{color:var(--color-text-muted);padding:.5rem .75rem}
+.btn-ghost:hover{color:var(--color-text)}
+.btn:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+.badge{display:inline-flex;align-items:center;gap:var(--space-xs);font-size:.78rem;font-weight:600;padding:.35rem .75rem;border-radius:999px;background:rgba(99,102,241,.12);color:var(--color-primary-light);border:1px solid rgba(99,102,241,.2)}
+.section-label{text-transform:uppercase;font-size:.8rem;font-weight:700;letter-spacing:.08em;color:var(--color-accent);margin-bottom:var(--space-md)}
+.section-desc{color:var(--color-text-muted);font-size:1.05rem;max-width:580px;margin:0 auto}
 
 /* ── NAV ── */
-nav {
-  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-  background: rgba(11,15,26,0.8);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--c-border);
-  transition: background var(--transition);
-}
-.nav-inner {
-  display: flex; align-items: center; justify-content: space-between;
-  height: 64px;
-}
-.logo {
-  font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em;
-  display: flex; align-items: center; gap: 8px;
-}
-.logo-icon {
-  width: 32px; height: 32px; background: var(--c-primary);
-  border-radius: var(--r-sm); display: grid; place-items: center;
-  font-size: 0.875rem; color: white;
-}
-.nav-links { display: flex; gap: 32px; align-items: center; list-style: none; }
-.nav-links a {
-  font-size: 0.875rem; font-weight: 500; color: var(--c-text-muted);
-  transition: color var(--transition); position: relative;
-}
-.nav-links a:hover, .nav-links a:focus-visible { color: var(--c-white); }
-.nav-cta {
-  display: flex; gap: 12px; align-items: center;
-}
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  font-size: 0.875rem; font-weight: 600;
-  padding: 10px 20px; border-radius: var(--r-sm);
-  transition: all var(--transition); white-space: nowrap;
-}
-.btn-ghost {
-  background: transparent; color: var(--c-text-muted);
-}
-.btn-ghost:hover { color: var(--c-white); }
-.btn-primary {
-  background: var(--c-primary); color: white;
-  box-shadow: 0 0 20px var(--c-primary-glow);
-}
-.btn-primary:hover {
-  background: var(--c-primary-light);
-  box-shadow: 0 0 32px var(--c-primary-glow);
-  transform: translateY(-1px);
-}
-.btn-primary:active { transform: translateY(0); }
-.btn-large { padding: 14px 28px; font-size: 1rem; border-radius: var(--r-md); }
-.btn-outline {
-  background: transparent; color: var(--c-text);
-  border: 1px solid var(--c-border);
-}
-.btn-outline:hover {
-  border-color: var(--c-primary); color: var(--c-white);
-  background: rgba(99,102,241,0.08);
-}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;backdrop-filter:blur(16px);background:rgba(11,15,26,.8);border-bottom:1px solid var(--color-border);transition:background var(--transition)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px}
+.nav-logo{font-size:1.25rem;font-weight:800;letter-spacing:-0.03em;display:flex;align-items:center;gap:var(--space-sm)}
+.nav-logo svg{width:28px;height:28px}
+.nav-links{display:none;gap:var(--space-xl);align-items:center}
+.nav-links a{font-size:.9rem;color:var(--color-text-muted);transition:color var(--transition);font-weight:500}
+.nav-links a:hover,.nav-links a:focus-visible{color:var(--color-text)}
+.nav-cta{display:flex;align-items:center;gap:var(--space-sm)}
+.nav-cta .btn-primary{padding:.55rem 1.15rem;font-size:.85rem}
+.nav-cta .btn-ghost{display:none}
+.mobile-toggle{display:flex;flex-direction:column;gap:5px;padding:var(--space-sm);cursor:pointer;background:none;border:none}
+.mobile-toggle span{display:block;width:22px;height:2px;background:var(--color-text);border-radius:2px;transition:all var(--transition)}
+.mobile-menu{display:none;position:fixed;inset:64px 0 0;background:var(--color-bg);padding:var(--space-xl) var(--space-lg);flex-direction:column;gap:var(--space-lg);z-index:99}
+.mobile-menu.open{display:flex}
+.mobile-menu a{font-size:1.1rem;padding:var(--space-sm) 0;color:var(--color-text-muted);border-bottom:1px solid var(--color-border)}
 
-/* Mobile menu */
-.menu-toggle {
-  display: none; background: none; color: var(--c-text);
-  font-size: 1.5rem; padding: 4px;
-}
-
-@media (max-width: 768px) {
-  .nav-links, .nav-cta { display: none; }
-  .nav-links.open {
-    display: flex; flex-direction: column;
-    position: absolute; top: 64px; left: 0; right: 0;
-    background: var(--c-surface); border-bottom: 1px solid var(--c-border);
-    padding: 24px; gap: 16px;
-  }
-  .nav-cta.open {
-    display: flex; flex-direction: column;
-    position: absolute; top: calc(64px + var(--links-h, 200px)); left: 0; right: 0;
-    background: var(--c-surface); padding: 0 24px 24px; gap: 12px;
-  }
-  .menu-toggle { display: block; }
+@media(min-width:768px){
+  .nav-links{display:flex}
+  .nav-cta .btn-ghost{display:inline-flex}
+  .mobile-toggle,.mobile-menu{display:none!important}
 }
 
 /* ── HERO ── */
-.hero {
-  padding: 140px 0 80px;
-  text-align: center;
-  position: relative;
-}
-.hero::before {
-  content: '';
-  position: absolute; top: -200px; left: 50%; transform: translateX(-50%);
-  width: 800px; height: 800px;
-  background: radial-gradient(circle, var(--c-primary-glow) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero-badge {
-  display: inline-flex; align-items: center; gap: 8px;
-  background: var(--c-surface-2); border: 1px solid var(--c-border);
-  border-radius: 999px; padding: 6px 16px 6px 8px;
-  font-size: 0.8125rem; color: var(--c-text-muted);
-  margin-bottom: 24px; position: relative;
-}
-.hero-badge-dot {
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--c-success);
-  animation: pulse-dot 2s infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
-.hero h1 {
-  font-size: clamp(2.5rem, 6vw, 4.5rem);
-  font-weight: 800; letter-spacing: -0.03em;
-  line-height: 1.08; margin-bottom: 20px;
-  position: relative;
-}
-.hero h1 .gradient {
-  background: linear-gradient(135deg, var(--c-primary-light), var(--c-accent));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.hero-sub {
-  font-size: clamp(1rem, 2vw, 1.25rem);
-  color: var(--c-text-muted); max-width: 560px;
-  margin: 0 auto 36px; line-height: 1.7;
-}
-.hero-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.hero-proof {
-  margin-top: 48px; display: flex; align-items: center;
-  justify-content: center; gap: 16px; color: var(--c-text-muted);
-  font-size: 0.8125rem;
-}
-.avatar-stack {
-  display: flex;
-}
-.avatar-stack span {
-  width: 32px; height: 32px; border-radius: 50%;
-  border: 2px solid var(--c-bg); margin-left: -10px;
-  display: grid; place-items: center; font-size: 0.75rem; font-weight: 600;
-}
-.avatar-stack span:first-child { margin-left: 0; }
-.avatar-stack span:nth-child(1) { background: #6366f1; }
-.avatar-stack span:nth-child(2) { background: #ec4899; }
-.avatar-stack span:nth-child(3) { background: #f59e0b; }
-.avatar-stack span:nth-child(4) { background: #22d3ee; }
+.hero{padding:calc(64px + var(--space-4xl)) 0 var(--space-4xl);text-align:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:800px;background:radial-gradient(circle,rgba(99,102,241,.12) 0%,transparent 70%);pointer-events:none}
+.hero .badge{margin-bottom:var(--space-lg)}
+.hero h1{margin-bottom:var(--space-lg)}
+.hero h1 .gradient{background:linear-gradient(135deg,var(--color-primary-light),var(--color-accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{color:var(--color-text-muted);font-size:clamp(1rem,2vw,1.2rem);max-width:560px;margin:0 auto var(--space-2xl)}
+.hero-actions{display:flex;flex-wrap:wrap;gap:var(--space-md);justify-content:center;margin-bottom:var(--space-3xl)}
+.hero-proof{display:flex;align-items:center;justify-content:center;gap:var(--space-lg);flex-wrap:wrap;color:var(--color-text-muted);font-size:.85rem}
+.hero-proof .avatars{display:flex}
+.hero-proof .avatars span{width:32px;height:32px;border-radius:50%;border:2px solid var(--color-bg);margin-left:-10px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;color:#fff}
+.hero-proof .avatars span:first-child{margin-left:0}
+.hero-proof .stars{color:var(--color-warning);letter-spacing:2px}
+.hero-terminal{max-width:640px;margin:var(--space-3xl) auto 0;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);overflow:hidden;text-align:left;box-shadow:var(--shadow-lg)}
+.hero-terminal .bar{display:flex;align-items:center;gap:6px;padding:var(--space-sm) var(--space-md);background:var(--color-surface-2);border-bottom:1px solid var(--color-border)}
+.hero-terminal .bar span{width:10px;height:10px;border-radius:50%}
+.hero-terminal .bar span:nth-child(1){background:#ef4444}
+.hero-terminal .bar span:nth-child(2){background:#eab308}
+.hero-terminal .bar span:nth-child(3){background:#22c55e}
+.hero-terminal pre{padding:var(--space-lg);font-family:var(--font-mono);font-size:.85rem;color:var(--color-text-muted);line-height:1.8;overflow-x:auto}
+.hero-terminal pre .prompt{color:var(--color-accent)}
+.hero-terminal pre .cmd{color:var(--color-text)}
+.hero-terminal pre .out{color:var(--color-success)}
 
-/* ── TRUST STRIP ── */
-.trust {
-  padding: 48px 0;
-  border-top: 1px solid var(--c-border);
-  border-bottom: 1px solid var(--c-border);
-}
-.trust-label {
-  text-align: center; font-size: 0.75rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--c-text-muted); margin-bottom: 24px;
-}
-.trust-logos {
-  display: flex; align-items: center; justify-content: center;
-  gap: 48px; flex-wrap: wrap; opacity: 0.5;
-}
-.trust-logos span {
-  font-size: 1.125rem; font-weight: 700; letter-spacing: -0.01em;
-  color: var(--c-text-muted);
-}
+/* ── LOGOS ── */
+.logos{padding:var(--space-3xl) 0;border-top:1px solid var(--color-border);border-bottom:1px solid var(--color-border)}
+.logos p{text-align:center;font-size:.8rem;text-transform:uppercase;letter-spacing:.1em;color:var(--color-text-muted);margin-bottom:var(--space-xl);font-weight:600}
+.logo-strip{display:flex;align-items:center;justify-content:center;gap:var(--space-2xl);flex-wrap:wrap;opacity:.45}
+.logo-strip span{font-size:1.1rem;font-weight:700;letter-spacing:.02em;white-space:nowrap}
 
 /* ── FEATURES ── */
-.features { padding: 100px 0; }
-.section-label {
-  display: inline-flex; align-items: center; gap: 6px;
-  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.1em; color: var(--c-primary-light);
-  margin-bottom: 12px;
-}
-.section-title {
-  font-size: clamp(1.75rem, 4vw, 2.75rem);
-  font-weight: 800; letter-spacing: -0.02em;
-  margin-bottom: 16px; line-height: 1.15;
-}
-.section-sub {
-  font-size: 1.0625rem; color: var(--c-text-muted);
-  max-width: 520px; line-height: 1.7;
-}
-.features-header { text-align: center; margin-bottom: 64px; }
-.features-header .section-sub { margin: 0 auto; }
+.features{padding:var(--space-4xl) 0}
+.features .header{text-align:center;margin-bottom:var(--space-3xl)}
+.features .header h2{margin-bottom:var(--space-md)}
+.feature-grid{display:grid;gap:var(--space-lg);grid-template-columns:1fr}
+.feature-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-2xl);transition:all var(--transition);position:relative;overflow:hidden}
+.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--color-primary),var(--color-accent));opacity:0;transition:opacity var(--transition)}
+.feature-card:hover{border-color:var(--color-primary);transform:translateY(-2px);box-shadow:var(--shadow-md)}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:44px;height:44px;border-radius:var(--radius-md);background:rgba(99,102,241,.1);display:flex;align-items:center;justify-content:center;margin-bottom:var(--space-lg);font-size:1.3rem}
+.feature-card h3{margin-bottom:var(--space-sm)}
+.feature-card p{color:var(--color-text-muted);font-size:.92rem;line-height:1.65}
 
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px;
-}
-.feature-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-  padding: 32px;
-  transition: all var(--transition);
-  position: relative; overflow: hidden;
-}
-.feature-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0;
-  height: 2px; background: linear-gradient(90deg, transparent, var(--c-primary), transparent);
-  opacity: 0; transition: opacity var(--transition);
-}
-.feature-card:hover {
-  border-color: rgba(99,102,241,0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-}
-.feature-card:hover::before { opacity: 1; }
-.feature-icon {
-  width: 48px; height: 48px; border-radius: var(--r-md);
-  display: grid; place-items: center; font-size: 1.25rem;
-  margin-bottom: 20px;
-}
-.feature-icon.purple { background: rgba(99,102,241,0.15); color: var(--c-primary-light); }
-.feature-icon.cyan { background: var(--c-accent-glow); color: var(--c-accent); }
-.feature-icon.green { background: rgba(52,211,153,0.15); color: var(--c-success); }
-.feature-icon.pink { background: rgba(236,72,153,0.15); color: #f472b6; }
-.feature-icon.amber { background: rgba(245,158,11,0.15); color: #fbbf24; }
-.feature-icon.rose { background: rgba(251,113,133,0.15); color: #fb7185; }
-
-.feature-card h3 {
-  font-size: 1.125rem; font-weight: 700; margin-bottom: 8px;
-}
-.feature-card p {
-  font-size: 0.9375rem; color: var(--c-text-muted); line-height: 1.65;
-}
+@media(min-width:640px){.feature-grid{grid-template-columns:repeat(2,1fr)}}
+@media(min-width:960px){.feature-grid{grid-template-columns:repeat(3,1fr)}}
 
 /* ── STATS ── */
-.stats {
-  padding: 80px 0;
-  background: var(--c-surface);
-  border-top: 1px solid var(--c-border);
-  border-bottom: 1px solid var(--c-border);
-}
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 32px; text-align: center;
-}
-.stat-num {
-  font-size: clamp(2rem, 4vw, 3rem);
-  font-weight: 800; letter-spacing: -0.02em;
-  background: linear-gradient(135deg, var(--c-primary-light), var(--c-accent));
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-.stat-label {
-  font-size: 0.875rem; color: var(--c-text-muted); margin-top: 4px;
-}
+.stats{padding:var(--space-3xl) 0}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-lg)}
+.stat{text-align:center;padding:var(--space-xl)}
+.stat .number{font-size:clamp(2rem,4vw,3rem);font-weight:800;letter-spacing:-0.03em;background:linear-gradient(135deg,var(--color-primary-light),var(--color-accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.stat .label{color:var(--color-text-muted);font-size:.85rem;margin-top:var(--space-xs)}
+@media(min-width:640px){.stats-grid{grid-template-columns:repeat(4,1fr)}}
 
 /* ── TESTIMONIALS ── */
-.testimonials { padding: 100px 0; }
-.testimonials-header { text-align: center; margin-bottom: 64px; }
-.testimonials-header .section-sub { margin: 0 auto; }
-
-.testimonials-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 24px;
-}
-.testimonial-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-lg);
-  padding: 32px;
-  display: flex; flex-direction: column;
-  transition: border-color var(--transition);
-}
-.testimonial-card:hover { border-color: rgba(99,102,241,0.2); }
-.testimonial-stars {
-  color: #fbbf24; font-size: 0.875rem; margin-bottom: 16px;
-  letter-spacing: 2px;
-}
-.testimonial-card blockquote {
-  font-size: 0.9375rem; line-height: 1.7;
-  color: var(--c-text); flex: 1; margin-bottom: 20px;
-  font-style: normal;
-}
-.testimonial-author {
-  display: flex; align-items: center; gap: 12px;
-}
-.testimonial-avatar {
-  width: 40px; height: 40px; border-radius: 50%;
-  display: grid; place-items: center; font-weight: 700;
-  font-size: 0.875rem; color: white;
-}
-.testimonial-name { font-size: 0.875rem; font-weight: 600; }
-.testimonial-role { font-size: 0.8125rem; color: var(--c-text-muted); }
+.testimonials{padding:var(--space-4xl) 0}
+.testimonials .header{text-align:center;margin-bottom:var(--space-3xl)}
+.testimonials .header h2{margin-bottom:var(--space-md)}
+.testimonial-grid{display:grid;gap:var(--space-lg);grid-template-columns:1fr}
+.testimonial-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-2xl);transition:border-color var(--transition)}
+.testimonial-card:hover{border-color:var(--color-primary)}
+.testimonial-card blockquote{font-size:.95rem;line-height:1.7;color:var(--color-text);margin-bottom:var(--space-lg);font-style:italic}
+.testimonial-author{display:flex;align-items:center;gap:var(--space-md)}
+.testimonial-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.85rem;color:#fff;flex-shrink:0}
+.testimonial-info .name{font-weight:600;font-size:.9rem}
+.testimonial-info .role{color:var(--color-text-muted);font-size:.8rem}
+@media(min-width:768px){.testimonial-grid{grid-template-columns:repeat(3,1fr)}}
 
 /* ── PRICING ── */
-.pricing { padding: 100px 0; }
-.pricing-header { text-align: center; margin-bottom: 64px; }
-.pricing-header .section-sub { margin: 0 auto; }
-
-.pricing-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 24px; max-width: 960px; margin: 0 auto;
-}
-.pricing-card {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-xl);
-  padding: 36px;
-  position: relative;
-  transition: all var(--transition);
-}
-.pricing-card.popular {
-  border-color: var(--c-primary);
-  box-shadow: 0 0 40px var(--c-primary-glow);
-}
-.pricing-badge {
-  position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
-  background: var(--c-primary); color: white;
-  font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.05em; padding: 4px 16px;
-  border-radius: 999px;
-}
-.pricing-name {
-  font-size: 1.125rem; font-weight: 700; margin-bottom: 8px;
-}
-.pricing-desc {
-  font-size: 0.875rem; color: var(--c-text-muted); margin-bottom: 20px;
-}
-.pricing-amount {
-  display: flex; align-items: baseline; gap: 4px; margin-bottom: 24px;
-}
-.pricing-dollar { font-size: 0.875rem; font-weight: 600; color: var(--c-text-muted); }
-.pricing-value { font-size: 3rem; font-weight: 800; letter-spacing: -0.03em; }
-.pricing-period { font-size: 0.875rem; color: var(--c-text-muted); }
-.pricing-features {
-  list-style: none; margin-bottom: 28px;
-  display: flex; flex-direction: column; gap: 12px;
-}
-.pricing-features li {
-  font-size: 0.875rem; color: var(--c-text-muted);
-  display: flex; align-items: center; gap: 10px;
-}
-.pricing-features li::before {
-  content: '✓'; color: var(--c-success); font-weight: 700;
-  font-size: 0.875rem;
-}
-.pricing-card .btn { width: 100%; }
+.pricing{padding:var(--space-4xl) 0}
+.pricing .header{text-align:center;margin-bottom:var(--space-3xl)}
+.pricing .header h2{margin-bottom:var(--space-md)}
+.pricing-grid{display:grid;gap:var(--space-lg);grid-template-columns:1fr;max-width:960px;margin:0 auto}
+.pricing-card{background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-2xl);position:relative;transition:all var(--transition)}
+.pricing-card.featured{border-color:var(--color-primary);box-shadow:0 0 40px rgba(99,102,241,.15)}
+.pricing-card.featured .popular-badge{position:absolute;top:calc(var(--space-lg) * -1 + 4px);left:50%;transform:translateX(-50%);background:var(--color-primary);color:#fff;font-size:.72rem;font-weight:700;padding:.3rem .85rem;border-radius:999px;text-transform:uppercase;letter-spacing:.05em}
+.pricing-card .plan-name{font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-muted);margin-bottom:var(--space-sm)}
+.pricing-card .price{font-size:2.5rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:var(--space-xs)}
+.pricing-card .price span{font-size:.9rem;font-weight:400;color:var(--color-text-muted)}
+.pricing-card .price-desc{color:var(--color-text-muted);font-size:.85rem;margin-bottom:var(--space-xl)}
+.pricing-card ul{margin-bottom:var(--space-xl)}
+.pricing-card li{padding:var(--space-sm) 0;font-size:.9rem;color:var(--color-text-muted);display:flex;align-items:flex-start;gap:var(--space-sm)}
+.pricing-card li::before{content:'✓';color:var(--color-success);font-weight:700;flex-shrink:0}
+.pricing-card .btn{width:100%}
+@media(min-width:768px){.pricing-grid{grid-template-columns:repeat(3,1fr)}}
 
 /* ── CTA ── */
-.cta-section {
-  padding: 100px 0;
-  text-align: center;
-  position: relative;
-}
-.cta-section::before {
-  content: '';
-  position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
-  width: 600px; height: 600px;
-  background: radial-gradient(circle, var(--c-primary-glow) 0%, transparent 70%);
-  pointer-events: none;
-}
-.cta-box {
-  background: var(--c-surface);
-  border: 1px solid var(--c-border);
-  border-radius: var(--r-xl);
-  padding: 64px 48px;
-  position: relative;
-  max-width: 720px; margin: 0 auto;
-}
-.cta-box h2 {
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
-  font-weight: 800; letter-spacing: -0.02em; margin-bottom: 12px;
-}
-.cta-box p {
-  color: var(--c-text-muted); margin-bottom: 32px;
-  font-size: 1.0625rem;
-}
-.cta-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.cta-note {
-  margin-top: 16px; font-size: 0.8125rem; color: var(--c-text-muted);
-}
+.final-cta{padding:var(--space-4xl) 0;text-align:center}
+.cta-box{background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(34,211,238,.05));border:1px solid var(--color-border);border-radius:var(--radius-xl);padding:var(--space-3xl) var(--space-xl);position:relative;overflow:hidden}
+.cta-box::before{content:'';position:absolute;top:-100px;right:-100px;width:300px;height:300px;background:radial-gradient(circle,rgba(99,102,241,.1),transparent 70%);pointer-events:none}
+.cta-box h2{margin-bottom:var(--space-md)}
+.cta-box p{color:var(--color-text-muted);margin-bottom:var(--space-xl);max-width:480px;margin-left:auto;margin-right:auto}
+.cta-box .btn{font-size:1rem;padding:.85rem 2rem}
 
 /* ── FOOTER ── */
-footer {
-  border-top: 1px solid var(--c-border);
-  padding: 64px 0 32px;
-}
-.footer-grid {
-  display: grid;
-  grid-template-columns: 2fr repeat(3, 1fr);
-  gap: 48px; margin-bottom: 48px;
-}
-@media (max-width: 768px) {
-  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
-}
-@media (max-width: 480px) {
-  .footer-grid { grid-template-columns: 1fr; }
-}
-.footer-brand p {
-  font-size: 0.875rem; color: var(--c-text-muted);
-  margin-top: 12px; max-width: 280px; line-height: 1.7;
-}
-.footer-col h4 {
-  font-size: 0.8125rem; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.08em; color: var(--c-text); margin-bottom: 16px;
-}
-.footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-.footer-col a {
-  font-size: 0.875rem; color: var(--c-text-muted);
-  transition: color var(--transition);
-}
-.footer-col a:hover { color: var(--c-white); }
-.footer-bottom {
-  border-top: 1px solid var(--c-border);
-  padding-top: 24px;
-  display: flex; justify-content: space-between; align-items: center;
-  flex-wrap: wrap; gap: 12px;
-  font-size: 0.8125rem; color: var(--c-text-muted);
-}
-.footer-bottom-links { display: flex; gap: 24px; }
-.footer-bottom-links a { color: var(--c-text-muted); transition: color var(--transition); }
-.footer-bottom-links a:hover { color: var(--c-white); }
+footer{border-top:1px solid var(--color-border);padding:var(--space-3xl) 0 var(--space-xl)}
+.footer-grid{display:grid;gap:var(--space-2xl);grid-template-columns:1fr;margin-bottom:var(--space-2xl)}
+.footer-brand p{color:var(--color-text-muted);font-size:.85rem;margin-top:var(--space-sm);max-width:280px;line-height:1.6}
+.footer-col h4{font-size:.8rem;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-muted);margin-bottom:var(--space-md)}
+.footer-col a{display:block;padding:var(--space-xs) 0;font-size:.9rem;color:var(--color-text-muted);transition:color var(--transition)}
+.footer-col a:hover{color:var(--color-text)}
+.footer-bottom{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:var(--space-md);padding-top:var(--space-xl);border-top:1px solid var(--color-border);font-size:.8rem;color:var(--color-text-muted)}
+@media(min-width:640px){.footer-grid{grid-template-columns:2fr 1fr 1fr 1fr}}
 
 /* ── ANIMATIONS ── */
-.fade-up {
-  opacity: 0; transform: translateY(24px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
-}
-.fade-up.visible {
-  opacity: 1; transform: translateY(0);
-}
-
-/* ── FOCUS ── */
-:focus-visible {
-  outline: 2px solid var(--c-primary-light);
-  outline-offset: 2px;
-}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.animate{opacity:0;transform:translateY(20px)}
+.animate.visible{animation:fadeUp .5s ease forwards}
+.animate.d1{animation-delay:.1s}.animate.d2{animation-delay:.2s}.animate.d3{animation-delay:.3s}
 
 /* ── SKIP LINK ── */
-.skip-link {
-  position: absolute; top: -100px; left: 16px;
-  background: var(--c-primary); color: white;
-  padding: 8px 16px; border-radius: var(--r-sm);
-  font-size: 0.875rem; font-weight: 600; z-index: 200;
+.skip-link{position:absolute;top:-100%;left:var(--space-md);background:var(--color-primary);color:#fff;padding:var(--space-sm) var(--space-md);border-radius:var(--radius-sm);z-index:200;font-weight:600;font-size:.9rem}
+.skip-link:focus{top:var(--space-sm)}
+
+/* reduced motion */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:0s!important;transition-duration:0s!important}
+  html{scroll-behavior:auto}
 }
-.skip-link:focus { top: 8px; }
 </style>
 </head>
 <body>
@@ -502,347 +202,284 @@ footer {
 <a href="#main" class="skip-link">Skip to main content</a>
 
 <!-- NAV -->
-<nav aria-label="Main navigation">
-  <div class="container nav-inner">
-    <a href="#" class="logo" aria-label="Velora home">
-      <div class="logo-icon" aria-hidden="true">V</div>
-      Velora
-    </a>
-    <ul class="nav-links" id="navLinks" role="menubar">
-      <li role="none"><a href="#features" role="menuitem">Features</a></li>
-      <li role="none"><a href="#pricing" role="menuitem">Pricing</a></li>
-      <li role="none"><a href="#testimonials" role="menuitem">Customers</a></li>
-      <li role="none"><a href="#" role="menuitem">Docs</a></li>
-    </ul>
-    <div class="nav-cta" id="navCta">
-      <a href="#" class="btn btn-ghost">Sign in</a>
-      <a href="#pricing" class="btn btn-primary">Start Free</a>
-    </div>
-    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+<nav aria-label="Primary navigation">
+<div class="container nav-inner">
+  <a href="#" class="nav-logo" aria-label="Velox home">
+    <svg viewBox="0 0 28 28" fill="none" aria-hidden="true"><path d="M4 22L14 4l10 18H4z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" fill="rgba(99,102,241,.2)"/><circle cx="14" cy="15" r="3" fill="var(--color-primary)"/></svg>
+    Velox
+  </a>
+  <div class="nav-links" role="menubar">
+    <a href="#features" role="menuitem">Features</a>
+    <a href="#pricing" role="menuitem">Pricing</a>
+    <a href="#testimonials" role="menuitem">Customers</a>
+    <a href="https://docs.example.com" role="menuitem">Docs</a>
   </div>
+  <div class="nav-cta">
+    <a href="#pricing" class="btn btn-ghost">Log in</a>
+    <a href="#pricing" class="btn btn-primary">Start Free</a>
+  </div>
+  <button class="mobile-toggle" aria-label="Toggle menu" aria-expanded="false" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </button>
+</div>
 </nav>
+<div class="mobile-menu" id="mobileMenu" role="menu">
+  <a href="#features" onclick="closeMenu()">Features</a>
+  <a href="#pricing" onclick="closeMenu()">Pricing</a>
+  <a href="#testimonials" onclick="closeMenu()">Customers</a>
+  <a href="https://docs.example.com" onclick="closeMenu()">Docs</a>
+  <a href="#pricing" class="btn btn-primary" onclick="closeMenu()">Start Free</a>
+</div>
 
 <main id="main">
 
-  <!-- HERO -->
-  <section class="hero">
-    <div class="container">
-      <div class="fade-up">
-        <div class="hero-badge">
-          <span class="hero-badge-dot" aria-hidden="true"></span>
-          Now in public beta — v2.0 is here
-        </div>
-      </div>
-      <h1 class="fade-up">Ship code,<br>not <span class="gradient">config files</span></h1>
-      <p class="hero-sub fade-up">The deployment platform that gets out of your way. Zero-downtime deploys, instant rollbacks, and observability that actually makes sense.</p>
-      <div class="hero-actions fade-up">
-        <a href="#pricing" class="btn btn-primary btn-large">Start Building Free →</a>
-        <a href="#" class="btn btn-outline btn-large">Book a Demo</a>
-      </div>
-      <div class="hero-proof fade-up">
-        <div class="avatar-stack" aria-hidden="true">
-          <span>A</span><span>K</span><span>M</span><span>J</span>
-        </div>
-        <span>Trusted by <strong style="color:var(--c-white)">12,000+</strong> developers worldwide</span>
-      </div>
+<!-- HERO -->
+<section class="hero">
+<div class="container">
+  <div class="badge animate visible">🚀 v3.0 — Edge Functions now available</div>
+  <h1 class="animate visible d1">Ship code,<br>not <span class="gradient">infrastructure.</span></h1>
+  <p class="animate visible d2">The deployment platform built for modern teams. Push to deploy in seconds, scale to millions, and sleep through launches.</p>
+  <div class="hero-actions animate visible d3">
+    <a href="#pricing" class="btn btn-primary">Start Building — Free <span aria-hidden="true">→</span></a>
+    <a href="#features" class="btn btn-secondary">See How It Works</a>
+  </div>
+  <div class="hero-proof animate visible d3">
+    <div class="avatars" aria-hidden="true">
+      <span style="background:#6366f1">AK</span>
+      <span style="background:#ec4899">MR</span>
+      <span style="background:#f59e0b">JL</span>
+      <span style="background:#10b981">TS</span>
+      <span style="background:#8b5cf6">+2k</span>
     </div>
-  </section>
+    <span><span class="stars" aria-label="5 stars">★★★★★</span> Loved by 2,400+ developers</span>
+  </div>
+  <div class="hero-terminal animate visible d3" aria-label="Terminal demo">
+    <div class="bar" aria-hidden="true"><span></span><span></span><span></span></div>
+    <pre><span class="prompt">$</span> <span class="cmd">velox deploy --prod</span>
+<span class="out">✓ Build completed in 4.2s</span>
+<span class="out">✓ Edge network propagated (38 regions)</span>
+<span class="out">✓ SSL certificates provisioned</span>
+<span class="out">✓ Live at https://app.example.com</span></pre>
+  </div>
+</div>
+</section>
 
-  <!-- TRUST STRIP -->
-  <section class="trust" aria-label="Trusted by companies">
-    <div class="container">
-      <p class="trust-label">Powering teams at</p>
-      <div class="trust-logos" aria-label="Company logos">
-        <span>Stripe</span>
-        <span>Figma</span>
-        <span>Linear</span>
-        <span>Notion</span>
-        <span>Vercel</span>
-        <span>Railway</span>
-      </div>
-    </div>
-  </section>
+<!-- LOGOS -->
+<section class="logos" aria-label="Trusted by companies">
+<div class="container">
+  <p>Trusted by teams at</p>
+  <div class="logo-strip">
+    <span>Stripe</span><span>Vercel</span><span>Linear</span><span>Notion</span><span>Figma</span><span>Raycast</span>
+  </div>
+</div>
+</section>
 
-  <!-- FEATURES -->
-  <section class="features" id="features">
-    <div class="container">
-      <div class="features-header">
-        <div class="section-label fade-up">✦ Features</div>
-        <h2 class="section-title fade-up">Everything you need to deploy with confidence</h2>
-        <p class="section-sub fade-up">From push to production in under 45 seconds. No YAML, no guesswork, no 3 AM pages about failed deploys.</p>
-      </div>
-      <div class="features-grid">
-        <article class="feature-card fade-up">
-          <div class="feature-icon purple" aria-hidden="true">⚡</div>
-          <h3>Instant Deploys</h3>
-          <p>Push to git and your changes are live in under 45 seconds. Every deploy is atomic with zero downtime.</p>
-        </article>
-        <article class="feature-card fade-up">
-          <div class="feature-icon cyan" aria-hidden="true">↩</div>
-          <h3>One-Click Rollbacks</h3>
-          <p>Made a mistake? Roll back to any previous deploy instantly. Your uptime is never at risk.</p>
-        </article>
-        <article class="feature-card fade-up">
-          <div class="feature-icon green" aria-hidden="true">📊</div>
-          <h3>Built-in Observability</h3>
-          <p>Logs, metrics, and traces in one place. Know exactly what's happening without stitching together five tools.</p>
-        </article>
-        <article class="feature-card fade-up">
-          <div class="feature-icon pink" aria-hidden="true">🔒</div>
-          <h3>Edge Security</h3>
-          <p>Automatic TLS, DDoS protection, and WAF rules. Security isn't an add-on — it's the default.</p>
-        </article>
-        <article class="feature-card fade-up">
-          <div class="feature-icon amber" aria-hidden="true">🌍</div>
-          <h3>Global Edge Network</h3>
-          <p>Deploy to 40+ regions worldwide. Your users get sub-50ms latency no matter where they are.</p>
-        </article>
-        <article class="feature-card fade-up">
-          <div class="feature-icon rose" aria-hidden="true">🤝</div>
-          <h3>Team Collaboration</h3>
-          <p>Preview deploys for every PR, shared environments, and granular access controls for your whole team.</p>
-        </article>
-      </div>
+<!-- FEATURES -->
+<section class="features" id="features">
+<div class="container">
+  <div class="header">
+    <p class="section-label">Features</p>
+    <h2 class="animate">Everything you need to ship with confidence</h2>
+    <p class="section-desc animate d1">From first commit to global scale — one platform, zero ops overhead.</p>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card animate">
+      <div class="feature-icon">⚡</div>
+      <h3>Instant Deploys</h3>
+      <p>Push to deploy in under 5 seconds. Atomic deployments mean zero downtime, every time. Automatic preview URLs for every PR.</p>
     </div>
-  </section>
+    <div class="feature-card animate d1">
+      <div class="feature-icon">🌍</div>
+      <h3>Global Edge Network</h3>
+      <p>38 regions worldwide with automatic geo-routing. Your users get sub-50ms latency no matter where they are.</p>
+    </div>
+    <div class="feature-card animate d2">
+      <div class="feature-icon">🔒</div>
+      <h3>Security Built In</h3>
+      <p>Automatic SSL, DDoS protection, WAF rules, and SOC2 compliance out of the box. Sleep well at night.</p>
+    </div>
+    <div class="feature-card animate d3">
+      <div class="feature-icon">📊</div>
+      <h3>Real-time Observability</h3>
+      <p>Logs, metrics, and traces in one dashboard. Catch issues before your users do with smart anomaly alerts.</p>
+    </div>
+    <div class="feature-card animate">
+      <div class="feature-icon">🔄</div>
+      <h3>Instant Rollbacks</h3>
+      <p>One-click rollback to any previous deployment. Every build is immutable and preserved for instant recovery.</p>
+    </div>
+    <div class="feature-card animate d1">
+      <div class="feature-icon">🧩</div>
+      <h3>Integrations</h3>
+      <p>GitHub, GitLab, Slack, PagerDuty, Datadog — connect your entire stack in minutes with native integrations.</p>
+    </div>
+  </div>
+</div>
+</section>
 
-  <!-- STATS -->
-  <section class="stats" aria-label="Platform statistics">
-    <div class="container">
-      <div class="stats-grid">
-        <div class="fade-up">
-          <div class="stat-num">99.99%</div>
-          <div class="stat-label">Uptime SLA</div>
-        </div>
-        <div class="fade-up">
-          <div class="stat-num">45s</div>
-          <div class="stat-label">Average deploy time</div>
-        </div>
-        <div class="fade-up">
-          <div class="stat-num">40+</div>
-          <div class="stat-label">Edge regions</div>
-        </div>
-        <div class="fade-up">
-          <div class="stat-num">12K+</div>
-          <div class="stat-label">Active teams</div>
-        </div>
-      </div>
-    </div>
-  </section>
+<!-- STATS -->
+<section class="stats" aria-label="Platform statistics">
+<div class="container">
+  <div class="stats-grid">
+    <div class="stat animate"><div class="number">99.99%</div><div class="label">Uptime SLA</div></div>
+    <div class="stat animate d1"><div class="number">38</div><div class="label">Edge Regions</div></div>
+    <div class="stat animate d2"><div class="number">2.4B+</div><div class="label">Requests / Day</div></div>
+    <div class="stat animate d3"><div class="number">&lt;50ms</div><div class="label">Avg Latency</div></div>
+  </div>
+</div>
+</section>
 
-  <!-- TESTIMONIALS -->
-  <section class="testimonials" id="testimonials">
-    <div class="container">
-      <div class="testimonials-header">
-        <div class="section-label fade-up">♥ Loved by developers</div>
-        <h2 class="section-title fade-up">Don't take our word for it</h2>
-        <p class="section-sub fade-up">Here's what engineering teams are saying after switching to Velora.</p>
-      </div>
-      <div class="testimonials-grid">
-        <article class="testimonial-card fade-up">
-          <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
-          <blockquote>"We cut our deploy pipeline from 12 minutes to 40 seconds. The team actually enjoys shipping now instead of dreading it."</blockquote>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:#6366f1" aria-hidden="true">S</div>
-            <div>
-              <div class="testimonial-name">Sarah Chen</div>
-              <div class="testimonial-role">CTO at Stackwise</div>
-            </div>
-          </div>
-        </article>
-        <article class="testimonial-card fade-up">
-          <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
-          <blockquote>"The observability alone is worth it. We found a memory leak in 10 minutes that would've taken us days with our old setup."</blockquote>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:#ec4899" aria-hidden="true">M</div>
-            <div>
-              <div class="testimonial-name">Marcus Rivera</div>
-              <div class="testimonial-role">Lead Engineer at Flowbase</div>
-            </div>
-          </div>
-        </article>
-        <article class="testimonial-card fade-up">
-          <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
-          <blockquote>"Preview deploys on every PR changed how we do code review. Product can actually see changes before they merge."</blockquote>
-          <div class="testimonial-author">
-            <div class="testimonial-avatar" style="background:#22d3ee" aria-hidden="true">A</div>
-            <div>
-              <div class="testimonial-name">Alex Park</div>
-              <div class="testimonial-role">VP Eng at Cuboid</div>
-            </div>
-          </div>
-        </article>
+<!-- TESTIMONIALS -->
+<section class="testimonials" id="testimonials">
+<div class="container">
+  <div class="header">
+    <p class="section-label">Customers</p>
+    <h2 class="animate">Loved by engineering teams</h2>
+    <p class="section-desc animate d1">Don't take our word for it — hear from teams shipping in production.</p>
+  </div>
+  <div class="testimonial-grid">
+    <div class="testimonial-card animate">
+      <blockquote>"We cut our deployment time from 45 minutes to under 10 seconds. Our team ships 3x more features now."</blockquote>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar" style="background:#6366f1" aria-hidden="true">AK</div>
+        <div class="testimonial-info"><div class="name">Alex Kim</div><div class="role">CTO, TechFlow</div></div>
       </div>
     </div>
-  </section>
+    <div class="testimonial-card animate d1">
+      <blockquote>"The observability alone is worth it. We caught a memory leak in staging before it ever hit prod. Genuinely impressed."</blockquote>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar" style="background:#ec4899" aria-hidden="true">SR</div>
+        <div class="testimonial-info"><div class="name">Sara Reyes</div><div class="role">Lead SRE, DataStack</div></div>
+      </div>
+    </div>
+    <div class="testimonial-card animate d2">
+      <blockquote>"Migrated 200+ microservices in a weekend. Zero downtime. The rollback feature alone has saved us twice already."</blockquote>
+      <div class="testimonial-author">
+        <div class="testimonial-avatar" style="background:#10b981" aria-hidden="true">JL</div>
+        <div class="testimonial-info"><div class="name">James Liu</div><div class="role">VP Eng, ScaleBase</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
 
-  <!-- PRICING -->
-  <section class="pricing" id="pricing">
-    <div class="container">
-      <div class="pricing-header">
-        <div class="section-label fade-up">◈ Pricing</div>
-        <h2 class="section-title fade-up">Simple, transparent pricing</h2>
-        <p class="section-sub fade-up">Start free, scale as you grow. No surprise bills, no hidden fees.</p>
-      </div>
-      <div class="pricing-grid">
-        <!-- Starter -->
-        <div class="pricing-card fade-up">
-          <div class="pricing-name">Starter</div>
-          <div class="pricing-desc">For hobby projects and side hustles</div>
-          <div class="pricing-amount">
-            <span class="pricing-dollar">$</span>
-            <span class="pricing-value">0</span>
-            <span class="pricing-period">/month</span>
-          </div>
-          <ul class="pricing-features">
-            <li>3 projects</li>
-            <li>100 GB bandwidth</li>
-            <li>Automatic HTTPS</li>
-            <li>Community support</li>
-          </ul>
-          <a href="#" class="btn btn-outline">Get Started</a>
-        </div>
-        <!-- Pro -->
-        <div class="pricing-card popular fade-up">
-          <div class="pricing-badge">Most Popular</div>
-          <div class="pricing-name">Pro</div>
-          <div class="pricing-desc">For growing teams shipping fast</div>
-          <div class="pricing-amount">
-            <span class="pricing-dollar">$</span>
-            <span class="pricing-value">29</span>
-            <span class="pricing-period">/month per seat</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Unlimited projects</li>
-            <li>1 TB bandwidth</li>
-            <li>Preview deploys</li>
-            <li>Team collaboration</li>
-            <li>Priority support</li>
-          </ul>
-          <a href="#" class="btn btn-primary">Start Free Trial</a>
-        </div>
-        <!-- Enterprise -->
-        <div class="pricing-card fade-up">
-          <div class="pricing-name">Enterprise</div>
-          <div class="pricing-desc">For orgs that need control and compliance</div>
-          <div class="pricing-amount">
-            <span class="pricing-value" style="font-size:2rem">Custom</span>
-          </div>
-          <ul class="pricing-features">
-            <li>Everything in Pro</li>
-            <li>SSO / SAML</li>
-            <li>99.99% SLA</li>
-            <li>Dedicated support</li>
-            <li>Custom contracts</li>
-          </ul>
-          <a href="#" class="btn btn-outline">Contact Sales</a>
-        </div>
-      </div>
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+<div class="container">
+  <div class="header">
+    <p class="section-label">Pricing</p>
+    <h2 class="animate">Start free, scale as you grow</h2>
+    <p class="section-desc animate d1">No credit card required. Upgrade when you're ready.</p>
+  </div>
+  <div class="pricing-grid">
+    <div class="pricing-card animate">
+      <div class="plan-name">Hobby</div>
+      <div class="price">$0<span>/mo</span></div>
+      <div class="price-desc">Perfect for side projects</div>
+      <ul>
+        <li>3 projects</li>
+        <li>100GB bandwidth</li>
+        <li>Automatic SSL</li>
+        <li>Community support</li>
+        <li>Preview deployments</li>
+      </ul>
+      <a href="#" class="btn btn-secondary">Get Started</a>
     </div>
-  </section>
+    <div class="pricing-card featured animate d1">
+      <div class="popular-badge">Most Popular</div>
+      <div class="plan-name">Pro</div>
+      <div class="price">$20<span>/mo per seat</span></div>
+      <div class="price-desc">For growing teams</div>
+      <ul>
+        <li>Unlimited projects</li>
+        <li>1TB bandwidth</li>
+        <li>Advanced analytics</li>
+        <li>Team collaboration</li>
+        <li>Priority support</li>
+        <li>Custom domains</li>
+      </ul>
+      <a href="#" class="btn btn-primary">Start Free Trial</a>
+    </div>
+    <div class="pricing-card animate d2">
+      <div class="plan-name">Enterprise</div>
+      <div class="price">Custom</div>
+      <div class="price-desc">For large organizations</div>
+      <ul>
+        <li>Everything in Pro</li>
+        <li>Unlimited bandwidth</li>
+        <li>SSO / SAML</li>
+        <li>SLA guarantee</li>
+        <li>Dedicated support</li>
+        <li>Custom contracts</li>
+      </ul>
+      <a href="#" class="btn btn-secondary">Contact Sales</a>
+    </div>
+  </div>
+</div>
+</section>
 
-  <!-- CTA -->
-  <section class="cta-section">
-    <div class="container">
-      <div class="cta-box fade-up">
-        <h2>Ready to ship faster?</h2>
-        <p>Join 12,000+ developers who stopped fighting their deploy pipeline.</p>
-        <div class="cta-actions">
-          <a href="#" class="btn btn-primary btn-large">Start Building Free →</a>
-          <a href="#" class="btn btn-outline btn-large">Talk to Sales</a>
-        </div>
-        <p class="cta-note">No credit card required · Free tier forever · Setup in 2 minutes</p>
-      </div>
-    </div>
-  </section>
+<!-- FINAL CTA -->
+<section class="final-cta">
+<div class="container">
+  <div class="cta-box animate">
+    <h2>Ready to ship faster?</h2>
+    <p>Join 2,400+ developers deploying with Velox. Free tier, no credit card, live in minutes.</p>
+    <a href="#" class="btn btn-primary">Start Building for Free <span aria-hidden="true">→</span></a>
+  </div>
+</div>
+</section>
 
 </main>
 
 <!-- FOOTER -->
 <footer>
-  <div class="container">
-    <div class="footer-grid">
-      <div class="footer-brand">
-        <div class="logo">
-          <div class="logo-icon" aria-hidden="true">V</div>
-          Velora
-        </div>
-        <p>The modern deployment platform for teams that ship fast and sleep well.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Product</h4>
-        <ul>
-          <li><a href="#">Features</a></li>
-          <li><a href="#">Pricing</a></li>
-          <li><a href="#">Changelog</a></li>
-          <li><a href="#">Docs</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Company</h4>
-        <ul>
-          <li><a href="#">About</a></li>
-          <li><a href="#">Blog</a></li>
-          <li><a href="#">Careers</a></li>
-          <li><a href="#">Contact</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Legal</h4>
-        <ul>
-          <li><a href="#">Privacy</a></li>
-          <li><a href="#">Terms</a></li>
-          <li><a href="#">Security</a></li>
-        </ul>
-      </div>
+<div class="container">
+  <div class="footer-grid">
+    <div class="footer-brand">
+      <a href="#" class="nav-logo" aria-label="Velox home">
+        <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" width="24" height="24"><path d="M4 22L14 4l10 18H4z" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" fill="rgba(99,102,241,.2)"/><circle cx="14" cy="15" r="3" fill="var(--color-primary)"/></svg>
+        Velox
+      </a>
+      <p>The modern deployment platform for teams that move fast.</p>
     </div>
-    <div class="footer-bottom">
-      <span>© 2026 Velora, Inc. All rights reserved.</span>
-      <div class="footer-bottom-links">
-        <a href="#" aria-label="Twitter">𝕏</a>
-        <a href="#" aria-label="GitHub">GH</a>
-        <a href="#" aria-label="Discord">DC</a>
-      </div>
+    <div class="footer-col">
+      <h4>Product</h4>
+      <a href="#">Features</a><a href="#">Pricing</a><a href="#">Changelog</a><a href="#">Docs</a>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <a href="#">About</a><a href="#">Blog</a><a href="#">Careers</a><a href="#">Contact</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="#">Privacy</a><a href="#">Terms</a><a href="#">Security</a>
     </div>
   </div>
+  <div class="footer-bottom">
+    <span>© 2026 Velox Inc. All rights reserved.</span>
+    <span>Built with care for developers.</span>
+  </div>
+</div>
 </footer>
 
 <script>
-// Mobile menu toggle
-const toggle = document.getElementById('menuToggle');
-const links = document.getElementById('navLinks');
-toggle.addEventListener('click', () => {
-  const open = links.classList.toggle('open');
-  toggle.setAttribute('aria-expanded', open);
-  toggle.textContent = open ? '✕' : '☰';
-});
+// Mobile menu
+function toggleMenu(){
+  const m=document.getElementById('mobileMenu');
+  const b=document.querySelector('.mobile-toggle');
+  const open=m.classList.toggle('open');
+  b.setAttribute('aria-expanded',open);
+}
+function closeMenu(){
+  document.getElementById('mobileMenu').classList.remove('open');
+  document.querySelector('.mobile-toggle').setAttribute('aria-expanded','false');
+}
 
-// Intersection Observer for fade-up animations
-const observer = new IntersectionObserver((entries) => {
-  entries.forEach((entry, i) => {
-    if (entry.isIntersecting) {
-      setTimeout(() => entry.target.classList.add('visible'), i * 80);
-      observer.unobserve(entry.target);
-    }
-  });
-}, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
-
-document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
-
-// Smooth scroll for anchor links
-document.querySelectorAll('a[href^="#"]').forEach(a => {
-  a.addEventListener('click', e => {
-    const target = document.querySelector(a.getAttribute('href'));
-    if (target) {
-      e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth' });
-      // Close mobile menu if open
-      links.classList.remove('open');
-      toggle.setAttribute('aria-expanded', 'false');
-      toggle.textContent = '☰';
-    }
-  });
-});
+// Scroll animations
+const observer=new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}});
+},{threshold:0.15,rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.animate').forEach(el=>observer.observe(el));
 </script>
 </body>
 </html>

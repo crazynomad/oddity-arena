@@ -4,458 +4,597 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>3D Solar System - N-Body Gravity Sandbox</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-body { overflow: hidden; background: #000; font-family: 'Segoe UI', system-ui, sans-serif; color: #eee; }
+body { overflow: hidden; background: #000; font-family: 'Segoe UI', system-ui, sans-serif; color: #e0e0e0; }
 canvas { display: block; }
-#ui {
-  position: absolute; top: 0; left: 0; width: 280px; height: 100vh;
-  background: rgba(10,12,20,0.92); padding: 14px; overflow-y: auto;
-  border-right: 1px solid rgba(100,140,255,0.15);
-  scrollbar-width: thin; scrollbar-color: #334 #111;
-}
-#ui h2 { font-size: 15px; margin-bottom: 10px; color: #8af; letter-spacing: 1px; }
-#ui h3 { font-size: 12px; margin: 10px 0 6px; color: #6cf; text-transform: uppercase; letter-spacing: 0.5px; }
-.slider-row { display: flex; align-items: center; margin: 4px 0; }
-.slider-row label { flex: 0 0 90px; font-size: 11px; color: #aab; }
-.slider-row input[type=range] { flex: 1; height: 4px; }
-.slider-row .val { flex: 0 0 42px; text-align: right; font-size: 10px; color: #8af; font-family: monospace; }
-button {
-  padding: 6px 12px; margin: 3px 2px; border: 1px solid rgba(100,140,255,0.3);
-  background: rgba(40,50,80,0.6); color: #cdf; border-radius: 4px; cursor: pointer;
-  font-size: 11px; transition: background 0.15s;
-}
-button:hover { background: rgba(60,80,140,0.8); }
-button.active { background: rgba(80,120,255,0.4); border-color: #8af; }
-#body-list { max-height: 200px; overflow-y: auto; margin: 6px 0; }
-.body-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 4px 6px; margin: 2px 0; border-radius: 3px;
-  background: rgba(30,40,60,0.5); font-size: 11px;
-}
+#ui { position: absolute; top: 0; left: 0; width: 280px; max-height: 100vh; overflow-y: auto; background: rgba(10,10,30,0.85); backdrop-filter: blur(8px); padding: 14px; border-right: 1px solid rgba(100,140,255,0.2); }
+#ui::-webkit-scrollbar { width: 4px; }
+#ui::-webkit-scrollbar-thumb { background: rgba(100,140,255,0.4); border-radius: 2px; }
+h2 { font-size: 16px; margin-bottom: 8px; color: #8ab4ff; letter-spacing: 1px; }
+h3 { font-size: 13px; margin: 10px 0 6px; color: #6a9aff; border-bottom: 1px solid rgba(100,140,255,0.15); padding-bottom: 3px; }
+label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; margin: 4px 0; }
+label span.val { color: #8ab4ff; min-width: 40px; text-align: right; }
+input[type=range] { width: 110px; accent-color: #5588ff; }
+input[type=number], input[type=text] { width: 60px; background: rgba(30,30,60,0.8); border: 1px solid rgba(100,140,255,0.3); color: #e0e0e0; border-radius: 3px; padding: 2px 4px; font-size: 11px; }
+input[type=number].wide { width: 100%; }
+button { background: linear-gradient(135deg, #3366cc, #2244aa); color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; margin: 2px; transition: background 0.2s; }
+button:hover { background: linear-gradient(135deg, #4477dd, #3355bb); }
+button.danger { background: linear-gradient(135deg, #cc3333, #aa2222); }
+button.danger:hover { background: linear-gradient(135deg, #dd4444, #bb3333); }
+.btn-row { display: flex; gap: 4px; flex-wrap: wrap; margin: 6px 0; }
+#body-list { max-height: 180px; overflow-y: auto; margin: 6px 0; }
+.body-item { display: flex; justify-content: space-between; align-items: center; padding: 3px 6px; margin: 2px 0; background: rgba(40,40,80,0.5); border-radius: 3px; font-size: 11px; cursor: pointer; }
+.body-item:hover { background: rgba(60,60,120,0.6); }
+.body-item.selected { border-left: 3px solid #5588ff; }
 .body-item .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
 .body-item .name { flex: 1; }
-.body-item button { padding: 2px 6px; font-size: 9px; margin: 0; }
-#info {
-  position: absolute; bottom: 10px; left: 290px; font-size: 11px; color: #668;
-  pointer-events: none;
-}
-#crosshair {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-  pointer-events: none; color: rgba(100,140,255,0.3); font-size: 20px; display: none;
-}
-.preset-row { display: flex; flex-wrap: wrap; gap: 3px; margin: 4px 0; }
+.body-item .del { color: #ff6666; cursor: pointer; font-weight: bold; padding: 0 4px; }
+#info { position: absolute; bottom: 10px; right: 10px; font-size: 11px; color: rgba(200,200,255,0.6); }
+#tooltip { position: absolute; pointer-events: none; background: rgba(10,10,30,0.9); border: 1px solid rgba(100,140,255,0.3); padding: 6px 10px; border-radius: 4px; font-size: 11px; display: none; }
+.section { margin-bottom: 8px; }
+select { background: rgba(30,30,60,0.8); border: 1px solid rgba(100,140,255,0.3); color: #e0e0e0; border-radius: 3px; padding: 2px 4px; font-size: 11px; width: 100%; }
 </style>
 </head>
 <body>
 <div id="ui">
-  <h2>🪐 3D Solar System</h2>
-  <div class="preset-row">
-    <button onclick="loadPreset('solar')">Solar System</button>
-    <button onclick="loadPreset('binary')">Binary Star</button>
-    <button onclick="loadPreset('random')">Random</button>
-    <button onclick="resetSim()">Reset</button>
+  <h2>🪐 Solar System Sandbox</h2>
+  <div class="section">
+    <h3>Simulation</h3>
+    <div class="btn-row">
+      <button id="btn-pause">⏸ Pause</button>
+      <button id="btn-reset">🔄 Reset</button>
+    </div>
+    <label>Gravity <span class="val" id="v-grav">1.0</span></label>
+    <input type="range" id="sl-grav" min="0" max="5" step="0.1" value="1">
+    <label>Speed <span class="val" id="v-speed">1.0</span></label>
+    <input type="range" id="sl-speed" min="0.1" max="5" step="0.1" value="1">
+    <label>Trail Length <span class="val" id="v-trail">100</span></label>
+    <input type="range" id="sl-trail" min="0" max="500" step="10" value="100">
+    <label>Curvature Grid <input type="checkbox" id="chk-curve" checked></label>
+    <label>Integrator
+      <select id="sel-integrator">
+        <option value="verlet" selected>Velocity Verlet</option>
+        <option value="rk4">RK4</option>
+      </select>
+    </label>
   </div>
-  <div style="margin:6px 0">
-    <button id="btn-pause" onclick="togglePause()">⏸ Pause</button>
-    <button id="btn-add" onclick="toggleAddMode()">➕ Add Body</button>
+  <div class="section">
+    <h3>Bodies</h3>
+    <div id="body-list"></div>
+    <h3>Add Body</h3>
+    <label>Preset
+      <select id="sel-preset">
+        <option value="custom">Custom</option>
+        <option value="sun">Sun</option>
+        <option value="planet">Planet</option>
+        <option value="moon">Small Moon</option>
+        <option value="asteroid">Asteroid</option>
+      </select>
+    </label>
+    <label>Name <input type="text" id="inp-name" value="" style="width:100px"></label>
+    <label>Mass <input type="number" id="inp-mass" value="5" min="0.1" step="0.5"></label>
+    <label>X <input type="number" id="inp-x" value="0" step="1"></label>
+    <label>Y <input type="number" id="inp-y" value="0" step="1"></label>
+    <label>Z <input type="number" id="inp-z" value="0" step="1"></label>
+    <label>Vx <input type="number" id="inp-vx" value="0" step="0.1"></label>
+    <label>Vy <input type="number" id="inp-vy" value="0" step="0.1"></label>
+    <label>Vz <input type="number" id="inp-vz" value="0" step="0.1"></label>
+    <div class="btn-row">
+      <button id="btn-add">➕ Add Body</button>
+      <button id="btn-random">🎲 Random</button>
+    </div>
   </div>
-  <h3>Simulation</h3>
-  <div class="slider-row">
-    <label>Gravity</label>
-    <input type="range" id="sl-gravity" min="0" max="200" value="100">
-    <span class="val" id="v-gravity">1.0</span>
+  <div class="section">
+    <h3>Presets</h3>
+    <div class="btn-row">
+      <button id="btn-solar">☀️ Solar System</button>
+      <button id="btn-binary">⭐ Binary Star</button>
+      <button id="btn-chaos">💥 Chaos</button>
+    </div>
   </div>
-  <div class="slider-row">
-    <label>Speed</label>
-    <input type="range" id="sl-speed" min="0" max="300" value="100">
-    <span class="val" id="v-speed">1.0</span>
-  </div>
-  <div class="slider-row">
-    <label>Trail Length</label>
-    <input type="range" id="sl-trail" min="0" max="500" value="200">
-    <span class="val" id="v-trail">200</span>
-  </div>
-  <div class="slider-row">
-    <label>Softening</label>
-    <input type="range" id="sl-soft" min="1" max="100" value="20">
-    <span class="val" id="v-soft">0.20</span>
-  </div>
-  <h3>New Body</h3>
-  <div class="slider-row">
-    <label>Mass</label>
-    <input type="range" id="sl-mass" min="1" max="100" value="20">
-    <span class="val" id="v-mass">20</span>
-  </div>
-  <div class="slider-row">
-    <label>Curvature Grid</label>
-    <input type="range" id="sl-curve" min="0" max="100" value="40">
-    <span class="val" id="v-curve">0.40</span>
-  </div>
-  <h3>Bodies</h3>
-  <div id="body-list"></div>
 </div>
-<div id="info">LMB drag: orbit | RMB drag: pan | Scroll: zoom | Click (add mode): place body</div>
-<div id="crosshair">+</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<div id="tooltip"></div>
+<div id="info">Click body to select · Scroll to zoom · Drag to orbit · Right-drag to pan</div>
 <script>
-// ─── Globals ───
-let scene, camera, renderer, clock;
-let bodies = [], trails = [], trailGeometries = [];
-let paused = false, addMode = false;
-let G_mult = 1, speed_mult = 1, trailLen = 200, softening = 0.2, curvatureStrength = 0.4;
-let gridHelper, gridVerticesOrig = [];
-let raycaster, mouse = new THREE.Vector2();
-let bodyIdCounter = 0;
+(function(){
+const G_BASE = 40;
+let paused = false, gravMul = 1, speedMul = 1, trailLen = 100, showCurvature = true;
+let integrator = 'verlet';
+let bodies = [], nextId = 0, selectedId = null;
+let scene, camera, renderer, controls, raycaster, mouse, curvatureMesh;
+const COLORS = ['#ffaa33','#3388ff','#33cc88','#ff5566','#aa66ff','#ffdd44','#44ddff','#ff8844','#88ff44','#ff44aa','#44ffaa','#aaaaff'];
+const clock = new THREE.Clock();
 
-// Camera orbit
-let camDist = 60, camTheta = Math.PI/4, camPhi = Math.PI/3;
-let camTarget = new THREE.Vector3(0,0,0);
-let isDragging = false, isPanning = false, lastMouse = {x:0,y:0};
+// ---- Three.js Setup ----
+scene = new THREE.Scene();
+camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 10000);
+camera.position.set(0, 80, 120);
+renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+controls = new THREE.OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 5;
+controls.maxDistance = 2000;
 
-const COLORS = ['#ff6644','#44aaff','#ffcc33','#66ff88','#ff44aa','#aa66ff','#ff8833','#33ffcc','#ff4444','#44ff44','#8888ff','#ffff44','#ff66cc','#66ccff','#ccff66'];
+// Lighting
+scene.add(new THREE.AmbientLight(0x333355, 0.6));
+const sunLight = new THREE.PointLight(0xffffff, 1.5, 1000);
+scene.add(sunLight);
+const dirLight = new THREE.DirectionalLight(0x8888cc, 0.3);
+dirLight.position.set(50, 100, 50);
+scene.add(dirLight);
 
-function init() {
-  scene = new THREE.Scene();
-  camera = new THREE.PerspectiveCamera(55, window.innerWidth/window.innerHeight, 0.1, 2000);
-  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  document.body.appendChild(renderer.domElement);
-  clock = new THREE.Clock();
-  raycaster = new THREE.Raycaster();
+// Starfield
+const starGeo = new THREE.BufferGeometry();
+const starVerts = new Float32Array(3000);
+for(let i=0;i<3000;i++) starVerts[i] = (Math.random()-0.5)*2000;
+starGeo.setAttribute('position', new THREE.BufferAttribute(starVerts, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color:0xffffff, size:0.5})));
 
-  // Lights
-  scene.add(new THREE.AmbientLight(0x334466, 0.6));
-  const dl = new THREE.DirectionalLight(0xffffff, 0.8);
-  dl.position.set(20, 40, 30);
-  scene.add(dl);
-  scene.add(new THREE.PointLight(0x4488ff, 0.3, 200));
+raycaster = new THREE.Raycaster();
+mouse = new THREE.Vector2();
 
-  // Stars background
-  const starGeo = new THREE.BufferGeometry();
-  const starVerts = [];
-  for (let i = 0; i < 3000; i++) {
-    starVerts.push((Math.random()-0.5)*800, (Math.random()-0.5)*800, (Math.random()-0.5)*800);
-  }
-  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
-  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xaaaacc, size: 0.5 })));
-
-  // Curvature grid
-  createGrid();
-
-  // Events
-  const c = renderer.domElement;
-  c.addEventListener('mousedown', onMouseDown);
-  c.addEventListener('mousemove', onMouseMove);
-  c.addEventListener('mouseup', onMouseUp);
-  c.addEventListener('wheel', onWheel);
-  c.addEventListener('contextmenu', e => e.preventDefault());
-  c.addEventListener('click', onClick);
-  window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth/window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-  });
-
-  // Sliders
-  bindSlider('sl-gravity','v-gravity', v => { G_mult = v/100; return G_mult.toFixed(2); });
-  bindSlider('sl-speed','v-speed', v => { speed_mult = v/100; return speed_mult.toFixed(2); });
-  bindSlider('sl-trail','v-trail', v => { trailLen = v; return v; });
-  bindSlider('sl-soft','v-soft', v => { softening = v/100; return (v/100).toFixed(2); });
-  bindSlider('sl-mass','v-mass', v => v);
-  bindSlider('sl-curve','v-curve', v => { curvatureStrength = v/100; return (v/100).toFixed(2); });
-
-  loadPreset('solar');
-  animate();
-}
-
-function bindSlider(sid, vid, fn) {
-  const s = document.getElementById(sid);
-  const v = document.getElementById(vid);
-  s.addEventListener('input', () => { v.textContent = fn(+s.value); });
-}
-
-function createGrid() {
-  if (gridHelper) scene.remove(gridHelper);
-  const size = 80, div = 40;
-  const geo = new THREE.PlaneGeometry(size, size, div, div);
+// ---- Curvature Grid ----
+const GRID = 40, GRID_SPACE = 5;
+function createCurvatureGrid(){
+  const geo = new THREE.PlaneGeometry(GRID*GRID_SPACE, GRID*GRID_SPACE, GRID, GRID);
   geo.rotateX(-Math.PI/2);
-  const mat = new THREE.MeshBasicMaterial({ color: 0x2244aa, wireframe: true, transparent: true, opacity: 0.15 });
-  gridHelper = new THREE.Mesh(geo, mat);
-  gridHelper.position.y = -8;
-  scene.add(gridHelper);
-  // Store original positions
-  const pos = geo.attributes.position;
-  gridVerticesOrig = [];
-  for (let i = 0; i < pos.count; i++) {
-    gridVerticesOrig.push(pos.getX(i), pos.getY(i), pos.getZ(i));
-  }
+  const mat = new THREE.MeshBasicMaterial({color:0x2244aa, wireframe:true, transparent:true, opacity:0.15});
+  curvatureMesh = new THREE.Mesh(geo, mat);
+  curvatureMesh.position.y = -20;
+  scene.add(curvatureMesh);
 }
+createCurvatureGrid();
 
-function updateGrid() {
-  if (!gridHelper || curvatureStrength === 0) return;
-  const pos = gridHelper.geometry.attributes.position;
-  for (let i = 0; i < pos.count; i++) {
-    const ox = gridVerticesOrig[i*3], oy = gridVerticesOrig[i*3+1], oz = gridVerticesOrig[i*3+2];
-    const wx = ox + gridHelper.position.x;
-    const wz = oz + gridHelper.position.z;
-    let dy = 0;
-    for (const b of bodies) {
-      const dx = wx - b.pos.x, dz = wz - b.pos.z;
-      const dist2 = dx*dx + dz*dz + 4;
-      dy -= (b.mass * curvatureStrength * 3) / Math.sqrt(dist2);
+function updateCurvature(){
+  if(!curvatureMesh) return;
+  curvatureMesh.visible = showCurvature;
+  if(!showCurvature) return;
+  const pos = curvatureMesh.geometry.attributes.position;
+  const baseY = -20;
+  for(let i=0; i<pos.count; i++){
+    const px = pos.getX(i), pz = pos.getZ(i);
+    let disp = 0;
+    for(const b of bodies){
+      const dx = px - b.pos.x, dz = pz - b.pos.z;
+      const r = Math.sqrt(dx*dx + dz*dz) + 1;
+      disp -= (b.mass * gravMul * 3) / (r * 0.5 + 1);
     }
-    pos.setY(i, oy + dy);
+    pos.setY(i, baseY + Math.max(disp, -60));
   }
   pos.needsUpdate = true;
 }
 
-// ─── Body Management ───
-function addBody(name, mass, pos, vel, color) {
-  const id = bodyIdCounter++;
-  const r = Math.pow(mass, 1/3) * 0.35;
-  const geo = new THREE.SphereGeometry(r, 24, 18);
-  const mat = new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color).multiplyScalar(0.15), roughness: 0.6, metalness: 0.2 });
+// ---- Body Management ----
+function makeBody(name, mass, x, y, z, vx, vy, vz, color){
+  const id = nextId++;
+  const radius = Math.pow(mass, 1/3) * 0.8;
+  const col = color || COLORS[id % COLORS.length];
+  const geo = new THREE.SphereGeometry(radius, 24, 18);
+  const mat = new THREE.MeshPhongMaterial({
+    color: new THREE.Color(col),
+    emissive: new THREE.Color(col).multiplyScalar(mass > 50 ? 0.6 : 0.1),
+    shininess: 30
+  });
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.copy(pos);
+  mesh.position.set(x, y, z);
   scene.add(mesh);
 
-  // Glow
-  const glowGeo = new THREE.SphereGeometry(r*1.4, 16, 12);
-  const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.1 });
-  const glow = new THREE.Mesh(glowGeo, glowMat);
-  mesh.add(glow);
+  // Glow for massive bodies
+  let glow = null;
+  if(mass > 30){
+    const glowGeo = new THREE.SphereGeometry(radius * 1.8, 16, 12);
+    const glowMat = new THREE.MeshBasicMaterial({color: new THREE.Color(col), transparent:true, opacity:0.12});
+    glow = new THREE.Mesh(glowGeo, glowMat);
+    mesh.add(glow);
+  }
 
   // Trail
-  const maxPts = 600;
-  const tGeo = new THREE.BufferGeometry();
-  const tPos = new Float32Array(maxPts * 3);
-  const tCol = new Float32Array(maxPts * 4);
-  tGeo.setAttribute('position', new THREE.Float32BufferAttribute(tPos, 3));
-  tGeo.setAttribute('color', new THREE.Float32BufferAttribute(tCol, 4));
-  tGeo.setDrawRange(0, 0);
-  const tMat = new THREE.LineBasicMaterial({ vertexColors: true, transparent: true });
-  const tLine = new THREE.Line(tGeo, tMat);
-  scene.add(tLine);
+  const trailMax = 600;
+  const trailGeo = new THREE.BufferGeometry();
+  const trailArr = new Float32Array(trailMax * 3);
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailArr, 3));
+  trailGeo.setDrawRange(0, 0);
+  const trailMat = new THREE.LineBasicMaterial({color: new THREE.Color(col), transparent:true, opacity:0.5});
+  const trailLine = new THREE.Line(trailGeo, trailMat);
+  scene.add(trailLine);
 
-  const c3 = new THREE.Color(color);
-  const body = { id, name, mass, pos: pos.clone(), vel: vel.clone(), acc: new THREE.Vector3(), mesh, trail: [], trailLine: tLine, trailGeo: tGeo, color: c3, radius: r, alive: true };
+  const body = {
+    id, name, mass, radius,
+    pos: new THREE.Vector3(x, y, z),
+    vel: new THREE.Vector3(vx, vy, vz),
+    acc: new THREE.Vector3(),
+    mesh, glow, color: col,
+    trail: [], trailLine, trailGeo, trailMax,
+    initPos: new THREE.Vector3(x, y, z),
+    initVel: new THREE.Vector3(vx, vy, vz),
+    initMass: mass
+  };
+  mesh.userData.bodyId = id;
   bodies.push(body);
   updateBodyList();
   return body;
 }
 
-function removeBody(id) {
-  const idx = bodies.findIndex(b => b.id === id);
-  if (idx < 0) return;
+function removeBody(id){
+  const idx = bodies.findIndex(b=>b.id===id);
+  if(idx<0) return;
   const b = bodies[idx];
   scene.remove(b.mesh);
   scene.remove(b.trailLine);
-  b.trailGeo.dispose();
   bodies.splice(idx, 1);
+  if(selectedId === id) selectedId = null;
   updateBodyList();
 }
 
-function updateBodyList() {
-  const el = document.getElementById('body-list');
-  el.innerHTML = bodies.map(b => {
-    const c = '#' + b.color.getHexString();
-    return `<div class="body-item"><span class="dot" style="background:${c}"></span><span class="name">${b.name} (m=${b.mass.toFixed(1)})</span><button onclick="removeBody(${b.id})">✕</button></div>`;
-  }).join('');
+function clearBodies(){
+  while(bodies.length) removeBody(bodies[0].id);
+  nextId = 0;
 }
 
-// ─── Physics ───
-function stepPhysics(dt) {
-  if (paused || bodies.length === 0) return;
-  dt *= speed_mult;
-  const G = 0.5 * G_mult;
-  const eps2 = softening * softening;
-  const n = bodies.length;
-
-  // Reset accelerations
-  for (let i = 0; i < n; i++) bodies[i].acc.set(0,0,0);
-
-  // N-body gravity
-  for (let i = 0; i < n; i++) {
-    for (let j = i+1; j < n; j++) {
-      const bi = bodies[i], bj = bodies[j];
-      const dx = bj.pos.x - bi.pos.x, dy = bj.pos.y - bi.pos.y, dz = bj.pos.z - bi.pos.z;
-      const dist2 = dx*dx + dy*dy + dz*dz + eps2;
-      const dist = Math.sqrt(dist2);
-      const F = G / (dist2 * dist); // G*mi*mj / dist^3 direction
-      bi.acc.x += F * bj.mass * dx; bi.acc.y += F * bj.mass * dy; bi.acc.z += F * bj.mass * dz;
-      bj.acc.x -= F * bi.mass * dx; bj.acc.y -= F * bi.mass * dy; bj.acc.z -= F * bi.mass * dz;
+// ---- Physics ----
+function computeAccelerations(bs, positions){
+  const acc = positions ? positions.map(()=>new THREE.Vector3()) : bs.map(()=>new THREE.Vector3());
+  const G = G_BASE * gravMul;
+  const SOFTENING = 2.0;
+  for(let i=0; i<bs.length; i++){
+    for(let j=i+1; j<bs.length; j++){
+      const pi = positions ? positions[i] : bs[i].pos;
+      const pj = positions ? positions[j] : bs[j].pos;
+      const dx = pj.x - pi.x, dy = pj.y - pi.y, dz = pj.z - pi.z;
+      const r2 = dx*dx + dy*dy + dz*dz + SOFTENING*SOFTENING;
+      const r = Math.sqrt(r2);
+      const F = G / (r2 * r);
+      acc[i].x += F * bs[j].mass * dx;
+      acc[i].y += F * bs[j].mass * dy;
+      acc[i].z += F * bs[j].mass * dz;
+      acc[j].x -= F * bs[i].mass * dx;
+      acc[j].y -= F * bs[i].mass * dy;
+      acc[j].z -= F * bs[i].mass * dz;
     }
   }
+  return acc;
+}
 
-  // Leapfrog integration
-  for (const b of bodies) {
-    b.vel.x += b.acc.x * dt; b.vel.y += b.acc.y * dt; b.vel.z += b.acc.z * dt;
-    b.pos.x += b.vel.x * dt; b.pos.y += b.vel.y * dt; b.pos.z += b.vel.z * dt;
+function stepVerlet(dt){
+  // Compute current accelerations
+  const acc = computeAccelerations(bodies);
+  // Update positions
+  for(let i=0; i<bodies.length; i++){
+    const b = bodies[i];
+    b.pos.x += b.vel.x * dt + 0.5 * acc[i].x * dt * dt;
+    b.pos.y += b.vel.y * dt + 0.5 * acc[i].y * dt * dt;
+    b.pos.z += b.vel.z * dt + 0.5 * acc[i].z * dt * dt;
   }
+  // Compute new accelerations
+  const accNew = computeAccelerations(bodies);
+  // Update velocities
+  for(let i=0; i<bodies.length; i++){
+    const b = bodies[i];
+    b.vel.x += 0.5 * (acc[i].x + accNew[i].x) * dt;
+    b.vel.y += 0.5 * (acc[i].y + accNew[i].y) * dt;
+    b.vel.z += 0.5 * (acc[i].z + accNew[i].z) * dt;
+  }
+}
 
-  // Collision detection & merging
-  for (let i = 0; i < bodies.length; i++) {
-    for (let j = i+1; j < bodies.length; j++) {
-      const bi = bodies[i], bj = bodies[j];
-      const dx = bj.pos.x-bi.pos.x, dy = bj.pos.y-bi.pos.y, dz = bj.pos.z-bi.pos.z;
-      const dist = Math.sqrt(dx*dx+dy*dy+dz*dz);
-      if (dist < bi.radius + bj.radius) {
-        // Merge into bigger
-        const [big, small] = bi.mass >= bj.mass ? [bi, bj] : [bj, bi];
-        const totalMass = big.mass + small.mass;
-        big.vel.x = (big.vel.x*big.mass + small.vel.x*small.mass)/totalMass;
-        big.vel.y = (big.vel.y*big.mass + small.vel.y*small.mass)/totalMass;
-        big.vel.z = (big.vel.z*big.mass + small.vel.z*small.mass)/totalMass;
-        big.pos.x = (big.pos.x*big.mass + small.pos.x*small.mass)/totalMass;
-        big.pos.y = (big.pos.y*big.mass + small.pos.y*small.mass)/totalMass;
-        big.pos.z = (big.pos.z*big.mass + small.pos.z*small.mass)/totalMass;
-        big.mass = totalMass;
-        big.radius = Math.pow(totalMass, 1/3)*0.35;
-        big.mesh.geometry.dispose();
-        big.mesh.geometry = new THREE.SphereGeometry(big.radius, 24, 18);
-        big.name += '+' + small.name;
-        removeBody(small.id);
-        if (j <= i) i--;
-        j--;
+function stepRK4(dt){
+  const n = bodies.length;
+  const p0=[], v0=[];
+  for(const b of bodies){ p0.push(b.pos.clone()); v0.push(b.vel.clone()); }
+
+  function evalAcc(positions){ return computeAccelerations(bodies, positions); }
+
+  // k1
+  const k1a = evalAcc(p0);
+  const k1v = v0.map(v=>v.clone());
+
+  // k2
+  const p1 = p0.map((p,i)=>new THREE.Vector3(p.x+k1v[i].x*dt*0.5, p.y+k1v[i].y*dt*0.5, p.z+k1v[i].z*dt*0.5));
+  const v1 = v0.map((v,i)=>new THREE.Vector3(v.x+k1a[i].x*dt*0.5, v.y+k1a[i].y*dt*0.5, v.z+k1a[i].z*dt*0.5));
+  const k2a = evalAcc(p1);
+  const k2v = v1;
+
+  // k3
+  const p2 = p0.map((p,i)=>new THREE.Vector3(p.x+k2v[i].x*dt*0.5, p.y+k2v[i].y*dt*0.5, p.z+k2v[i].z*dt*0.5));
+  const v2 = v0.map((v,i)=>new THREE.Vector3(v.x+k2a[i].x*dt*0.5, v.y+k2a[i].y*dt*0.5, v.z+k2a[i].z*dt*0.5));
+  const k3a = evalAcc(p2);
+  const k3v = v2;
+
+  // k4
+  const p3 = p0.map((p,i)=>new THREE.Vector3(p.x+k3v[i].x*dt, p.y+k3v[i].y*dt, p.z+k3v[i].z*dt));
+  const v3 = v0.map((v,i)=>new THREE.Vector3(v.x+k3a[i].x*dt, v.y+k3a[i].y*dt, v.z+k3a[i].z*dt));
+  const k4a = evalAcc(p3);
+  const k4v = v3;
+
+  for(let i=0; i<n; i++){
+    const b = bodies[i];
+    b.pos.x = p0[i].x + (dt/6)*(k1v[i].x + 2*k2v[i].x + 2*k3v[i].x + k4v[i].x);
+    b.pos.y = p0[i].y + (dt/6)*(k1v[i].y + 2*k2v[i].y + 2*k3v[i].y + k4v[i].y);
+    b.pos.z = p0[i].z + (dt/6)*(k1v[i].z + 2*k2v[i].z + 2*k3v[i].z + k4v[i].z);
+    b.vel.x = v0[i].x + (dt/6)*(k1a[i].x + 2*k2a[i].x + 2*k3a[i].x + k4a[i].x);
+    b.vel.y = v0[i].y + (dt/6)*(k1a[i].y + 2*k2a[i].y + 2*k3a[i].y + k4a[i].y);
+    b.vel.z = v0[i].z + (dt/6)*(k1a[i].z + 2*k2a[i].z + 2*k3a[i].z + k4a[i].z);
+  }
+}
+
+function checkCollisions(){
+  const toRemove = new Set();
+  for(let i=0; i<bodies.length; i++){
+    if(toRemove.has(i)) continue;
+    for(let j=i+1; j<bodies.length; j++){
+      if(toRemove.has(j)) continue;
+      const a = bodies[i], b = bodies[j];
+      const dist = a.pos.distanceTo(b.pos);
+      if(dist < a.radius + b.radius){
+        // Merge into heavier body
+        const [big, small] = a.mass >= b.mass ? [i,j] : [j,i];
+        const B = bodies[big], S = bodies[small];
+        const totalMass = B.mass + S.mass;
+        // Conservation of momentum
+        B.vel.x = (B.vel.x * B.mass + S.vel.x * S.mass) / totalMass;
+        B.vel.y = (B.vel.y * B.mass + S.vel.y * S.mass) / totalMass;
+        B.vel.z = (B.vel.z * B.mass + S.vel.z * S.mass) / totalMass;
+        // Weighted position
+        B.pos.x = (B.pos.x * B.mass + S.pos.x * S.mass) / totalMass;
+        B.pos.y = (B.pos.y * B.mass + S.pos.y * S.mass) / totalMass;
+        B.pos.z = (B.pos.z * B.mass + S.pos.z * S.mass) / totalMass;
+        B.mass = totalMass;
+        B.radius = Math.pow(totalMass, 1/3) * 0.8;
+        // Update mesh
+        scene.remove(B.mesh);
+        const geo = new THREE.SphereGeometry(B.radius, 24, 18);
+        const emissive = totalMass > 50 ? 0.6 : 0.1;
+        const mat = new THREE.MeshPhongMaterial({
+          color: new THREE.Color(B.color),
+          emissive: new THREE.Color(B.color).multiplyScalar(emissive),
+          shininess: 30
+        });
+        B.mesh = new THREE.Mesh(geo, mat);
+        B.mesh.userData.bodyId = B.id;
+        B.mesh.position.copy(B.pos);
+        scene.add(B.mesh);
+        if(totalMass > 30 && !B.glow){
+          const gg = new THREE.SphereGeometry(B.radius*1.8, 16, 12);
+          const gm = new THREE.MeshBasicMaterial({color: new THREE.Color(B.color), transparent:true, opacity:0.12});
+          B.glow = new THREE.Mesh(gg, gm);
+          B.mesh.add(B.glow);
+        }
+        B.name = B.name + '+' + S.name;
+        toRemove.add(small);
       }
     }
   }
+  if(toRemove.size){
+    const ids = [...toRemove].sort((a,b)=>b-a).map(i=>bodies[i].id);
+    ids.forEach(id=>removeBody(id));
+  }
+}
 
-  // Update meshes and trails
-  for (const b of bodies) {
-    b.mesh.position.copy(b.pos);
-    b.trail.push(b.pos.clone());
-    if (b.trail.length > trailLen) b.trail.splice(0, b.trail.length - trailLen);
-    // Update trail geometry
-    const tPos = b.trailGeo.attributes.position;
-    const tCol = b.trailGeo.attributes.color;
-    const len = Math.min(b.trail.length, 600);
-    for (let i = 0; i < len; i++) {
-      tPos.setXYZ(i, b.trail[i].x, b.trail[i].y, b.trail[i].z);
-      const a = i / len;
-      tCol.setXYZW(i, b.color.r, b.color.g, b.color.b, a * 0.7);
+// ---- Trails ----
+function updateTrails(){
+  for(const b of bodies){
+    if(trailLen > 0){
+      b.trail.push(b.pos.clone());
+      if(b.trail.length > trailLen) b.trail.splice(0, b.trail.length - trailLen);
+    } else {
+      b.trail.length = 0;
     }
-    tPos.needsUpdate = true;
-    tCol.needsUpdate = true;
+    const arr = b.trailGeo.attributes.position.array;
+    const len = Math.min(b.trail.length, b.trailMax);
+    for(let i=0; i<len; i++){
+      arr[i*3] = b.trail[i].x;
+      arr[i*3+1] = b.trail[i].y;
+      arr[i*3+2] = b.trail[i].z;
+    }
+    b.trailGeo.attributes.position.needsUpdate = true;
     b.trailGeo.setDrawRange(0, len);
   }
 }
 
-// ─── Camera ───
-function updateCamera() {
-  camera.position.set(
-    camTarget.x + camDist * Math.sin(camPhi) * Math.cos(camTheta),
-    camTarget.y + camDist * Math.cos(camPhi),
-    camTarget.z + camDist * Math.sin(camPhi) * Math.sin(camTheta)
-  );
-  camera.lookAt(camTarget);
+// ---- UI ----
+function updateBodyList(){
+  const el = document.getElementById('body-list');
+  el.innerHTML = '';
+  for(const b of bodies){
+    const div = document.createElement('div');
+    div.className = 'body-item' + (selectedId === b.id ? ' selected' : '');
+    div.innerHTML = `<span class="dot" style="background:${b.color}"></span><span class="name">${b.name} (m=${b.mass.toFixed(1)})</span><span class="del" data-id="${b.id}">✕</span>`;
+    div.addEventListener('click', ()=>{ selectedId = b.id; updateBodyList(); });
+    el.appendChild(div);
+  }
+  el.querySelectorAll('.del').forEach(d=>{
+    d.addEventListener('click', e=>{ e.stopPropagation(); removeBody(+d.dataset.id); });
+  });
 }
 
-function onMouseDown(e) {
-  if (e.button === 0) isDragging = true;
-  if (e.button === 2) isPanning = true;
-  lastMouse.x = e.clientX; lastMouse.y = e.clientY;
-}
-function onMouseMove(e) {
-  const dx = e.clientX - lastMouse.x, dy = e.clientY - lastMouse.y;
-  if (isDragging) {
-    camTheta -= dx * 0.005;
-    camPhi = Math.max(0.1, Math.min(Math.PI-0.1, camPhi - dy*0.005));
-  }
-  if (isPanning) {
-    const right = new THREE.Vector3().crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).normalize();
-    const up = camera.up.clone();
-    camTarget.add(right.multiplyScalar(-dx*0.05));
-    camTarget.add(up.multiplyScalar(dy*0.05));
-  }
-  lastMouse.x = e.clientX; lastMouse.y = e.clientY;
-}
-function onMouseUp() { isDragging = false; isPanning = false; }
-function onWheel(e) { camDist = Math.max(5, Math.min(300, camDist + e.deltaY*0.05)); }
+// Sliders
+const slGrav = document.getElementById('sl-grav');
+const slSpeed = document.getElementById('sl-speed');
+const slTrail = document.getElementById('sl-trail');
+slGrav.oninput = ()=>{ gravMul = +slGrav.value; document.getElementById('v-grav').textContent = gravMul.toFixed(1); };
+slSpeed.oninput = ()=>{ speedMul = +slSpeed.value; document.getElementById('v-speed').textContent = speedMul.toFixed(1); };
+slTrail.oninput = ()=>{ trailLen = +slTrail.value; document.getElementById('v-trail').textContent = trailLen; };
+document.getElementById('chk-curve').onchange = e=>{ showCurvature = e.target.checked; };
+document.getElementById('sel-integrator').onchange = e=>{ integrator = e.target.value; };
 
-function onClick(e) {
-  if (!addMode || isDragging) return;
-  // Place body at click on y=0 plane
-  const rect = renderer.domElement.getBoundingClientRect();
-  mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-  mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-  raycaster.setFromCamera(mouse, camera);
-  const plane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
-  const pt = new THREE.Vector3();
-  if (raycaster.ray.intersectPlane(plane, pt)) {
-    const mass = +document.getElementById('sl-mass').value;
-    const color = COLORS[bodies.length % COLORS.length];
-    addBody('Body' + bodyIdCounter, mass, pt, new THREE.Vector3(0,0,0), color);
-  }
-}
-
-// ─── Controls ───
-function togglePause() {
+// Buttons
+document.getElementById('btn-pause').onclick = ()=>{
   paused = !paused;
   document.getElementById('btn-pause').textContent = paused ? '▶ Resume' : '⏸ Pause';
-  document.getElementById('btn-pause').classList.toggle('active', paused);
-}
+};
 
-function toggleAddMode() {
-  addMode = !addMode;
-  document.getElementById('btn-add').classList.toggle('active', addMode);
-  document.getElementById('crosshair').style.display = addMode ? 'block' : 'none';
-}
+let initialState = null;
+function saveState(){ initialState = bodies.map(b=>({name:b.name, mass:b.initMass, x:b.initPos.x, y:b.initPos.y, z:b.initPos.z, vx:b.initVel.x, vy:b.initVel.y, vz:b.initVel.z, color:b.color})); }
 
-function resetSim() {
-  while (bodies.length) removeBody(bodies[0].id);
-}
-
-// ─── Presets ───
-function loadPreset(name) {
-  resetSim();
-  if (name === 'solar') {
-    addBody('Sun', 200, new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0), '#ffcc22');
-    addBody('Mercury', 2, new THREE.Vector3(6,0,0), new THREE.Vector3(0,0,4.2), '#aaaaaa');
-    addBody('Venus', 5, new THREE.Vector3(10,0,0), new THREE.Vector3(0,0,3.2), '#ddaa55');
-    addBody('Earth', 6, new THREE.Vector3(14,0,0), new THREE.Vector3(0,0,2.7), '#4488ff');
-    addBody('Mars', 4, new THREE.Vector3(19,0,0), new THREE.Vector3(0,0,2.3), '#cc4422');
-    addBody('Jupiter', 40, new THREE.Vector3(28,0,0), new THREE.Vector3(0,0,1.7), '#ddaa77');
-    addBody('Saturn', 30, new THREE.Vector3(36,0,0), new THREE.Vector3(0,0,1.5), '#ccbb66');
-    addBody('Uranus', 15, new THREE.Vector3(44,0,0), new THREE.Vector3(0,0,1.3), '#66ccdd');
-    addBody('Neptune', 14, new THREE.Vector3(50,0,0), new THREE.Vector3(0,0,1.15), '#4466dd');
-  } else if (name === 'binary') {
-    addBody('Star A', 100, new THREE.Vector3(-8,0,0), new THREE.Vector3(0,0,1.8), '#ffaa33');
-    addBody('Star B', 100, new THREE.Vector3(8,0,0), new THREE.Vector3(0,0,-1.8), '#33aaff');
-    addBody('Planet 1', 5, new THREE.Vector3(0,0,22), new THREE.Vector3(-1.6,0,0), '#66ff88');
-    addBody('Planet 2', 3, new THREE.Vector3(0,0,-18), new THREE.Vector3(1.8,0,0), '#ff6688');
-  } else if (name === 'random') {
-    addBody('Center', 120, new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0), '#ffdd44');
-    for (let i = 0; i < 12; i++) {
-      const d = 8 + Math.random()*35;
-      const a = Math.random()*Math.PI*2;
-      const m = 2 + Math.random()*15;
-      const sp = Math.sqrt(60/d) * (0.8+Math.random()*0.4);
-      addBody('R'+i, m,
-        new THREE.Vector3(Math.cos(a)*d, (Math.random()-0.5)*4, Math.sin(a)*d),
-        new THREE.Vector3(-Math.sin(a)*sp, 0, Math.cos(a)*sp),
-        COLORS[i % COLORS.length]);
-    }
+document.getElementById('btn-reset').onclick = ()=>{
+  if(initialState){
+    clearBodies();
+    initialState.forEach(s=>makeBody(s.name, s.mass, s.x, s.y, s.z, s.vx, s.vy, s.vz, s.color));
+    saveState();
   }
-  camDist = 60; camTheta = Math.PI/4; camPhi = Math.PI/3; camTarget.set(0,0,0);
+};
+
+// Presets
+document.getElementById('sel-preset').onchange = e=>{
+  const v = e.target.value;
+  const inp = (id,val)=>document.getElementById(id).value = val;
+  if(v==='sun'){ inp('inp-mass',100); inp('inp-name','Sun'); }
+  else if(v==='planet'){ inp('inp-mass',5); inp('inp-name','Planet'); }
+  else if(v==='moon'){ inp('inp-mass',0.5); inp('inp-name','Moon'); }
+  else if(v==='asteroid'){ inp('inp-mass',0.1); inp('inp-name','Asteroid'); }
+};
+
+document.getElementById('btn-add').onclick = ()=>{
+  const name = document.getElementById('inp-name').value || ('Body'+nextId);
+  const mass = +document.getElementById('inp-mass').value || 1;
+  makeBody(name, mass,
+    +document.getElementById('inp-x').value, +document.getElementById('inp-y').value, +document.getElementById('inp-z').value,
+    +document.getElementById('inp-vx').value, +document.getElementById('inp-vy').value, +document.getElementById('inp-vz').value
+  );
+  saveState();
+};
+
+document.getElementById('btn-random').onclick = ()=>{
+  const mass = 0.5 + Math.random() * 20;
+  const r = 20 + Math.random() * 60;
+  const theta = Math.random() * Math.PI * 2;
+  const x = Math.cos(theta) * r, z = Math.sin(theta) * r, y = (Math.random()-0.5)*10;
+  const speed = Math.sqrt(G_BASE * 100 / r) * (0.5 + Math.random()*0.5);
+  makeBody('Rnd'+nextId, mass, x, y, z, -Math.sin(theta)*speed*0.4, 0, Math.cos(theta)*speed*0.4);
+  saveState();
+};
+
+function loadSolarSystem(){
+  clearBodies();
+  makeBody('Sun', 100, 0,0,0, 0,0,0, '#ffcc33');
+  const planets = [
+    {n:'Mercury',m:0.3,r:12,c:'#aaaaaa'},
+    {n:'Venus',m:0.8,r:18,c:'#ffcc88'},
+    {n:'Earth',m:1,r:25,c:'#3388ff'},
+    {n:'Mars',m:0.5,r:32,c:'#cc4422'},
+    {n:'Jupiter',m:20,r:52,c:'#ddaa66'},
+    {n:'Saturn',m:15,r:68,c:'#ccbb77'},
+    {n:'Uranus',m:8,r:82,c:'#88ccdd'},
+    {n:'Neptune',m:7,r:95,c:'#3355bb'}
+  ];
+  planets.forEach(p=>{
+    const angle = Math.random()*Math.PI*2;
+    const x = Math.cos(angle)*p.r, z = Math.sin(angle)*p.r;
+    const v = Math.sqrt(G_BASE * 100 / p.r);
+    makeBody(p.n, p.m, x, (Math.random()-0.5)*3, z, -Math.sin(angle)*v*0.4, 0, Math.cos(angle)*v*0.4, p.c);
+  });
+  sunLight.position.set(0,0,0);
+  saveState();
 }
 
-// ─── Render Loop ───
-function animate() {
+document.getElementById('btn-solar').onclick = loadSolarSystem;
+
+document.getElementById('btn-binary').onclick = ()=>{
+  clearBodies();
+  makeBody('Star A', 80, -15,0,0, 0,0,1.5, '#ffaa44');
+  makeBody('Star B', 60, 15,0,0, 0,0,-1.5, '#4488ff');
+  for(let i=0;i<6;i++){
+    const r = 40+Math.random()*40, a=Math.random()*Math.PI*2;
+    const v = Math.sqrt(G_BASE*140/r)*0.35;
+    makeBody('P'+(i+1), 0.5+Math.random()*3, Math.cos(a)*r, (Math.random()-0.5)*5, Math.sin(a)*r, -Math.sin(a)*v, 0, Math.cos(a)*v);
+  }
+  saveState();
+};
+
+document.getElementById('btn-chaos').onclick = ()=>{
+  clearBodies();
+  for(let i=0;i<15;i++){
+    const mass = 1+Math.random()*25;
+    const r = Math.random()*60;
+    const a = Math.random()*Math.PI*2;
+    const y = (Math.random()-0.5)*20;
+    makeBody('C'+i, mass, Math.cos(a)*r, y, Math.sin(a)*r, (Math.random()-0.5)*2, (Math.random()-0.5)*0.5, (Math.random()-0.5)*2);
+  }
+  saveState();
+};
+
+// Click to select
+renderer.domElement.addEventListener('click', e=>{
+  mouse.x = (e.clientX/innerWidth)*2-1;
+  mouse.y = -(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const meshes = bodies.map(b=>b.mesh);
+  const hits = raycaster.intersectObjects(meshes);
+  if(hits.length){
+    selectedId = hits[0].object.userData.bodyId;
+  } else {
+    selectedId = null;
+  }
+  updateBodyList();
+});
+
+// Tooltip
+const tooltip = document.getElementById('tooltip');
+renderer.domElement.addEventListener('mousemove', e=>{
+  mouse.x = (e.clientX/innerWidth)*2-1;
+  mouse.y = -(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(bodies.map(b=>b.mesh));
+  if(hits.length){
+    const b = bodies.find(b=>b.id===hits[0].object.userData.bodyId);
+    if(b){
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.clientX+12)+'px';
+      tooltip.style.top = (e.clientY+12)+'px';
+      const spd = b.vel.length().toFixed(2);
+      tooltip.innerHTML = `<b>${b.name}</b><br>Mass: ${b.mass.toFixed(1)}<br>Speed: ${spd}<br>Pos: (${b.pos.x.toFixed(1)}, ${b.pos.y.toFixed(1)}, ${b.pos.z.toFixed(1)})`;
+    }
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+// Resize
+window.addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// ---- Main Loop ----
+let frameCount = 0;
+function animate(){
   requestAnimationFrame(animate);
-  const dt = Math.min(clock.getDelta(), 0.05);
-  // Sub-step for stability
-  const steps = 4;
-  for (let i = 0; i < steps; i++) stepPhysics(dt/steps);
-  updateGrid();
-  updateCamera();
+  const rawDt = clock.getDelta();
+  const dt = Math.min(rawDt, 0.05) * speedMul;
+
+  if(!paused && bodies.length > 0){
+    const subSteps = 4;
+    const subDt = dt / subSteps;
+    for(let s=0; s<subSteps; s++){
+      if(integrator === 'rk4') stepRK4(subDt);
+      else stepVerlet(subDt);
+      checkCollisions();
+    }
+    // Sync mesh positions
+    for(const b of bodies) b.mesh.position.copy(b.pos);
+    // Update sun light to largest body
+    let biggest = bodies.reduce((a,b)=>a.mass>b.mass?a:b, bodies[0]);
+    if(biggest) sunLight.position.copy(biggest.pos);
+    if(frameCount % 2 === 0) updateTrails();
+    if(frameCount % 3 === 0) updateCurvature();
+  }
+
+  controls.update();
   renderer.render(scene, camera);
+  frameCount++;
 }
 
-init();
+// Start with solar system
+loadSolarSystem();
+animate();
+})();
 </script>
 </body>
 </html>
