@@ -15,6 +15,9 @@ export function Header() {
         <Link href="/" className="font-typewriter text-xs tracking-[0.1em] uppercase text-ink-light hover:text-stamp-red no-underline">
           {t('nav.home')}
         </Link>
+        <Link href="/gallery" className="font-typewriter text-xs tracking-[0.1em] uppercase text-ink-light hover:text-stamp-red no-underline">
+          {lang === 'zh' ? '展览' : 'Gallery'}
+        </Link>
         <Link href="/leaderboard" className="font-typewriter text-xs tracking-[0.1em] uppercase text-ink-light hover:text-stamp-red no-underline">
           {t('nav.leaderboard')}
         </Link>
