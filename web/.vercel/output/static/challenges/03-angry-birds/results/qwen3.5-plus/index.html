@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Angry Birds Clone</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #333;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            user-select: none;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        canvas {
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F6FF 100%);
+            border-radius: 4px;
+            cursor: crosshair;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            pointer-events: none;
+            color: white;
+            text-shadow: 2px 2px 0 #000;
+        }
+        h1 { margin: 0; font-size: 24px; }
+        p { margin: 5px 0; font-size: 18px; }
+        #reset-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #b33939;
+            transition: transform 0.1s;
+            pointer-events: auto;
+        }
+        #reset-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 0 0 #b33939;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <canvas id="gameCanvas" width="900" height="600"></canvas>
+    <div id="ui-layer">
+        <h1>Angry Shapes</h1>
+        <p>Score: <span id="score">0</span></p>
+        <p>Shots: <span id="shots">0</span></p>
+    </div>
+    <button id="reset-btn" onclick="resetGame()">Reset Level</button>
+</div>
+
+<script>
+/**
+ * SIMPLE PHYSICS ENGINE & GAME LOGIC
+ */
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+const shotsEl = document.getElementById('shots');
+
+// Game Constants
+const GRAVITY = 0.4;
+const FRICTION = 0.98;
+const GROUND_Y = 550;
+const SLINGSHOT_X = 150;
+const SLINGSHOT_Y = 450;
+
+// Game State
+let score = 0;
+let shots = 0;
+let particles = [];
+let blocks = [];
+let bird = null;
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+let dragCurrent = { x: 0, y: 0 };
+let gameState = 'aiming'; // aiming, flying, settled
+
+// --- Classes ---
+
+class Vector {
+    constructor(x, y) { this.x = x; this.y = y; }
+    add(v) { return new Vector(this.x + v.x, this.y + v.y); }
+    sub(v) { return new Vector(this.x - v.x, this.y - v.y); }
+    mult(n) { return new Vector(this.x * n, this.y * n); }
+    mag() { return Math.sqrt(this.x * this.x + this.y * this.y); }
+    normalize() {
+        let m = this.mag();
+        return m === 0 ? new Vector(0, 0) : new Vector(this.x / m, this.y / m);
+    }
+}
+
+class Particle {
+    constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.vx = (Math.random() - 0.5) * 10;
+        this.vy = (Math.random() - 0.5) * 10;
+        this.life = 1.0;
+        this.color = color;
+        this.size = Math.random() * 5 + 2;
+    }
+    update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vy += GRAVITY;
+        this.life -= 0.02;
+    }
+    draw(ctx) {
+        ctx.globalAlpha = this.life;
+        ctx.fillStyle = this.color;
+        ctx.fillRect(this.x, this.y, this.size, this.size);
+        ctx.globalAlpha = 1.0;
+    }
+}
+
+class Block {
+    constructor(x, y, w, h, type) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.type = type; // 'wood', 'stone', 'pig'
+        this.vx = 0;
+        this.vy = 0;
+        this.active = false; // Is it falling?
+        this.rotation = 0;
+        this.hp = type === 'stone' ? 30 : (type === 'pig' ? 10 : 15);
+        this.maxHp = this.hp;
+    }
+
+    update() {
+        if (!this.active) {
+            // Check if supported
+            let supported = false;
+            if (this.y + this.h >= GROUND_Y) {
+                supported = true;
+                this.y = GROUND_Y - this.h;
+                this.vy = 0;
+            } else {
+                // Simple check against other blocks (expensive but okay for small count)
+                for (let other of blocks) {
+                    if (other === this) continue;
+                    // Check if sitting on top
+                    if (this.y + this.h >= other.y - 5 && 
+                        this.y + this.h <= other.y + 5 &&
+                        this.x + this.w > other.x && 
+                        this.x < other.x + other.w) {
+                        supported = true;
+                        this.y = other.y - this.h;
+                        this.vy = 0;
+                        break;
+                    }
+                }
+            }
+            
+            if (!supported) {
+                this.active = true;
+            }
+        }
+
+        if (this.active) {
+            this.vy += GRAVITY;
+            this.vx *= FRICTION;
+            this.vy *= FRICTION; // Air resistance
+            
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // Ground collision
+            if (this.y + this.h > GROUND_Y) {
+                this.y = GROUND_Y - this.h;
+                this.vy *= -0.5; // Bounce
+                this.vx *= 0.8; // Ground friction
+                if (Math.abs(this.vy) < 1) this.vy = 0;
+            }
+            
+            // Wake up neighbors on impact
+            if (Math.abs(this.vy) > 2 || Math.abs(this.vx) > 2) {
+                 for (let other of blocks) {
+                    if (other === this || other.active) continue;
+                    // Simple distance check to wake up nearby blocks
+                    let dx = (this.x + this.w/2) - (other.x + other.w/2);
+                    let dy = (this.y + this.h/2) - (other.y + other.h/2);
+                    let dist = Math.sqrt(dx*dx + dy*dy);
+                    if (dist < 100) other.active = true;
+                 }
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x + this.w/2, this.y + this.h/2);
+        // Simple rotation visual based on velocity
+        ctx.rotate(this.vx * 0.05); 
+        
+        if (this.type === 'pig') {
+            ctx.fillStyle = '#7bed9f';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.w/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = '#2ed573';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            // Eyes
+            ctx.fillStyle = 'black';
+            ctx.beginPath(); ctx.arc(-5, -5, 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(5, -5, 3, 0, Math.PI*2); ctx.fill();
+            // Snout
+            ctx.fillStyle = '#2ed573';
+            ctx.beginPath(); ctx.ellipse(0, 5, 6, 4, 0, 0, Math.PI*2); ctx.fill();
+        } else {
+            ctx.fillStyle = this.type === 'wood' ? '#e1b12c' : '#7f8c8d';
+            ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+            ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(-this.w/2, -this.h/2, this.w, this.h);
+            
+            // Damage cracks
+            if (this.hp < this.maxHp * 0.6) {
+                ctx.beginPath();
+                ctx.moveTo(-5, -5); ctx.lineTo(5, 5);
+                ctx.moveTo(5, -5); ctx.lineTo(-5, 5);
+                ctx.stroke();
+            }
+        }
+        ctx.restore();
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        this.active = true; // Wake up on hit
+        if (this.hp <= 0) {
+            return true; // Destroyed
+        }
+        return false;
+    }
+}
+
+class Bird {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.x = SLINGSHOT_X;
+        this.y = SLINGSHOT_Y;
+        this.radius = 12;
+        this.vx = 0;
+        this.vy = 0;
+        this.state = 'idle'; // idle, dragging, flying, stopped
+    }
+
+    update() {
+        if (this.state === 'flying') {
+            this.vy += GRAVITY;
+            this.vx *= FRICTION;
+            this.vy *= FRICTION;
+            this.x += this.vx;
+            this.y += this.vy;
+
+            // Ground Collision
+            if (this.y + this.radius > GROUND_Y) {
+                this.y = GROUND_Y - this.radius;
+                this.vy *= -0.4;
+                this.vx *= 0.6;
+                if (Math.abs(this.vy) < 1 && Math.abs(this.vx) < 1) {
+                    this.state = 'stopped';
+                    setTimeout(() => {
+                        if(gameState !== 'aiming') resetBird();
+                    }, 1000);
+                }
+            }
+            
+            // Wall Collision
+            if (this.x + this.radius > canvas.width || this.x - this.radius < 0) {
+                this.vx *= -0.5;
+                this.x = this.x < 0 ? this.radius : canvas.width - this.radius;
+            }
+        } else if (this.state === 'dragging') {
+            this.x = SLINGSHOT_X + (dragCurrent.x - dragStart.x);
+            this.y = SLINGSHOT_Y + (dragCurrent.y - dragStart.y);
+            
+            // Clamp drag distance
+            let dx = this.x - SLINGSHOT_X;
+            let dy = this.y - SLINGSHOT_Y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            let maxDrag = 80;
+            
+            if (dist > maxDrag) {
+                let angle = Math.atan2(dy, dx);
+                this.x = SLINGSHOT_X + Math.cos(angle) * maxDrag;
+                this.y = SLINGSHOT_Y + Math.sin(angle) * maxDrag;
+            }
+        }
+    }
+
+    draw(ctx) {
+        ctx.fillStyle = '#ff4757';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2f3542';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Eyes
+        ctx.fillStyle = 'white';
+        ctx.beginPath(); ctx.arc(this.x + 4, this.y - 4, 4, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = 'black';
+        ctx.beginPath(); ctx.arc(this.x + 6, this.y - 4, 2, 0, Math.PI*2); ctx.fill();
+        
+        // Beak
+        ctx.fillStyle = '#ffa502';
+        ctx.beginPath();
+        ctx.moveTo(this.x + 8, this.y);
+        ctx.lineTo(this.x + 16, this.y + 4);
+        ctx.lineTo(this.x + 8, this.y + 8);
+        ctx.fill();
+    }
+
+    launch() {
+        let dx = SLINGSHOT_X - this.x;
+        let dy = SLINGSHOT_Y - this.y;
+        let power = 0.15;
+        this.vx = dx * power;
+        this.vy = dy * power;
+        this.state = 'flying';
+        shots++;
+        shotsEl.innerText = shots;
+        gameState = 'flying';
+    }
+}
+
+// --- Initialization ---
+
+bird = new Bird();
+
+function createLevel() {
+    blocks = [];
+    const startX = 600;
+    const groundY = GROUND_Y;
+    
+    // Pyramid Structure
+    // Base
+    blocks.push(new Block(startX, groundY - 40, 20, 40, 'stone'));
+    blocks.push(new Block(startX + 80, groundY - 40, 20, 40, 'stone'));
+    blocks.push(new Block(startX + 40, groundY - 90, 100, 20, 'wood')); // Beam
+    
+    // Middle
+    blocks.push(new Block(startX + 10, groundY - 130, 20, 40, 'wood'));
+    blocks.push(new Block(startX + 70, groundY - 130, 20, 40, 'wood'));
+    blocks.push(new Block(startX + 40, groundY - 150, 60, 20, 'wood'));
+    
+    // Top
+    blocks.push(new Block(startX + 40, groundY - 190, 20, 40, 'stone'));
+    
+    // Pigs
+    blocks.push(new Block(startX + 40, groundY - 20, 25, 25, 'pig'));
+    blocks.push(new Block(startX + 40, groundY - 110, 20, 20, 'pig'));
+    blocks.push(new Block(startX + 40, groundY - 220, 20, 20, 'pig'));
+}
+
+function resetBird() {
+    bird.reset();
+    gameState = 'aiming';
+}
+
+function resetGame() {
+    score = 0;
+    shots = 0;
+    scoreEl.innerText = score;
+    shotsEl.innerText = shots;
+    particles = [];
+    createLevel();
+    resetBird();
+}
+
+// --- Input Handling ---
+
+canvas.addEventListener('mousedown', e => {
+    if (gameState !== 'aiming') return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    
+    // Check if clicking near slingshot
+    let dx = mx - SLINGSHOT_X;
+    let dy = my - SLINGSHOT_Y;
+    if (Math.sqrt(dx*dx + dy*dy) < 50) {
+        isDragging = true;
+        dragStart = { x: mx, y: my };
+        dragCurrent = { x: mx, y: my };
+        bird.state = 'dragging';
+    }
+});
+
+canvas.addEventListener('mousemove', e => {
+    if (!isDragging) return;
+    const rect = canvas.getBoundingClientRect();
+    dragCurrent = { 
+        x: e.clientX - rect.left, 
+        y: e.clientY - rect.top 
+    };
+});
+
+window.addEventListener('mouseup', () => {
+    if (isDragging) {
+        isDragging = false;
+        bird.launch();
+    }
+});
+
+// --- Physics & Collision ---
+
+function checkCollisions() {
+    // Bird vs Blocks
+    if (bird.state === 'flying') {
+        for (let i = blocks.length - 1; i >= 0; i--) {
+            let b = blocks[i];
+            
+            // Simple Circle vs Rect Collision
+            let closestX = Math.max(b.x, Math.min(bird.x, b.x + b.w));
+            let closestY = Math.max(b.y, Math.min(bird.y, b.y + b.h));
+            
+            let dx = bird.x - closestX;
+            let dy = bird.y - closestY;
+            let distance = Math.sqrt(dx*dx + dy*dy);
+            
+            if (distance < bird.radius) {
+                // Collision detected
+                let impact = Math.sqrt(bird.vx*bird.vx + bird.vy*bird.vy);
+                
+                // Transfer some velocity to block
+                b.vx += bird.vx * 0.5;
+                b.vy += bird.vy * 0.5;
+                b.active = true;
+                
+                // Bounce bird slightly
+                bird.vx *= -0.3;
+                bird.vy *= -0.3;
+                
+                // Damage
+                if (b.takeDamage(impact * 2)) {
+                    // Destroy block
+                    createExplosion(b.x + b.w/2, b.y + b.h/2, b.type === 'pig' ? '#7bed9f' : '#e1b12c');
+                    score += (b.type === 'pig' ? 500 : 100);
+                    scoreEl.innerText = score;
+                    blocks.splice(i, 1);
+                }
+            }
+        }
+    }
+    
+    // Block vs Block (Simple Wakeup)
+    for (let i = 0; i < blocks.length; i++) {
+        for (let j = i + 1; j < blocks.length; j++) {
+            let b1 = blocks[i];
+            let b2 = blocks[j];
+            
+            if (!b1.active && !b2.active) continue;
+            
+            // AABB Overlap
+            if (b1.x < b2.x + b2.w && b1.x + b1.w > b2.x &&
+                b1.y < b2.y + b2.h && b1.y + b1.h > b2.y) {
+                
+                // Very simple resolution: push apart based on velocity
+                let dx = (b1.x + b1.w/2) - (b2.x + b2.w/2);
+                let dy = (b1.y + b1.h/2) - (b2.y + b2.h/2);
+                
+                b1.vx += dx * 0.05;
+                b1.vy += dy * 0.05;
+                b2.vx -= dx * 0.05;
+                b2.vy -= dy * 0.05;
+                
+                b1.active = true;
+                b2.active = true;
+            }
+        }
+    }
+}
+
+function createExplosion(x, y, color) {
+    for (let i = 0; i < 15; i++) {
+        particles.push(new Particle(x, y, color));
+    }
+}
+
+// --- Rendering ---
+
+function drawTrajectory() {
+    if (!isDragging) return;
+    
+    let dx = SLINGSHOT_X - bird.x;
+    let dy = SLINGSHOT_Y - bird.y;
+    let power = 0.15;
+    let vx = dx * power;
+    let vy = dy * power;
+    
+    let simX = bird.x;
+    let simY = bird.y;
+    
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    for (let i = 0; i < 15; i++) {
+        simX += vx * 5;
+        simY += vy * 5;
+        vy += GRAVITY * 5;
+        
+        ctx.beginPath();
+        ctx.arc(simX, simY, 3, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+function drawSlingshot() {
+    // Back Band
+    ctx.strokeStyle = '#3e2723';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(SLINGSHOT_X - 10, SLINGSHOT_Y);
+    ctx.lineTo(bird.x, bird.y);
+    ctx.stroke();
+    
+    // Front Band
+    ctx.beginPath();
+    ctx.moveTo(SLINGSHOT_X + 10, SLINGSHOT_Y);
+    ctx.lineTo(bird.x, bird.y);
+    ctx.stroke();
+    
+    // Stand
+    ctx.strokeStyle = '#5d4037';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(SLINGSHOT_X, SLINGSHOT_Y);
+    ctx.lineTo(SLINGSHOT_X, GROUND_Y);
+    ctx.stroke();
+}
+
+function loop() {
+    // Clear
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw Ground
+    ctx.fillStyle = '#78a355';
+    ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+    ctx.fillStyle = '#557c3a';
+    ctx.fillRect(0, GROUND_Y, canvas.width, 10);
+
+    // Update & Draw Blocks
+    blocks.forEach(b => {
+        b.update();
+        b.draw(ctx);
+    });
+    
+    // Update & Draw Bird
+    bird.update();
+    
+    // Draw Slingshot (Back part handled in drawSlingshot, but bird draws on top)
+    drawSlingshot();
+    bird.draw(ctx);
+    
+    // Trajectory
+    drawTrajectory();
+    
+    // Particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw(ctx);
+        if (particles[i].life <= 0) particles.splice(i, 1);
+    }
+    
+    checkCollisions();
+    
+    requestAnimationFrame(loop);
+}
+
+// Start
+createLevel();
+loop();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>梯云纵</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0d0d12;
+            overflow: hidden;
+            font-family: 'SimSun', 'STSong', serif;
+        }
+        
+        canvas {
+            display: block;
+            cursor: pointer;
+        }
+        
+        .title-container {
+            position: fixed;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .title {
+            color: #e8e4dc;
+            font-size: clamp(28px, 5vw, 42px);
+            letter-spacing: 16px;
+            text-shadow: 0 0 30px rgba(200, 180, 140, 0.3);
+            margin-bottom: 8px;
+        }
+        
+        .subtitle {
+            color: rgba(200, 180, 140, 0.6);
+            font-size: clamp(12px, 2vw, 14px);
+            letter-spacing: 4px;
+        }
+        
+        .hint {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(200, 180, 140, 0.5);
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            letter-spacing: 2px;
+        }
+        
+        .hint.visible {
+            opacity: 1;
+        }
+        
+        .seal {
+            position: fixed;
+            bottom: 100px;
+            right: 40px;
+            width: 60px;
+            height: 60px;
+            border: 2px solid rgba(180, 80, 60, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(180, 80, 60, 0.7);
+            font-size: 18px;
+            writing-mode: vertical-rl;
+            letter-spacing: 4px;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+        
+        .seal.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="title-container">
+        <div class="title">梯云纵</div>
+        <div class="subtitle">武当绝学 · 步步登云</div>
+    </div>
+    
+    <div class="hint" id="hint">点击任意处重播</div>
+    <div class="seal" id="seal">云飞</div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const hint = document.getElementById('hint');
+        const seal = document.getElementById('seal');
+        
+        let W, H;
+        let animationId = null;
+        let startTime = 0;
+        let isComplete = false;
+        
+        // Camera
+        let cameraY = 0;
+        let targetCameraY = 0;
+        
+        // Character state
+        let charX = 0;
+        let charY = 0;
+        let charVelY = 0;
+        let charPhase = 'setup';
+        let stepCount = 0;
+        let lastStepY = 0;
+        
+        // Phase timing
+        const phases = {
+            setup: { duration: 800 },
+            leap: { duration: 600 },
+            steps: { duration: 400, count: 4 },
+            peak: { duration: 1000 },
+            landing: { duration: 1500 }
+        };
+        
+        // Particles
+        let particles = [];
+        let afterimages = [];
+        let shockwaves = [];
+        let inkSplashes = [];
+        
+        // Background elements
+        let bambooStalks = [];
+        let mountains = [];
+        let clouds = [];
+        let moon = { x: 0, y: 0, r: 0 };
+        
+        // Easing
+        const ease = {
+            out: t => 1 - Math.pow(1 - t, 3),
+            in: t => t * t * t,
+            inOut: t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2,
+            elastic: t => {
+                if (t === 0 || t === 1) return t;
+                return Math.pow(2, -10 * t) * Math.sin((t - 0.075) * (2 * Math.PI) / 0.3) + 1;
+            }
+        };
+        
+        // Random helpers
+        const rand = (min, max) => Math.random() * (max - min) + min;
+        const randInt = (min, max) => Math.floor(rand(min, max + 1));
+        const lerp = (a, b, t) => a + (b - a) * t;
+        
+        // Noise function for organic movement
+        function noise(x, y) {
+            const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+            return n - Math.floor(n);
+        }
+        
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+            initBackground();
+        }
+        
+        function initBackground() {
+            // Moon
+            moon = {
+                x: W * 0.75,
+                y: H * 0.2,
+                r: Math.min(W, H) * 0.08
+            };
+            
+            // Mountains (multiple layers)
+            mountains = [];
+            for (let layer = 0; layer < 4; layer++) {
+                const peaks = [];
+                const peakCount = 5 + layer * 2;
+                for (let i = 0; i < peakCount; i++) {
+                    peaks.push({
+                        x: (i / (peakCount - 1)) * W * 2 - W * 0.5,
+                        height: rand(100, 300) * (1 - layer * 0.2),
+                        width: rand(150, 300)
+                    });
+                }
+                mountains.push({
+                    peaks,
+                    y: H * 0.5 + layer * 80,
+                    color: `rgba(${30 - layer * 5}, ${35 - layer * 5}, ${45 - layer * 5}, ${0.8 - layer * 0.15})`,
+                    parallax: 0.1 + layer * 0.15
+                });
+            }
+            
+            // Bamboo stalks
+            bambooStalks = [];
+            const bambooCount = Math.floor(W / 40);
+            for (let i = 0; i < bambooCount; i++) {
+                const x = rand(0, W);
+                const layer = randInt(0, 2);
+                bambooStalks.push({
+                    x,
+                    baseY: H,
+                    height: rand(200, 500) * (1 - layer * 0.3),
+                    segments: randInt(8, 15),
+                    thickness: rand(3, 8) * (1 - layer * 0.2),
+                    parallax: 0.3 + layer * 0.3,
+                    sway: rand(0, Math.PI * 2),
+                    swaySpeed: rand(0.5, 1.5),
+                    alpha: 0.4 - layer * 0.1
+                });
+            }
+            
+            // Clouds
+            clouds = [];
+            for (let i = 0; i < 15; i++) {
+                clouds.push({
+                    x: rand(-200, W + 200),
+                    y: rand(-500, H * 2),
+                    width: rand(100, 300),
+                    height: rand(30, 80),
+                    speed: rand(0.1, 0.3),
+                    alpha: rand(0.05, 0.15),
+                    parallax: rand(0.05, 0.2)
+                });
+            }
+        }
+        
+        function createParticle(x, y, type) {
+            const angle = rand(0, Math.PI * 2);
+            const speed = type === 'qi' ? rand(2, 8) : rand(1, 4);
+            const life = type === 'qi' ? rand(30, 60) : rand(20, 40);
+            
+            particles.push({
+                x,
+                y,
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed - (type === 'qi' ? 2 : 0),
+                life,
+                maxLife: life,
+                size: type === 'qi' ? rand(3, 8) : rand(2, 5),
+                type,
+                alpha: 1
+            });
+        }
+        
+        function createShockwave(x, y) {
+            shockwaves.push({
+                x,
+                y,
+                radius: 0,
+                maxRadius: 80,
+                life: 30,
+                maxLife: 30
+            });
+            
+            // Create particles around shockwave
+            for (let i = 0; i < 20; i++) {
+                createParticle(x, y, 'qi');
+            }
+            
+            // Ink splash
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                inkSplashes.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * rand(5, 15),
+                    vy: Math.sin(angle) * rand(5, 15) - 5,
+                    life: rand(20, 40),
+                    maxLife: 40,
+                    size: rand(5, 15),
+                    type: randInt(0, 2)
+                });
+            }
+        }
+        
+        function createAfterimage(x, y, pose) {
+            afterimages.push({
+                x,
+                y,
+                pose: { ...pose },
+                life: 25,
+                maxLife: 25
+            });
+        }
+        
+        function drawInkWash(x, y, radius, alpha) {
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+            gradient.addColorStop(0, `rgba(40, 45, 55, ${alpha})`);
+            gradient.addColorStop(0.5, `rgba(30, 35, 45, ${alpha * 0.5})`);
+            gradient.addColorStop(1, 'rgba(20, 25, 35, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawMoon() {
+            const y = moon.y - cameraY * 0.02;
+            
+            // Moon glow
+            const glowGrad = ctx.createRadialGradient(moon.x, y, 0, moon.x, y, moon.r * 3);
+            glowGrad.addColorStop(0, 'rgba(255, 250, 240, 0.15)');
+            glowGrad.addColorStop(0.5, 'rgba(255, 250, 240, 0.05)');
+            glowGrad.addColorStop(1, 'rgba(255, 250, 240, 0)');
+            ctx.fillStyle = glowGrad;
+            ctx.beginPath();
+            ctx.arc(moon.x, y, moon.r * 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Moon body
+            const moonGrad = ctx.createRadialGradient(
+                moon.x - moon.r * 0.3, y - moon.r * 0.3, 0,
+                moon.x, y, moon.r
+            );
+            moonGrad.addColorStop(0, 'rgba(255, 252, 245, 0.95)');
+            moonGrad.addColorStop(0.7, 'rgba(240, 235, 220, 0.9)');
+            moonGrad.addColorStop(1, 'rgba(200, 190, 170, 0.8)');
+            ctx.fillStyle = moonGrad;
+            ctx.beginPath();
+            ctx.arc(moon.x, y, moon.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        function drawClouds(time) {
+            clouds.forEach(cloud => {
+                const y = cloud.y - cameraY * cloud.parallax;
+                const x = cloud.x + Math.sin(time * 0.001 * cloud.speed) * 20;
+                
+                // Don't draw if too far off screen
+                if (y < -200 || y > H + 200) return;
+                
+                ctx.save();
+                ctx.globalAlpha = cloud.alpha;
+                
+                const gradient = ctx.createRadialGradient(x, y, 0, x, y, cloud.width);
+                gradient.addColorStop(0, 'rgba(180, 175, 165, 0.3)');
+                gradient.addColorStop(0.5, 'rgba(150, 145, 135, 0.2)');
+                gradient.addColorStop(1, 'rgba(120, 115, 105, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.ellipse(x, y, cloud.width, cloud.height, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            });
+        }
+        
+        function drawMountains() {
+            mountains.forEach(layer => {
+                const offsetY = cameraY * layer.parallax;
+                
+                ctx.fillStyle = layer.color;
+                ctx.beginPath();
+                ctx.moveTo(-100, H + 100);
+                
+                layer.peaks.forEach((peak, i) => {
+                    const x = peak.x;
+                    const y = layer.y - peak.height - offsetY;
+                    
+                    if (i === 0) {
+                        ctx.lineTo(x, y);
+                    } else {
+                        const prevPeak = layer.peaks[i - 1];
+                        const cpX = (prevPeak.x + x) / 2;
+                        ctx.quadraticCurveTo(cpX, y + peak.height * 0.5, x, y);
+                    }
+                });
+                
+                ctx.lineTo(W + 100, H + 100);
+                ctx.closePath();
+                ctx.fill();
+            });
+        }
+        
+        function drawBamboo(time) {
+            bambooStalks.forEach(stalk => {
+                const offsetY = cameraY * stalk.parallax;
+                const baseY = stalk.baseY - offsetY;
+                const sway = Math.sin(time * 0.001 * stalk.swaySpeed + stalk.sway) * 10;
+                
+                ctx.save();
+                ctx.globalAlpha = stalk.alpha;
+                ctx.strokeStyle = `rgba(60, 70, 60, ${stalk.alpha})`;
+                ctx.lineCap = 'round';
+                
+                const segmentHeight = stalk.height / stalk.segments;
+                let currentX = stalk.x;
+                let currentY = baseY;
+                
+                for (let i = 0; i < stalk.segments; i++) {
+                    const nextY = currentY - segmentHeight;
+                    const swayAmount = sway * (i / stalk.segments);
+                    const nextX = stalk.x + swayAmount;
+                    
+                    ctx.lineWidth = stalk.thickness * (1 - i * 0.05);
+                    ctx.beginPath();
+                    ctx.moveTo(currentX, currentY);
+                    ctx.quadraticCurveTo(
+                        currentX + swayAmount * 0.5,
+                        (currentY + nextY) / 2,
+                        nextX,
+                        nextY
+                    );
+                    ctx.stroke();
+                    
+                    // Node
+                    if (i < stalk.segments - 1) {
+                        ctx.beginPath();
+                        ctx.arc(nextX, nextY, stalk.thickness * 0.7, 0, Math.PI * 2);
+                        ctx.fillStyle = `rgba(50, 60, 50, ${stalk.alpha})`;
+                        ctx.fill();
+                    }
+                    
+                    // Leaves at certain segments
+                    if (i > 2 && i % 3 === 0 && i < stalk.segments - 1) {
+                        drawBambooLeaf(nextX, nextY, swayAmount, stalk.alpha);
+                    }
+                    
+                    currentX = nextX;
+                    currentY = nextY;
+                }
+                
+                ctx.restore();
+            });
+        }
+        
+        function drawBambooLeaf(x, y, sway, alpha) {
+            ctx.save();
+            ctx.globalAlpha = alpha * 0.8;
+            ctx.fillStyle = `rgba(70, 85, 65, ${alpha})`;
+            
+            const leafLength = rand(20, 40);
+            const leafAngle = sway * 0.1 + rand(-0.3, 0.3);
+            
+            ctx.translate(x, y);
+            ctx.rotate(leafAngle);
+            
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.quadraticCurveTo(leafLength * 0.5, -5, leafLength, 0);
+            ctx.quadraticCurveTo(leafLength * 0.5, 5, 0, 0);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        function drawCharacter(x, y, pose, alpha = 1) {
+            ctx.save();
+            ctx.globalAlpha = alpha;
+            
+            const { angle, legAngle, armAngle, crouch, step } = pose;
+            
+            // Transform
+            ctx.translate(x, y);
+            
+            // Ink wash effect under character
+            drawInkWash(0, 20, 60, 0.3 * alpha);
+            
+            ctx.strokeStyle = `rgba(30, 35, 40, ${alpha})`;
+            ctx.fillStyle = `rgba(25, 30, 35, ${alpha})`;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Body dimensions
+            const bodyHeight = 50 * (1 - crouch * 0.3);
+            const headRadius = 12;
+            
+            // Robe flowing effect
+            const robeFlow = Math.sin(pose.time * 0.01) * 5;
+            
+            // Back leg
+            ctx.save();
+            ctx.translate(0, -bodyHeight * 0.3);
+            ctx.rotate(legAngle + step * 0.5);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, 45);
+            ctx.lineTo(-10 + robeFlow, 55);
+            ctx.stroke();
+            ctx.restore();
+            
+            // Front leg (stepping)
+            ctx.save();
+            ctx.translate(0, -bodyHeight * 0.3);
+            ctx.rotate(-legAngle - step);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, 40);
+            ctx.lineTo(15, 50);
+            ctx.stroke();
+            
+            // Foot detail
+            ctx.beginPath();
+            ctx.ellipse(15, 52, 12, 5, 0.3, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            // Robe body
+            ctx.beginPath();
+            ctx.moveTo(-15, -bodyHeight * 0.5);
+            ctx.quadraticCurveTo(-20 + robeFlow, 0, -12 + robeFlow, bodyHeight * 0.3);
+            ctx.lineTo(12 - robeFlow, bodyHeight * 0.3);
+            ctx.quadraticCurveTo(18 - robeFlow, 0, 15, -bodyHeight * 0.5);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Belt
+            ctx.strokeStyle = `rgba(180, 140, 80, ${alpha * 0.8})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(-16, -bodyHeight * 0.2);
+            ctx.lineTo(16, -bodyHeight * 0.2);
+            ctx.stroke();
+            
+            // Arms
+            ctx.strokeStyle = `rgba(30, 35, 40, ${alpha})`;
+            ctx.lineWidth = 3;
+            
+            // Left arm
+            ctx.save();
+            ctx.translate(-12, -bodyHeight * 0.4);
+            ctx.rotate(armAngle - 0.3);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, 35);
+            ctx.stroke();
+            
+            // Hand
+            ctx.fillStyle = `rgba(25, 30, 35, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(0, 38, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            // Right arm
+            ctx.save();
+            ctx.translate(12, -bodyHeight * 0.4);
+            ctx.rotate(-armAngle + 0.5);
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, 30);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(0, 33, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            // Head
+            ctx.fillStyle = `rgba(25, 30, 35, ${alpha})`;
+            ctx.beginPath();
+            ctx.arc(0, -bodyHeight * 0.7, headRadius, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hair bun
+            ctx.beginPath();
+            ctx.ellipse(0, -bodyHeight * 0.7 - headRadius - 3, 6, 4, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Hair detail
+            ctx.strokeStyle = `rgba(40, 35, 30, ${alpha * 0.8})`;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(0, -bodyHeight * 0.7, headRadius - 2, Math.PI * 1.2, Math.PI * 1.8);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function drawAfterimages() {
+            afterimages.forEach((img, i) => {
+                const alpha = (img.life / img.maxLife) * 0.4;
+                drawCharacter(img.x, img.y - cameraY, img.pose, alpha);
+            });
+        }
+        
+        function drawParticles() {
+            particles.forEach(p => {
+                const y = p.y - cameraY;
+                const alpha = (p.life / p.maxLife) * 0.8;
+                
+                if (p.type === 'qi') {
+                    const gradient = ctx.createRadialGradient(p.x, y, 0, p.x, y, p.size);
+                    gradient.addColorStop(0, `rgba(200, 180, 120, ${alpha})`);
+                    gradient.addColorStop(0.5, `rgba(180, 160, 100, ${alpha * 0.5})`);
+                    gradient.addColorStop(1, 'rgba(150, 130, 80, 0)');
+                    ctx.fillStyle = gradient;
+                } else {
+                    ctx.fillStyle = `rgba(60, 55, 50, ${alpha})`;
+                }
+                
+                ctx.beginPath();
+                ctx.arc(p.x, y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function drawShockwaves() {
+            shockwaves.forEach(sw => {
+                const y = sw.y - cameraY;
+                const progress = sw.radius / sw.maxRadius;
+                const alpha = (1 - progress) * 0.6;
+                
+                ctx.strokeStyle = `rgba(200, 180, 120, ${alpha})`;
+                ctx.lineWidth = 3 * (1 - progress);
+                ctx.beginPath();
+                ctx.arc(sw.x, y, sw.radius, 0, Math.PI * 2);
+                ctx.stroke();
+                
+                // Inner glow
+                const gradient = ctx.createRadialGradient(sw.x, y, sw.radius * 0.8, sw.x, y, sw.radius);
+                gradient.addColorStop(0, 'rgba(200, 180, 120, 0)');
+                gradient.addColorStop(1, `rgba(200, 180, 120, ${alpha * 0.3})`);
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(sw.x, y, sw.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+        
+        function drawInkSplashes() {
+            inkSplashes.forEach(splash => {
+                const y = splash.y - cameraY;
+                const alpha = (splash.life / splash.maxLife) * 0.7;
+                
+                ctx.save();
+                ctx.translate(splash.x, y);
+                ctx.rotate(Math.atan2(splash.vy, splash.vx));
+                
+                ctx.fillStyle = `rgba(40, 45, 50, ${alpha})`;
+                
+                if (splash.type === 0) {
+                    // Droplet
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, splash.size, splash.size * 0.6, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (splash.type === 1) {
+                    // Splash
+                    ctx.beginPath();
+                    ctx.moveTo(-splash.size, 0);
+                    ctx.lineTo(0, -splash.size * 0.5);
+                    ctx.lineTo(splash.size, 0);
+                    ctx.lineTo(0, splash.size * 0.5);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    // Irregular
+                    ctx.beginPath();
+                    for (let i = 0; i < 5; i++) {
+                        const angle = (i / 5) * Math.PI * 2;
+                        const r = splash.size * (0.5 + Math.random() * 0.5);
+                        if (i === 0) ctx.moveTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                        else ctx.lineTo(Math.cos(angle) * r, Math.sin(angle) * r);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            });
+        }
+        
+        function drawQiAura(x, y, intensity) {
+            const screenY = y - cameraY;
+            
+            for (let i = 0; i < 3; i++) {
+                const radius = 40 + i * 20 + Math.sin(startTime * 0.005 + i) * 10;
+                const alpha = intensity * (0.1 - i * 0.03);
+                
+                const gradient = ctx.createRadialGradient(x, screenY, 0, x, screenY, radius);
+                gradient.addColorStop(0, `rgba(200, 180, 120, ${alpha})`);
+                gradient.addColorStop(0.7, `rgba(180, 160, 100, ${alpha * 0.3})`);
+                gradient.addColorStop(1, 'rgba(150, 130, 80, 0)');
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(x, screenY, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function updateAnimation(time) {
+            const elapsed = time - startTime;
+            
+            // Phase management
+            let phaseTime = 0;
+            let currentPhase = 'setup';
+            
+            // Calculate current phase
+            let t = elapsed;
+            for (const [phase, config] of Object.entries(phases)) {
+                if (phase === 'steps') {
+                    const totalStepsTime = config.duration * config.count;
+                    if (t < totalStepsTime) {
+                        currentPhase = phase;
+                        phaseTime = t;
+                        break;
+                    }
+                    t -= totalStepsTime;
+                } else {
+                    if (t < config.duration) {
+                        currentPhase = phase;
+                        phaseTime = t;
+                        break;
+                    }
+                    t -= config.duration;
+                }
+            }
+            
+            charPhase = currentPhase;
+            
+            // Initial position
+            const groundY = H * 0.7;
+            charX = W * 0.5;
+            
+            if (currentPhase === 'setup') {
+                charY = groundY;
+                charVelY = 0;
+                stepCount = 0;
+                targetCameraY = 0;
+                
+                // Crouch preparation
+                const progress = phaseTime / phases.setup.duration;
+                const pose = {
+                    angle: 0,
+                    legAngle: 0.3 + ease.out(progress) * 0.5,
+                    armAngle: -0.5 + ease.out(progress) * 0.8,
+                    crouch: ease.out(progress) * 0.8,
+                    step: 0,
+                    time
+                };
+                
+                window.currentPose = pose;
+                
+                if (progress > 0.9 && Math.random() < 0.3) {
+                    createParticle(charX + rand(-20, 20), charY + rand(-10, 30), 'dust');
+                }
+            }
+            else if (currentPhase === 'leap') {
+                const progress = phaseTime / phases.leap.duration;
+                
+                charY = groundY - ease.out(progress) * 200;
+                charVelY = -15;
+                targetCameraY = Math.max(0, (charY - groundY + 200) * 0.3);
+                
+                const pose = {
+                    angle: -0.3,
+                    legAngle: 0.8 - progress * 1.2,
+                    armAngle: 0.3 - progress * 0.8,
+                    crouch: 0.8 - progress * 0.6,
+                    step: 0,
+                    time
+                };
+                
+                window.currentPose = pose;
+                
+                // Leap particles
+                if (progress < 0.3) {
+                    for (let i = 0; i < 3; i++) {
+                        createParticle(charX + rand(-30, 30), groundY + rand(0, 20), 'dust');
+                    }
+                }
+                
+                if (progress > 0.5) {
+                    createAfterimage(charX, charY, window.currentPose);
+                }
+            }
+            else if (currentPhase === 'steps') {
+                const stepDuration = phases.steps.duration;
+                const stepIndex = Math.floor(phaseTime / stepDuration);
+                const stepProgress = (phaseTime % stepDuration) / stepDuration;
+                
+                if (stepIndex !== stepCount && stepIndex < phases.steps.count) {
+                    stepCount = stepIndex;
+                    lastStepY = charY;
+                    
+                    // Create shockwave at the step point
+                    createShockwave(charX, charY + 30);
+                    createAfterimage(charX, charY, window.currentPose);
+                }
+                
+                // Ascend with each step
+                const totalProgress = phaseTime / (stepDuration * phases.steps.count);
+                const baseHeight = 200 + totalProgress * 800;
+                const stepBounce = Math.sin(stepProgress * Math.PI) * 50;
+                
+                charY = groundY - baseHeight + stepBounce;
+                charVelY = -10 - stepIndex * 2;
+                targetCameraY = Math.max(0, (groundY - charY - 300) * 0.8);
+                
+                // Dramatic pose for stepping
+                const pose = {
+                    angle: -0.2 + Math.sin(stepProgress * Math.PI * 2) * 0.1,
+                    legAngle: Math.sin(stepProgress * Math.PI) * 1.5,
+                    armAngle: Math.cos(stepProgress * Math.PI) * 0.8 - 0.3,
+                    crouch: 0.2 + Math.sin(stepProgress * Math.PI) * 0.3,
+                    step: Math.sin(stepProgress * Math.PI) * 1.5,
+                    time
+                };
+                
+                window.currentPose = pose;
+                
+                // Qi aura during steps
+                if (stepProgress > 0.3 && stepProgress < 0.7) {
+                    createParticle(charX + rand(-20, 20), charY + rand(-30, 30), 'qi');
+                }
+            }
+            else if (currentPhase === 'peak') {
+                const progress = phaseTime / phases.peak.duration;
+                
+                // Hang at peak
+                const peakHeight = 1000;
+                charY = groundY - peakHeight + ease.elastic(progress) * 50;
+                targetCameraY = (peakHeight - 200) * 0.8;
+                
+                const pose = {
+                    angle: Math.sin(time * 0.002) * 0.1,
+                    legAngle: 0.3 + Math.sin(progress * Math.PI) * 0.2,
+                    armAngle: 0.5 + Math.sin(time * 0.003) * 0.2,
+                    crouch: 0.1,
+                    step: 0,
+                    time
+                };
+                
+                window.currentPose = pose;
+                
+                // Ambient qi particles at peak
+                if (Math.random() < 0.2) {
+                    createParticle(charX + rand(-40, 40), charY + rand(-50, 20), 'qi');
+                }
+            }
+            else if (currentPhase === 'landing') {
+                const progress = ease.inOut(phaseTime / phases.landing.duration);
+                
+                // Descend
+                const peakHeight = 1000;
+                charY = groundY - peakHeight * (1 - progress) + Math.sin(progress * Math.PI * 3) * 30 * (1 - progress);
+                targetCameraY = (peakHeight - 200) * 0.8 * (1 - progress);
+                
+                // Slow down near ground
+                if (charY > groundY - 100) {
+                    charY = groundY - 100 + (charY - (groundY - 100)) * 0.3;
+                }
+                
+                if (charY >= groundY - 10) {
+                    charY = groundY;
+                    
+                    // Landing impact
+                    if (!window.landed) {
+                        window.landed = true;
+                        for (let i = 0; i < 15; i++) {
+                            createParticle(charX + rand(-30, 30), groundY + rand(0, 10), 'dust');
+                        }
+                    }
+                }
+                
+                const pose = {
+                    angle: progress > 0.9 ? 0 : -0.1,
+                    legAngle: progress > 0.9 ? 0.1 : 0.5 - progress * 0.3,
+                    armAngle: progress > 0.9 ? 0.1 : 0.3 - progress * 0.2,
+                    crouch: progress > 0.9 ? 0.1 : progress * 0.3,
+                    step: 0,
+                    time
+                };
+                
+                window.currentPose = pose;
+                
+                if (progress > 0.95) {
+                    isComplete = true;
+                    hint.classList.add('visible');
+                    seal.classList.add('visible');
+                }
+            }
+            
+            // Smooth camera
+            cameraY = lerp(cameraY, targetCameraY, 0.08);
+            
+            // Update particles
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1;
+                p.life--;
+                return p.life > 0;
+            });
+            
+            // Update afterimages
+            afterimages = afterimages.filter(img => {
+                img.life--;
+                return img.life > 0;
+            });
+            
+            // Update shockwaves
+            shockwaves = shockwaves.filter(sw => {
+                sw.radius += (sw.maxRadius - sw.radius) * 0.15;
+                sw.life--;
+                return sw.life > 0;
+            });
+            
+            // Update ink splashes
+            inkSplashes = inkSplashes.filter(splash => {
+                splash.x += splash.vx;
+                splash.y += splash.vy;
+                splash.vy += 0.3;
+                splash.vx *= 0.98;
+                splash.life--;
+                return splash.life > 0;
+            });
+        }
+        
+        function render(time) {
+            // Clear with gradient background
+            const bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+            bgGrad.addColorStop(0, '#0d0d14');
+            bgGrad.addColorStop(0.5, '#12121a');
+            bgGrad.addColorStop(1, '#0a0a10');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, W, H);
+            
+            // Draw background layers
+            drawMoon();
+            drawClouds(time);
+            drawMountains();
+            drawBamboo(time);
+            
+            // Draw effects
+            drawInkSplashes();
+            drawAfterimages();
+            drawShockwaves();
+            drawParticles();
+            
+            // Draw qi aura during steps
+            if (charPhase === 'steps' || charPhase === 'peak') {
+                drawQiAura(charX, charY, 0.5);
+            }
+            
+            // Draw character
+            if (window.currentPose) {
+                drawCharacter(charX, charY - cameraY, window.currentPose);
+            }
+            
+            // Vignette
+            const vignette = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
+            vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+            vignette.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+            ctx.fillStyle = vignette;
+            ctx.fillRect(0, 0, W, H);
+        }
+        
+        function animate(time) {
+            updateAnimation(time);
+            render(time);
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function reset() {
+            startTime = performance.now();
+            isComplete = false;
+            window.landed = false;
+            cameraY = 0;
+            targetCameraY = 0;
+            charY = H * 0.7;
+            stepCount = 0;
+            particles = [];
+            afterimages = [];
+            shockwaves = [];
+            inkSplashes = [];
+            hint.classList.remove('visible');
+            seal.classList.remove('visible');
+            
+            window.currentPose = {
+                angle: 0,
+                legAngle: 0.3,
+                armAngle: -0.5,
+                crouch: 0,
+                step: 0,
+                time: 0
+            };
+        }
+        
+        function init() {
+            resize();
+            reset();
+            startTime = performance.now();
+            animate(startTime);
+        }
+        
+        // Event listeners
+        window.addEventListener('resize', resize);
+        
+        canvas.addEventListener('click', () => {
+            if (isComplete) {
+                reset();
+                startTime = performance.now();
+            }
+        });
+        
+        // Respect reduced motion
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+        if (prefersReducedMotion.matches) {
+            // Simplified animation for reduced motion
+            phases.setup.duration = 400;
+            phases.leap.duration = 300;
+            phases.steps.duration = 200;
+            phases.peak.duration = 500;
+            phases.landing.duration = 750;
+        }
+        
+        // Start
+        init();
+    </script>
+</body>
+</html>

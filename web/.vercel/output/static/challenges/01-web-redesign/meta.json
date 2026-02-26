@@ -1,0 +1,19 @@
+{
+  "id": "web-redesign",
+  "title": "Web Redesign",
+  "titleCn": "网页重构",
+  "difficulty": "easy",
+  "category": "frontend",
+  "description": "Redesign a webpage with modern CSS and layout",
+  "models": [
+    "claude-opus-4.6",
+    "claude-sonnet-4",
+    "gemini-3.1-pro",
+    "glm-5",
+    "gpt-5.3-codex",
+    "kimi-k2.5",
+    "minimax-m2.5",
+    "qwen3.5-plus"
+  ],
+  "descCn": "用现代 CSS 重构网页设计"
+}

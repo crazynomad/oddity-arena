@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillSync - Team Collaboration Simplified</title>
+    <meta name="description" content="SkillSync brings tasks, docs, and updates into one central workspace. Streamline your team's workflow today.">
+    <style>
+        /* --- RESET & VARIABLES --- */
+        :root {
+            /* Colors */
+            --primary-50: #eef2ff;
+            --primary-100: #e0e7ff;
+            --primary-600: #4f46e5;
+            --primary-700: #4338ca;
+            --primary-800: #3730a3;
+            
+            --slate-50: #f8fafc;
+            --slate-100: #f1f5f9;
+            --slate-200: #e2e8f0;
+            --slate-300: #cbd5e1;
+            --slate-500: #64748b;
+            --slate-600: #475569;
+            --slate-700: #334155;
+            --slate-800: #1e293b;
+            --slate-900: #0f172a;
+            
+            --white: #ffffff;
+            --success: #10b981;
+            
+            /* Typography */
+            --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            
+            /* Spacing */
+            --container-width: 1200px;
+            --header-height: 80px;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            color: var(--slate-600);
+            line-height: 1.6;
+            background-color: var(--white);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--slate-900);
+            font-weight: 700;
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+            transition: color 0.2s;
+        }
+
+        ul {
+            list-style: none;
+        }
+
+        img {
+            max-width: 100%;
+            display: block;
+        }
+
+        /* --- UTILITIES --- */
+        .container {
+            width: 100%;
+            max-width: var(--container-width);
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        .section-padding {
+            padding: 5rem 0;
+        }
+
+        .text-center { text-align: center; }
+        .text-primary { color: var(--primary-600); }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-600);
+            color: var(--white);
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.1), 0 2px 4px -1px rgba(79, 70, 229, 0.06);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--primary-700);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background-color: var(--white);
+            color: var(--slate-700);
+            border: 1px solid var(--slate-200);
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--slate-50);
+            border-color: var(--slate-300);
+        }
+
+        .section-header {
+            max-width: 700px;
+            margin: 0 auto 3rem auto;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            background-color: var(--primary-50);
+            color: var(--primary-700);
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        /* --- NAVIGATION --- */
+        .navbar {
+            height: var(--header-height);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--slate-100);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            letter-spacing: -0.025em;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+            color: var(--primary-600);
+        }
+
+        .nav-links {
+            display: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            font-weight: 500;
+            color: var(--slate-600);
+        }
+
+        .nav-links a:hover {
+            color: var(--primary-600);
+        }
+
+        .nav-actions {
+            display: none;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .mobile-menu-btn {
+            display: block;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0.5rem;
+        }
+
+        /* --- HERO --- */
+        .hero {
+            padding-top: calc(var(--header-height) + 4rem);
+            padding-bottom: 4rem;
+            background: radial-gradient(circle at top right, var(--primary-50) 0%, transparent 40%),
+                        radial-gradient(circle at bottom left, var(--slate-50) 0%, transparent 40%);
+            overflow: hidden;
+        }
+
+        .hero-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .hero-content h1 {
+            font-size: 2.5rem;
+            letter-spacing: -0.025em;
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-content p {
+            font-size: 1.125rem;
+            color: var(--slate-600);
+            margin-bottom: 2rem;
+            max-width: 600px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .hero-visual {
+            position: relative;
+            background: var(--white);
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--slate-200);
+            padding: 1.5rem;
+            aspect-ratio: 4/3;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Abstract UI Mockup in CSS */
+        .mockup-header {
+            width: 100%;
+            height: 20px;
+            background: var(--slate-100);
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+        .mockup-body {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 1rem;
+            width: 100%;
+            height: 100%;
+        }
+        .mockup-sidebar { background: var(--slate-50); border-radius: 4px; }
+        .mockup-main { background: var(--slate-50); border-radius: 4px; }
+
+        /* --- FEATURES --- */
+        .features {
+            background-color: var(--white);
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--white);
+            border: 1px solid var(--slate-200);
+            border-radius: 1rem;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary-200);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            transform: translateY(-4px);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background-color: var(--primary-50);
+            color: var(--primary-600);
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        /* --- ABOUT --- */
+        .about {
+            background-color: var(--slate-50);
+        }
+
+        .about-layout {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3rem;
+        }
+
+        .about-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid var(--slate-200);
+        }
+
+        .stat-item h4 {
+            font-size: 2rem;
+            color: var(--primary-600);
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-item p {
+            font-size: 0.875rem;
+            color: var(--slate-500);
+            margin-bottom: 0;
+        }
+
+        /* --- PRICING --- */
+        .pricing {
+            background-color: var(--white);
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .plan-card {
+            background: var(--white);
+            border: 1px solid var(--slate-200);
+            border-radius: 1rem;
+            padding: 2.5rem;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .plan-card.popular {
+            border-color: var(--primary-600);
+            box-shadow: 0 20px 25px -5px rgba(79, 70, 229, 0.1);
+            z-index: 1;
+        }
+
+        .popular-badge {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--primary-600);
+            color: white;
+            padding: 0.25rem 1rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .plan-price {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--slate-900);
+            margin: 1rem 0;
+            display: flex;
+            align-items: baseline;
+        }
+
+        .plan-price span {
+            font-size: 1rem;
+            color: var(--slate-500);
+            font-weight: 400;
+            margin-left: 0.25rem;
+        }
+
+        .plan-features {
+            margin: 2rem 0;
+            flex-grow: 1;
+        }
+
+        .plan-features li {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .check-icon {
+            color: var(--success);
+            flex-shrink: 0;
+        }
+
+        /* --- TESTIMONIALS --- */
+        .testimonials {
+            background-color: var(--slate-50);
+        }
+
+        .testimonial-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+
+        .testimonial-card {
+            background: var(--white);
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .testimonial-text {
+            font-size: 1.125rem;
+            font-style: italic;
+            color: var(--slate-700);
+            margin-bottom: 1.5rem;
+        }
+
+        .testimonial-author {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .author-avatar {
+            width: 40px;
+            height: 40px;
+            background-color: var(--slate-200);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: var(--slate-500);
+        }
+
+        /* --- FAQ --- */
+        .faq {
+            background-color: var(--white);
+        }
+
+        .faq-list {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            border-bottom: 1px solid var(--slate-200);
+            padding: 1.5rem 0;
+        }
+
+        .faq-item h3 {
+            font-size: 1.125rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* --- CTA SECTION --- */
+        .cta-section {
+            background-color: var(--primary-600);
+            color: var(--white);
+            text-align: center;
+        }
+
+        .cta-section h2 {
+            color: var(--white);
+            font-size: 2.25rem;
+        }
+
+        .cta-section p {
+            color: var(--primary-100);
+            max-width: 600px;
+            margin: 0 auto 2rem auto;
+        }
+
+        .btn-white {
+            background-color: var(--white);
+            color: var(--primary-600);
+        }
+        .btn-white:hover {
+            background-color: var(--primary-50);
+        }
+
+        /* --- FOOTER --- */
+        footer {
+            background-color: var(--slate-900);
+            color: var(--slate-400);
+            padding: 4rem 0 2rem 0;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .footer-brand p {
+            color: var(--slate-400);
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .footer-links h4 {
+            color: var(--white);
+            font-size: 1rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .footer-links ul li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-links a:hover {
+            color: var(--white);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid var(--slate-800);
+            padding-top: 2rem;
+            text-align: center;
+            font-size: 0.875rem;
+        }
+
+        /* --- MOBILE MENU OVERLAY --- */
+        .mobile-menu {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            right: 0;
+            background: var(--white);
+            border-bottom: 1px solid var(--slate-200);
+            padding: 1.5rem;
+            transform: translateY(-150%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 999;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .mobile-menu.active {
+            transform: translateY(0);
+        }
+
+        .mobile-menu a {
+            display: block;
+            padding: 0.75rem 0;
+            font-size: 1.125rem;
+            border-bottom: 1px solid var(--slate-50);
+        }
+
+        /* --- RESPONSIVE QUERIES --- */
+        @media (min-width: 768px) {
+            .hero-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            .hero-buttons {
+                flex-direction: row;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .pricing-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+
+            .testimonial-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .footer-grid {
+                grid-template-columns: 2fr 1fr 1fr 1fr;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .nav-links {
+                display: flex;
+            }
+            
+            .nav-actions {
+                display: flex;
+            }
+
+            .mobile-menu-btn {
+                display: none;
+            }
+
+            .features-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .about-layout {
+                grid-template-columns: 2fr 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAV -->
+    <nav class="navbar">
+        <div class="container nav-container">
+            <a href="#" class="logo">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                SkillSync
+            </a>
+
+            <ul class="nav-links">
+                <li><a href="#features">Features</a></li>
+                <li><a href="#about">About</a></li>
+                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#testimonials">Testimonials</a></li>
+                <li><a href="#faq">FAQ</a></li>
+            </ul>
+
+            <div class="nav-actions">
+                <a href="#" style="font-weight: 500; font-size: 0.95rem;">Log in</a>
+                <a href="#cta" class="btn btn-primary" style="padding: 0.5rem 1rem; font-size: 0.95rem;">Try It Free</a>
+            </div>
+
+            <button class="mobile-menu-btn" aria-label="Toggle menu">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            </button>
+        </div>
+    </nav>
+
+    <!-- MOBILE MENU DROPDOWN -->
+    <div class="mobile-menu">
+        <a href="#features">Features</a>
+        <a href="#about">About</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#testimonials">Testimonials</a>
+        <a href="#faq">FAQ</a>
+        <a href="#" style="margin-top: 1rem; color: var(--primary-600); font-weight: 600;">Log in</a>
+    </div>
+
+    <!-- HERO -->
+    <header class="hero">
+        <div class="container">
+            <div class="hero-grid">
+                <div class="hero-content">
+                    <span class="badge">New: Automation 2.0</span>
+                    <h1>Do Team Projects In A Better Way</h1>
+                    <p>SkillSync brings tasks, docs, and updates into one central workspace. Stop jumping between apps and start getting work done.</p>
+                    <div class="hero-buttons">
+                        <a href="#pricing" class="btn btn-primary">Start Free Trial</a>
+                        <a href="#about" class="btn btn-secondary">Contact Sales</a>
+                    </div>
+                </div>
+                <div class="hero-visual">
+                    <!-- CSS-only abstract dashboard representation -->
+                    <div style="width: 100%; height: 100%;">
+                        <div class="mockup-header"></div>
+                        <div class="mockup-body">
+                            <div class="mockup-sidebar"></div>
+                            <div class="mockup-main"></div>
+                        </div>
+                        <!-- Floating elements for effect -->
+                        <div style="position: absolute; bottom: 20px; right: 20px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); font-size: 12px; font-weight: bold; color: var(--primary-600);">
+                            Task Completed
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- FEATURES -->
+    <section id="features" class="section-padding features">
+        <div class="container">
+            <div class="section-header text-center">
+                <h2>Everything you need to ship faster</h2>
+                <p>Replace your scattered tools with one cohesive platform designed for modern teams.</p>
+            </div>
+            <div class="features-grid">
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                    </div>
+                    <h3>Kanban Task Boards</h3>
+                    <p>Visualize work with drag-and-drop boards. Assign owners, set due dates, and track progress effortlessly.</p>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    </div>
+                    <h3>Shared Docs</h3>
+                    <p>Write project specs, meeting notes, and operating guides directly alongside your tasks.</p>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                    </div>
+                    <h3>Team Chat</h3>
+                    <p>Keep context in one place. Send direct messages or channel updates with searchable history.</p>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    </div>
+                    <h3>Reports & Insights</h3>
+                    <p>Review progress with weekly status summaries and workload charts to identify bottlenecks.</p>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                    </div>
+                    <h3>Automations</h3>
+                    <p>Set rules for reminders, overdue alerts, and recurring tasks so you never miss a beat.</p>
+                </article>
+                <article class="feature-card">
+                    <div class="feature-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    </div>
+                    <h3>Permissions</h3>
+                    <p>Control workspace access granularly for employees, contractors, and external guests.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT / SOCIAL PROOF -->
+    <section id="about" class="section-padding about">
+        <div class="container">
+            <div class="about-layout">
+                <div class="about-content">
+                    <h2>Built for teams who want simplicity</h2>
+                    <p>SkillSync started as a small internal system to solve our own chaotic workflow. We realized that most project management tools were either too simple or overwhelmingly complex.</p>
+                    <p>We built SkillSync to be the "Goldilocks" solution—powerful enough for product teams, but simple enough for marketing and operations.</p>
+                    <p>Today, we help thousands of teams consolidate their daily workflow into one tool.</p>
+                </div>
+                <aside class="about-stats">
+                    <div class="stat-item">
+                        <h4>10k+</h4>
+                        <p>Active Customers</p>
+                    </div>
+                    <div class="stat-item">
+                        <h4>38</h4>
+                        <p>Countries</p>
+                    </div>
+                    <div class="stat-item">
+                        <h4>5 Days</h4>
+                        <p>Avg Rollout</p>
+                    </div>
+                    <div class="stat-item">
+                        <h4>2021</h4>
+                        <p>Founded</p>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </section>
+
+    <!-- PRICING -->
+    <section id="pricing" class="section-padding pricing">
+        <div class="container">
+            <div class="section-header text-center">
+                <h2>Simple, transparent pricing</h2>
+                <p>Choose the plan that fits your team size. No hidden fees.</p>
+            </div>
+            <div class="pricing-grid">
+                <article class="plan-card">
+                    <h3>Starter</h3>
+                    <div class="plan-price">$12<span>/user/mo</span></div>
+                    <p style="font-size: 0.9rem; color: var(--slate-500);">Perfect for small teams just getting started.</p>
+                    <ul class="plan-features">
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Up to 15 users</li>
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Task boards and docs</li>
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Email support</li>
+                    </ul>
+                    <button class="btn btn-secondary">Choose Starter</button>
+                </article>
+                <article class="plan-card popular">
+                    <span class="popular-badge">Most Popular</span>
+                    <h3>Growth</h3>
+                    <div class="plan-price">$29<span>/user/mo</span></div>
+                    <p style="font-size: 0.9rem; color: var(--slate-500);">For scaling teams needing more power.</p>
+                    <ul class="plan-features">
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Unlimited users</li>
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Automation rules</li>
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Priority support</li>
+                    </ul>
+                    <button class="btn btn-primary">Choose Growth</button>
+                </article>
+                <article class="plan-card">
+                    <h3>Enterprise</h3>
+                    <div class="plan-price">$59<span>/user/mo</span></div>
+                    <p style="font-size: 0.9rem; color: var(--slate-500);">Advanced security and control.</p>
+                    <ul class="plan-features">
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Advanced permissions</li>
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> SSO & Security controls</li>
+                        <li><svg class="check-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Dedicated manager</li>
+                    </ul>
+                    <button class="btn btn-secondary">Contact Sales</button>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- TESTIMONIALS -->
+    <section id="testimonials" class="section-padding testimonials">
+        <div class="container">
+            <div class="section-header text-center">
+                <h2>Loved by teams everywhere</h2>
+            </div>
+            <div class="testimonial-grid">
+                <blockquote class="testimonial-card">
+                    <p class="testimonial-text">"SkillSync made our weekly planning meetings much shorter and clearer. We finally know who is doing what."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">JT</div>
+                        <div>
+                            <strong>Jamie T.</strong>
+                            <div style="font-size: 0.8rem; color: var(--slate-500);">Product Lead</div>
+                        </div>
+                    </div>
+                </blockquote>
+                <blockquote class="testimonial-card">
+                    <p class="testimonial-text">"The shared docs and task boards replaced three separate tools for us. It's a huge cost saving."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">MR</div>
+                        <div>
+                            <strong>Morgan R.</strong>
+                            <div style="font-size: 0.8rem; color: var(--slate-500);">Ops Manager</div>
+                        </div>
+                    </div>
+                </blockquote>
+                <blockquote class="testimonial-card">
+                    <p class="testimonial-text">"Setup was fast and the team started using it on day one. The UI is intuitive and clean."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">AP</div>
+                        <div>
+                            <strong>Alex P.</strong>
+                            <div style="font-size: 0.8rem; color: var(--slate-500);">Support Director</div>
+                        </div>
+                    </div>
+                </blockquote>
+                <blockquote class="testimonial-card">
+                    <p class="testimonial-text">"The reporting features gave leadership a much better view of capacity without micromanaging."</p>
+                    <div class="testimonial-author">
+                        <div class="author-avatar">DK</div>
+                        <div>
+                            <strong>Dana K.</strong>
+                            <div style="font-size: 0.8rem; color: var(--slate-500);">PMO</div>
+                        </div>
+                    </div>
+                </blockquote>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section id="faq" class="section-padding faq">
+        <div class="container">
+            <div class="section-header text-center">
+                <h2>Frequently Asked Questions</h2>
+            </div>
+            <div class="faq-list">
+                <article class="faq-item">
+                    <h3>Do you offer a free trial?</h3>
+                    <p>Yes. All plans include a 14-day free trial with no credit card required.</p>
+                </article>
+                <article class="faq-item">
+                    <h3>Can we migrate data from another tool?</h3>
+                    <p>Yes. CSV imports are supported for projects, tasks, and team members. We also have one-click importers for Trello and Asana.</p>
+                </article>
+                <article class="faq-item">
+                    <h3>Does SkillSync include onboarding help?</h3>
+                    <p>Growth and Enterprise plans include guided onboarding sessions to help your team get set up correctly.</p>
+                </article>
+                <article class="faq-item">
+                    <h3>Is there an annual contract?</h3>
+                    <p>No contract is required for monthly billing. However, annual billing offers a 20% discount.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="section-padding cta-section" id="cta">
+        <div class="container">
+            <h2>Ready to sync your team?</h2>
+            <p>Create an account and test it with your team. See how much smoother your workflow can be.</p>
+            <button class="btn btn-white">Create Account</button>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div class="footer-brand">
+                    <a href="#" class="logo" style="color: white;">SkillSync</a>
+                    <p>&copy; 2026 SkillSync Inc.<br>All rights reserved.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Product</h4>
+                    <ul>
+                        <li><a href="#features">Features</a></li>
+                        <li><a href="#pricing">Pricing</a></li>
+                        <li><a href="#">Integrations</a></li>
+                        <li><a href="#">Changelog</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Company</h4>
+                    <ul>
+                        <li><a href="#about">About Us</a></li>
+                        <li><a href="#">Careers</a></li>
+                        <li><a href="#">Blog</a></li>
+                        <li><a href="#">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Support</h4>
+                    <ul>
+                        <li><a href="#faq">Help Center</a></li>
+                        <li><a href="#">Status</a></li>
+                        <li><a href="#">Terms</a></li>
+                        <li><a href="#">Privacy</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>support@skillsync.example | +1 (555) 013-2201</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile Menu Toggle
+        const menuBtn = document.querySelector('.mobile-menu-btn');
+        const mobileMenu = document.querySelector('.mobile-menu');
+        const mobileLinks = document.querySelectorAll('.mobile-menu a');
+
+        menuBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('active');
+            const isActive = mobileMenu.classList.contains('active');
+            menuBtn.setAttribute('aria-expanded', isActive);
+        });
+
+        // Close mobile menu when a link is clicked
+        mobileLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                mobileMenu.classList.remove('active');
+            });
+        });
+
+        // Smooth scroll for anchor links (backup for older browsers)
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    const headerOffset = 80;
+                    const elementPosition = targetElement.getBoundingClientRect().top;
+                    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+    
+                    window.scrollTo({
+                        top: offsetPosition,
+                        behavior: "smooth"
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

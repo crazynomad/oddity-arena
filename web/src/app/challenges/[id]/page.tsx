@@ -1,4 +1,7 @@
+
 'use client';
+
+export const runtime = 'edge';
 
 import { useParams } from 'next/navigation';
 import { useState, useCallback, useRef, useEffect } from 'react';
@@ -226,6 +229,20 @@ export default function BattlePage() {
               >
                 {t('battle.next_pair')}
               </button>
+              <Link
+                href={`/challenges/${challengeId}/gallery`}
+                onClick={cancelCountdown}
+                className="font-typewriter text-sm tracking-[0.1em] px-6 py-3 bg-transparent text-ink border-2 border-ink uppercase no-underline cursor-pointer hover:bg-ink hover:text-paper transition-all"
+              >
+                {t('battle.gallery')}
+              </Link>
+              <Link
+                href="/leaderboard"
+                onClick={cancelCountdown}
+                className="font-typewriter text-sm tracking-[0.1em] px-6 py-3 bg-transparent text-ink border-2 border-ink uppercase no-underline cursor-pointer hover:bg-ink hover:text-paper transition-all"
+              >
+                {t('battle.leaderboard')}
+              </Link>
             </div>
             {countdown > 0 && (
               <p className="font-mono text-sm text-stamp-red">
