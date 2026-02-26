@@ -3,13 +3,21 @@
 import { useI18n } from '@/lib/i18n';
 
 export function Footer() {
-  const { t } = useI18n();
+  const { lang } = useI18n();
 
   return (
-    <footer className="py-8 mt-8 border-t-2 border-ink font-mono text-sm text-ink-gray text-center">
-      <p>{t('footer.credit')}</p>
-      <p className="mt-2">
-        <a href="https://github.com/crazynomad/oddity-arena" className="text-ink-light underline hover:text-stamp-red">
+    <footer style={{
+      padding: '2rem 0',
+      marginTop: '2rem',
+      borderTop: '2px solid #1A1A1A',
+      fontFamily: "'Courier Prime', monospace",
+      fontSize: '0.8rem',
+      color: '#666',
+      textAlign: 'center',
+    }}>
+      <p>{lang === 'zh' ? '不现实竞技场 — 不现实宇宙的一部分' : 'Oddity Arena — Part of the Oddity Universe'}</p>
+      <p style={{ marginTop: '0.5rem' }}>
+        <a href="https://github.com/crazynomad/oddity-arena" style={{ color: '#4A4A4A', textDecoration: 'underline' }}>
           GitHub
         </a>
       </p>

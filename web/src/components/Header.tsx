@@ -7,23 +7,75 @@ export function Header() {
   const { t, lang, toggle } = useI18n();
 
   return (
-    <nav className="flex items-center justify-between py-5 border-b-2 border-ink">
-      <Link href="/" className="font-typewriter text-lg tracking-[0.15em] font-bold no-underline text-ink hover:text-ink">
-        ODDITY ARENA
+    <nav style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: '1.25rem 0',
+      borderBottom: '2px solid #1A1A1A',
+    }}>
+      <Link href="/" style={{
+        fontFamily: "'Special Elite', monospace",
+        fontSize: '1.1rem',
+        letterSpacing: '0.15em',
+        textDecoration: 'none',
+        color: '#1A1A1A',
+        fontWeight: 700,
+      }}>
+        ⚡ ODDITY ARENA
       </Link>
-      <div className="flex gap-5 items-center">
-        <Link href="/" className="font-typewriter text-xs tracking-[0.1em] uppercase text-ink-light hover:text-stamp-red no-underline">
-          {t('nav.home')}
+      <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'center' }}>
+        <Link href="/#challenges" style={{
+          fontFamily: "'Special Elite', monospace",
+          fontSize: '0.8rem',
+          textDecoration: 'none',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: '#4A4A4A',
+        }}>
+          {lang === 'zh' ? '挑战' : 'Challenges'}
         </Link>
-        <Link href="/gallery" className="font-typewriter text-xs tracking-[0.1em] uppercase text-ink-light hover:text-stamp-red no-underline">
+        <Link href="/gallery" style={{
+          fontFamily: "'Special Elite', monospace",
+          fontSize: '0.8rem',
+          textDecoration: 'none',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: '#4A4A4A',
+        }}>
           {lang === 'zh' ? '展览' : 'Gallery'}
         </Link>
-        <Link href="/leaderboard" className="font-typewriter text-xs tracking-[0.1em] uppercase text-ink-light hover:text-stamp-red no-underline">
-          {t('nav.leaderboard')}
+        <Link href="/leaderboard" style={{
+          fontFamily: "'Special Elite', monospace",
+          fontSize: '0.8rem',
+          textDecoration: 'none',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: '#4A4A4A',
+        }}>
+          {lang === 'zh' ? '排行榜' : 'Leaderboard'}
         </Link>
+        <a href="https://github.com/crazynomad/oddity-arena" target="_blank" style={{
+          fontFamily: "'Special Elite', monospace",
+          fontSize: '0.8rem',
+          textDecoration: 'none',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: '#4A4A4A',
+        }}>
+          GitHub
+        </a>
         <button
           onClick={toggle}
-          className="font-typewriter text-xs tracking-[0.1em] border border-ink px-3 py-1 bg-transparent cursor-pointer hover:bg-ink hover:text-paper transition-colors"
+          style={{
+            background: 'none',
+            border: '1px solid #1A1A1A',
+            color: '#1A1A1A',
+            padding: '4px 12px',
+            cursor: 'pointer',
+            fontFamily: "'Special Elite', monospace",
+            fontSize: '0.85em',
+          }}
         >
           {lang === 'zh' ? 'EN' : '中文'}
         </button>

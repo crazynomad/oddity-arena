@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 /* ============================================
-   不现实商店 Design System - FBI Classified Dossier
+   Oddity Arena — FBI Classified Dossier Theme
+   Tailwind v4 + Arena-specific styles
    ============================================ */
 
-/* Theme Configuration */
 @theme inline {
   /* Colors */
   --color-paper: #F5F0E1;
@@ -18,36 +18,21 @@
   --color-stamp-red: #C41E3A;
   --color-redacted: #1A1A1A;
 
-  /* Fonts */
-  --font-typewriter: 'Special Elite', 'Courier Prime', monospace;
-  --font-mono: 'Courier Prime', 'Courier New', monospace;
-  --font-serif-cn: 'Noto Serif SC', 'Songti SC', serif;
-  --font-sans-cn: 'Noto Sans SC', 'PingFang SC', sans-serif;
-  --font-handwritten: 'Ma Shan Zheng', 'Homemade Apple', cursive;
-  --font-stamp: 'Black Ops One', 'Special Elite', monospace;
+  /* Fonts — mapped to next/font CSS variables */
+  --font-typewriter: var(--font-typewriter-var, 'Special Elite'), 'Courier Prime', monospace;
+  --font-mono: var(--font-mono-var, 'Courier Prime'), 'Courier New', monospace;
+  --font-serif-cn: var(--font-serif-cn-var, 'Noto Serif SC'), 'Songti SC', serif;
+  --font-sans-cn: var(--font-sans-cn-var, 'Noto Sans SC'), 'PingFang SC', sans-serif;
+  --font-stamp: var(--font-stamp-var, 'Black Ops One'), 'Special Elite', monospace;
 
-  /* Animation */
-  --animate-scanline: scanline 4s linear infinite;
-  --animate-typewriter: typewriter 2s steps(40, end);
+  /* Animations */
   --animate-stamp-in: stamp-in 0.3s ease-out;
-  --animate-count-up: count-up 1s ease-out;
   --animate-fade-in-up: fadeInUp 0.6s ease-out;
-  --animate-bounce-subtle: bounce-subtle 2s infinite;
 }
 
-/* Root variables */
-:root {
-  --paper: #F5F0E1;
-  --paper-dark: #E8E3D4;
-  --ink: #1A1A1A;
-  --ink-light: #4A4A4A;
-  --brand-yellow: #FFE500;
-  --stamp-red: #C41E3A;
-  --redacted: #1A1A1A;
-  --highlight: rgba(255, 229, 0, 0.4);
-}
-
-/* Base styles */
+/* ============================================
+   Base — Paper Texture + Vignette
+   ============================================ */
 * {
   margin: 0;
   padding: 0;
@@ -60,543 +45,82 @@ html {
 
 body {
   font-family: 'Noto Serif SC', 'Noto Sans SC', serif;
-  background: var(--paper);
-  color: var(--ink);
+  background: #F5F0E1;
+  color: #1A1A1A;
   min-height: 100vh;
   overflow-x: hidden;
-  cursor: crosshair;
 }
 
-/* Paper texture overlay */
+/* Paper noise texture */
 body::before {
   content: '';
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
   opacity: 0.04;
   pointer-events: none;
   z-index: 1000;
 }
 
-/* Vignette effect */
+/* Vignette */
 body::after {
   content: '';
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
+  top: 0; left: 0; width: 100%; height: 100%;
   background: radial-gradient(ellipse at center, transparent 50%, rgba(139, 90, 43, 0.08) 100%);
   pointer-events: none;
   z-index: 999;
 }
 
-/* Selection styling */
 ::selection {
-  background: var(--brand-yellow);
-  color: var(--ink);
+  background: #FFE500;
+  color: #1A1A1A;
+}
+
+a {
+  color: #1A1A1A;
+  transition: color 0.2s;
+}
+
+a:hover {
+  color: #C41E3A;
 }
 
 /* ============================================
-   Typography Classes
+   Typography — Force font families
+   next/font injects CSS vars, we map them here
    ============================================ */
 .font-typewriter {
-  font-family: 'Special Elite', 'Courier Prime', monospace;
+  font-family: var(--font-typewriter), 'Special Elite', 'Courier Prime', monospace !important;
 }
 
 .font-mono {
-  font-family: 'Courier Prime', 'Courier New', monospace;
+  font-family: var(--font-mono), 'Courier Prime', 'Courier New', monospace !important;
 }
 
 .font-serif-cn {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
-}
-
-.font-sans-cn {
-  font-family: 'Noto Sans SC', 'PingFang SC', sans-serif;
-}
-
-.font-title-cn {
-  font-family: 'FangSong', 'STFangsong', 'Noto Serif SC', serif !important;
-}
-
-.font-handwritten {
-  font-family: 'Ma Shan Zheng', 'Homemade Apple', cursive;
+  font-family: var(--font-serif-cn), 'Noto Serif SC', 'Songti SC', serif !important;
 }
 
 .font-stamp {
-  font-family: 'Black Ops One', 'Special Elite', monospace;
+  font-family: var(--font-stamp), 'Black Ops One', 'Special Elite', monospace !important;
   text-transform: uppercase;
 }
 
 /* ============================================
-   Keyframe Animations
+   Animations
    ============================================ */
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100vh);
-  }
-}
-
-@keyframes typewriter {
-  from {
-    width: 0;
-  }
-  to {
-    width: 100%;
-  }
-}
-
 @keyframes stamp-in {
-  0% {
-    transform: scale(2) rotate(-15deg);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.1) rotate(-15deg);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(1) rotate(-15deg);
-    opacity: 0.85;
-  }
-}
-
-@keyframes count-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0% { transform: scale(2) rotate(-15deg); opacity: 0; }
+  50% { transform: scale(1.1) rotate(-15deg); opacity: 0.8; }
+  100% { transform: scale(1) rotate(-15deg); opacity: 0.85; }
 }
 
 @keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-50px) rotate(-2deg);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0) rotate(0);
-  }
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(50px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes bounce-subtle {
-  0%, 20%, 50%, 80%, 100% {
-    transform: translateY(0);
-  }
-  40% {
-    transform: translateY(10px);
-  }
-  60% {
-    transform: translateY(5px);
-  }
-}
-
-@keyframes blink {
-  0%, 50% {
-    opacity: 1;
-  }
-  51%, 100% {
-    opacity: 0;
-  }
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px rgba(255, 229, 0, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 20px rgba(255, 229, 0, 0.8);
-  }
-}
-
-/* ============================================
-   Component Styles
-   ============================================ */
-
-/* Redacted text effect */
-.redacted {
-  background: var(--redacted);
-  color: var(--redacted);
-  padding: 0 0.5rem;
-  user-select: none;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.redacted:hover {
-  background: transparent;
-  color: var(--ink);
-}
-
-/* Classification badge */
-.classification {
-  display: inline-block;
-  background: var(--brand-yellow);
-  color: var(--ink);
-  padding: 0.5rem 1.25rem;
-  font-family: 'Special Elite', monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.15em;
-  transform: rotate(-2deg);
-  border: 2px solid var(--ink);
-}
-
-/* Stamp effect */
-.stamp {
-  border: 4px solid var(--stamp-red);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-family: 'Black Ops One', 'Special Elite', monospace;
-  color: var(--stamp-red);
-  transform: rotate(-15deg);
-  opacity: 0.85;
-  letter-spacing: 0.15em;
-  line-height: 1.4;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 2px var(--stamp-red), 0 0 10px rgba(196, 30, 58, 0.2);
-  text-transform: uppercase;
-}
-
-/* File number style */
-.file-number {
-  font-family: 'Special Elite', monospace;
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-  opacity: 0.6;
-}
-
-/* Button styles */
-.btn-primary {
-  background: var(--brand-yellow);
-  color: var(--ink);
-  border: 2px solid var(--ink);
-  padding: 1rem 2rem;
-  font-family: 'Special Elite', monospace;
-  font-size: 1rem;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  position: relative;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn-primary:hover {
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 var(--ink);
-}
-
-.btn-secondary {
-  background: transparent;
-  color: var(--ink);
-  border: 2px solid var(--ink);
-  padding: 1rem 2rem;
-  font-family: 'Special Elite', monospace;
-  font-size: 1rem;
-  letter-spacing: 0.1em;
-  cursor: pointer;
-  transition: all 0.2s;
-  text-decoration: none;
-  display: inline-block;
-}
-
-.btn-secondary:hover {
-  background: var(--ink);
-  color: var(--paper);
-}
-
-/* Series tag - compact vintage style */
-.series-tag {
-  background: transparent;
-  border: 1px solid var(--ink);
-  padding: 0.5rem 1.25rem;
-  font-family: 'Special Elite', monospace;
-  font-size: 0.7rem;
-  color: var(--ink);
-  text-decoration: none;
-  transition: all 0.2s;
-  display: inline-block;
-}
-
-.series-tag:hover {
-  background: var(--brand-yellow);
-}
-
-/* Product card base */
-.product-card {
-  background: var(--paper);
-  border: 1px solid var(--ink);
-  padding: 2.5rem;
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.product-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-}
-
-/* Skeleton loading */
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--paper-dark) 25%,
-    var(--paper) 50%,
-    var(--paper-dark) 75%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
-}
-
-@keyframes skeleton-loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
-}
-
-/* Scanline overlay */
-.scanline-overlay::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: rgba(255, 229, 0, 0.3);
-  animation: scanline 4s linear infinite;
-  pointer-events: none;
-  z-index: 10;
-}
-
-/* Paperclip decoration */
-.paperclip {
-  position: absolute;
-  width: 30px;
-  height: 60px;
-  border: 3px solid #888;
-  border-radius: 15px 15px 0 0;
-  border-bottom: none;
-  top: -20px;
-  right: 30px;
-  transform: rotate(15deg);
-}
-
-/* Coffee stain decoration */
-.coffee-stain {
-  position: absolute;
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, transparent 40%, rgba(139, 90, 43, 0.1) 50%, transparent 70%);
-  pointer-events: none;
-}
-
-/* Evidence photo */
-.evidence-photo {
-  background: var(--paper-dark);
-  padding: 0.75rem;
-  border: 1px solid var(--ink);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
-}
-
-.evidence-photo:hover {
-  z-index: 10;
-  transform: rotate(0deg) scale(1.05);
-  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.25);
-}
-
-/* Scroll reveal */
-.reveal {
-  opacity: 0;
-  transform: translateY(30px);
-  transition: all 0.8s ease;
-}
-
-.reveal.active {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* ============================================
-   Utility Classes
-   ============================================ */
-.text-shadow-subtle {
-  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.1);
-}
-
-.shadow-card {
-  box-shadow: 4px 4px 15px rgba(0, 0, 0, 0.15);
-}
-
-.shadow-stamp {
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
-}
-
-/* Grid pattern background */
-.bg-grid {
-  background-image:
-    repeating-linear-gradient(0deg, transparent, transparent 20px, rgba(0, 0, 0, 0.03) 20px, rgba(0, 0, 0, 0.03) 21px),
-    repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(0, 0, 0, 0.03) 20px, rgba(0, 0, 0, 0.03) 21px);
-}
-
-/* ============================================
-   Container Utilities (Tailwind fallback)
-   ============================================ */
-.container-7xl {
-  max-width: 1280px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.container-5xl {
-  max-width: 1024px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.container-1400 {
-  max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* Common padding utilities */
-.section-padding {
-  padding-left: 1rem;
-  padding-right: 1rem;
-  padding-top: 4rem;
-  padding-bottom: 4rem;
-}
-
-@media (min-width: 768px) {
-  .section-padding {
-    padding-left: 2rem;
-    padding-right: 2rem;
-  }
-}
-
-/* Grid utilities */
-.grid-2-cols {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
-}
-
-@media (min-width: 1024px) {
-  .grid-2-cols {
-    grid-template-columns: 1fr 1fr;
-    gap: 4rem;
-  }
-}
-
-.grid-4-cols {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
-}
-
-@media (min-width: 768px) {
-  .grid-4-cols {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .grid-4-cols {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.grid-3-cols {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-@media (min-width: 768px) {
-  .grid-3-cols {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 1024px) {
-  .grid-3-cols {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* ============================================
-   Hero Animations
-   ============================================ */
-.animate-slide-in-left {
-  animation: slideInLeft 0.8s ease-out forwards;
-}
-
-.animate-slide-in-right {
-  animation: slideInRight 0.8s ease-out 0.2s both;
-}
-
-.animate-fade-in-up {
-  animation: fadeInUp 0.6s ease-out both;
-}
-
-.animate-fade-in-up-1 { animation: fadeInUp 0.6s ease-out 0.1s both; }
-.animate-fade-in-up-2 { animation: fadeInUp 0.6s ease-out 0.2s both; }
-.animate-fade-in-up-3 { animation: fadeInUp 0.6s ease-out 0.3s both; }
-.animate-fade-in-up-4 { animation: fadeInUp 0.6s ease-out 0.4s both; }
-.animate-fade-in-up-5 { animation: fadeInUp 0.6s ease-out 0.5s both; }
-
-.animate-stamp-in {
-  animation: stamp-in 0.5s ease-out 0.6s both;
-}
-
-/* Typewriter cursor */
-.typewriter-cursor {
-  display: inline-block;
-  animation: blink 1s step-end infinite;
-}
-
-/* Arcade: Screen Shake */
 @keyframes screenShake {
   0% { transform: translate(0); }
   10% { transform: translate(-8px, 4px); }
@@ -609,7 +133,91 @@ body::after {
   100% { transform: translate(0); }
 }
 
+@keyframes koSlam {
+  0% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(0.9); opacity: 1; }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  80% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+
 .animate-shake {
   animation: screenShake 0.4s ease-out;
 }
 
+.animate-stamp-in {
+  animation: stamp-in 0.5s ease-out both;
+}
+
+.animate-ko {
+  animation: koSlam 0.8s ease-out forwards;
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+/* ============================================
+   Component Overrides — Match Original Arena
+   ============================================ */
+
+/* Buttons */
+.btn-primary {
+  background: #FFE500;
+  color: #1A1A1A;
+  border: 2px solid #1A1A1A;
+  padding: 0.75rem 1.5rem;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.85rem;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.btn-primary:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 #1A1A1A;
+}
+
+/* Stamp effect */
+.stamp {
+  border: 4px solid #C41E3A;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Black Ops One', monospace;
+  color: #C41E3A;
+  transform: rotate(-15deg);
+  opacity: 0.85;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* Classification badge */
+.classification {
+  display: inline-block;
+  background: #FFE500;
+  color: #1A1A1A;
+  padding: 0.5rem 1.25rem;
+  font-family: 'Special Elite', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  transform: rotate(-2deg);
+  border: 2px solid #1A1A1A;
+}
+
+/* Redacted text */
+.redacted {
+  background: #1A1A1A;
+  color: #1A1A1A;
+  padding: 0 0.5rem;
+  user-select: none;
+  transition: all 0.3s ease;
+}
+.redacted:hover {
+  background: transparent;
+  color: #1A1A1A;
+}

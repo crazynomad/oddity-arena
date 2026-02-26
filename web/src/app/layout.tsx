@@ -53,10 +53,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="zh" suppressHydrationWarning>
       <body
-        className={`${specialElite.variable} ${courierPrime.variable} ${notoSerifSC.variable} ${notoSansSC.variable} ${blackOpsOne.variable} font-serif-cn bg-paper text-ink min-h-screen overflow-x-hidden`}
+        className={`${specialElite.variable} ${courierPrime.variable} ${notoSerifSC.variable} ${notoSansSC.variable} ${blackOpsOne.variable}`}
+        style={{
+          fontFamily: "'Noto Serif SC', 'Noto Sans SC', serif",
+          background: '#F5F0E1',
+          color: '#1A1A1A',
+          minHeight: '100vh',
+          overflowX: 'hidden',
+        }}
       >
         <Providers>
-          <div className="max-w-[1280px] mx-auto px-6">
+          <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '0 1.5rem' }}>
             {children}
           </div>
         </Providers>
