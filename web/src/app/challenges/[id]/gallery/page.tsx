@@ -16,6 +16,19 @@ interface Rating {
   votes: number;
 }
 
+interface DeepDiveEntry {
+  challenge: string;
+  model: string;
+  driver: string;
+  driverMode: number;
+  timestamp: string;
+  rounds: number;
+  tools_used: string[];
+  file_size_bytes: number;
+  status: string;
+  track?: string;
+}
+
 type SortMode = 'elo' | 'name' | 'random';
 type ViewMode = 'grid' | 'compare';
 
@@ -32,6 +45,15 @@ export default function GalleryPage() {
   const [compareB, setCompareB] = useState<string | null>(null);
   const [interactive, setInteractive] = useState(false);
   const [iframeHeight, setIframeHeight] = useState(350);
+  const [deepDive, setDeepDive] = useState<Record<string, DeepDiveEntry>>({});
+  const [expandedMeta, setExpandedMeta] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch(`/challenges/${challengeId}/deep-dive.json`)
+      .then(r => r.ok ? r.json() : {})
+      .then(d => setDeepDive(d))
+      .catch(() => {});
+  }, [challengeId]);
 
   useEffect(() => {
     fetch(`/api/leaderboard/${challengeId}`)
@@ -360,6 +382,38 @@ export default function GalleryPage() {
                       </div>
                     )}
                   </div>
+                  {/* Deep Dive */}
+                  {deepDive[model] && (
+                    <div className="border-t border-ink">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setExpandedMeta(expandedMeta === model ? null : model); }}
+                        className="w-full flex items-center justify-between px-4 py-2 bg-paper-dark hover:bg-paper cursor-pointer border-none font-typewriter text-xs text-ink-gray tracking-[0.08em]"
+                      >
+                        <span>🔬 {lang === 'zh' ? '生成详情' : 'DEEP DIVE'}</span>
+                        <span>{expandedMeta === model ? '▲' : '▼'}</span>
+                      </button>
+                      {expandedMeta === model && (
+                        <div className="px-4 py-3 bg-paper-dark/50 font-mono text-xs leading-relaxed">
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+                            <span className="text-ink-gray">{lang === 'zh' ? '赛道' : 'Track'}</span>
+                            <span className="text-ink">{deepDive[model].track === 'openclaw' ? '🦞 OpenClaw' : '🎨 Code'}</span>
+                            <span className="text-ink-gray">{lang === 'zh' ? '驱动方式' : 'Driver'}</span>
+                            <span className="text-ink">{deepDive[model].driver} (mode {deepDive[model].driverMode})</span>
+                            <span className="text-ink-gray">{lang === 'zh' ? '对话轮次' : 'Rounds'}</span>
+                            <span className="text-ink">{deepDive[model].rounds}</span>
+                            <span className="text-ink-gray">{lang === 'zh' ? '工具调用' : 'Tools'}</span>
+                            <span className="text-ink">{deepDive[model].tools_used.join(', ')}</span>
+                            <span className="text-ink-gray">{lang === 'zh' ? '文件大小' : 'File Size'}</span>
+                            <span className="text-ink">{(deepDive[model].file_size_bytes / 1024).toFixed(1)} KB</span>
+                            <span className="text-ink-gray">{lang === 'zh' ? '生成时间' : 'Generated'}</span>
+                            <span className="text-ink">{new Date(deepDive[model].timestamp).toLocaleString()}</span>
+                            <span className="text-ink-gray">{lang === 'zh' ? '状态' : 'Status'}</span>
+                            <span className={deepDive[model].status === 'ok' ? 'text-green-700' : 'text-stamp-red'}>{deepDive[model].status}</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
