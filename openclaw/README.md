@@ -69,6 +69,41 @@ openclaw/
 > ⚠️ 注：`claude-opus-4.6` 的作品实际也是通过 codex exec 调度生成，并非 agent 原生输出。
 > 后续 `claude-sonnet-4-6` 结果计划改用正确的驱动方式（mode 2 或 mode 3）重新生成。
 
+## 生成统计（meta.json）
+
+每次生成完成后，sub-agent 应在结果目录写入 `meta.json`，记录完整的生成上下文：
+
+```json
+{
+  "challenge": "01-web-redesign",
+  "model": "claude-opus-4-6",
+  "driver": "sessions_spawn",
+  "driverMode": 3,
+  "timestamp": "2026-02-26T12:35:00Z",
+  "runtime_seconds": 124,
+  "tokens": {
+    "in": 4,
+    "out": 10700,
+    "cache": 24200
+  },
+  "rounds": 2,
+  "tools_used": ["write"],
+  "prompt_hash": "sha256:abc123...",
+  "file_size_bytes": 29380,
+  "status": "ok",
+  "sessionId": "agent:main:subagent:xxx",
+  "notes": ""
+}
+```
+
+字段说明：
+- `driver`: 驱动方式（`sessions_spawn` / `coding-agent` / `direct`）
+- `driverMode`: 对应 README 中的 mode 1/2/3
+- `rounds`: sub-agent 完成任务的对话轮次
+- `tools_used`: sub-agent 实际调用的工具列表
+- `prompt_hash`: 输入 prompt 的 hash（用于追溯可复现性）
+- `status`: `ok` / `connection_error` / `timeout` 等
+
 ## 与 arena.ai 的差异
 
 arena.ai 的 Code 赛道本质是"对话式代码片段投票"。
