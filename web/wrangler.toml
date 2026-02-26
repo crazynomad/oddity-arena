@@ -1,0 +1,9 @@
+name = "oddity-arena"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".vercel/output/static"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "oddity-arena-db"
+database_id = "e15b802d-8e35-4a3b-be2b-b4d913e04fe4"
