@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baron Munchausen: The Great Swamp Escape</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a1a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Georgia', serif;
+    overflow: hidden;
+  }
+  #title {
+    color: #d4a843;
+    font-size: 22px;
+    text-align: center;
+    margin-bottom: 12px;
+    text-shadow: 0 0 20px #d4a843aa;
+    letter-spacing: 2px;
+  }
+  canvas {
+    border: 3px solid #4a3520;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 0 40px #00000088, inset 0 0 30px #00000044;
+  }
+  #subtitle {
+    color: #8a7040;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 10px;
+    font-style: italic;
+  }
+  #hint {
+    color: #5a6070;
+    font-size: 12px;
+    text-align: center;
+    margin-top: 6px;
+  }
+</style>
+</head>
+<body>
+<div id="title">⚔️ Baron Munchausen: The Great Swamp Escape ⚔️</div>
+<canvas id="c" width="700" height="480"></canvas>
+<div id="subtitle">A Tale of Impossible Heroism & Magnificent Hair</div>
+<div id="hint">Click to advance scene · Click after triumph to replay</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// ── State ──────────────────────────────────────────────────────────────────
+let scene = 0;       // 0=walking 1=sinking 2=panic 3=eureka 4=pulling 5=rising 6=triumph
+let t = 0;           // frame counter within scene
+let particles = [];
+let speechBubble = null;
+let autoAdvanceAt = null;
+
+const SCENES = ['walking','sinking','panic','eureka','pulling','rising','triumph'];
+
+// ── Particle system ────────────────────────────────────────────────────────
+function spawnParticles(type, x, y, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 3 + 1;
+    const p = {
+      type, x, y,
+      vx: Math.cos(angle) * speed * (type==='sparkle'?2:1),
+      vy: Math.sin(angle) * speed - (type==='bubble'?2:0),
+      life: 1.0,
+      decay: Math.random() * 0.02 + 0.01,
+      size: Math.random() * 8 + 3,
+      color: type==='mud' ? `hsl(${30+Math.random()*20},60%,${20+Math.random()*20}%)` :
+             type==='bubble' ? `hsla(180,80%,70%,0.8)` :
+             `hsl(${Math.random()*60+30},100%,${60+Math.random()*30}%)`
+    };
+    particles.push(p);
+  }
+}
+
+function updateParticles() {
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += p.type==='bubble' ? -0.05 : 0.15;
+    p.life -= p.decay;
+    p.vx *= 0.97;
+  });
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    if (p.type === 'sparkle') {
+      ctx.fillStyle = p.color;
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = p.color;
+      // star shape
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = (i * 4 * Math.PI / 5) - Math.PI/2;
+        const r = i%2===0 ? p.size : p.size*0.4;
+        ctx.lineTo(p.x + Math.cos(a)*r, p.y + Math.sin(a)*r);
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else if (p.type === 'bubble') {
+      ctx.strokeStyle = p.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size/2, 0, Math.PI*2);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y, p.size, p.size*0.6, 0, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  });
+}
+
+// ── Drawing helpers ────────────────────────────────────────────────────────
+function drawSky(sunProgress) {
+  // Sky gradient shifts through scenes
+  const topColor = scene <= 1 ? '#1a3a5c' : scene <= 3 ? '#1a2a3c' : scene <= 5 ? '#0a1a2c' : '#1a3a5c';
+  const botColor = scene <= 1 ? '#3a6a4c' : scene <= 3 ? '#2a4a3c' : scene <= 5 ? '#1a3a2c' : '#4a8a5c';
+  const grad = ctx.createLinearGradient(0, 0, 0, H*0.55);
+  grad.addColorStop(0, topColor);
+  grad.addColorStop(1, botColor);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H*0.55);
+
+  // Moon/stars
+  ctx.fillStyle = '#fffde0';
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = '#fffde0';
+  ctx.beginPath();
+  ctx.arc(W*0.85, 60, 22, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  // crater
+  ctx.fillStyle = '#e8e8c0';
+  ctx.beginPath(); ctx.arc(W*0.85+5, 55, 5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W*0.85-8, 68, 3, 0, Math.PI*2); ctx.fill();
+
+  // Stars
+  ctx.fillStyle = '#ffffff';
+  for (let s of [[50,30],[150,20],[250,40],[400,15],[500,25],[600,35],[120,80],[320,60]]) {
+    ctx.globalAlpha = 0.6 + Math.sin(t*0.05 + s[0])*0.4;
+    ctx.beginPath();
+    ctx.arc(s[0], s[1], 1.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSwamp() {
+  // Background trees
+  for (let i = 0; i < 8; i++) {
+    const tx = 30 + i*90 + Math.sin(i)*20;
+    const th = 120 + Math.sin(i*1.3)*40;
+    ctx.fillStyle = `hsl(120,${20+i*3}%,${8+i*2}%)`;
+    ctx.beginPath();
+    ctx.moveTo(tx, H*0.55 - th);
+    ctx.lineTo(tx - 25, H*0.55);
+    ctx.lineTo(tx + 25, H*0.55);
+    ctx.closePath();
+    ctx.fill();
+    // trunk
+    ctx.fillStyle = '#2a1a0a';
+    ctx.fillRect(tx-4, H*0.55-30, 8, 30);
+  }
+
+  // Swamp surface
+  const swampY = H*0.55;
+  const swampGrad = ctx.createLinearGradient(0, swampY, 0, H);
+  swampGrad.addColorStop(0, '#3d5a2a');
+  swampGrad.addColorStop(0.1, '#4a6a30');
+  swampGrad.addColorStop(0.3, '#2d3a18');
+  swampGrad.addColorStop(1, '#1a2010');
+  ctx.fillStyle = swampGrad;
+  ctx.fillRect(0, swampY, W, H - swampY);
+
+  // Swamp surface ripple
+  ctx.strokeStyle = '#5a7a40';
+  ctx.lineWidth = 1;
+  ctx.globalAlpha = 0.4;
+  for (let r = 0; r < 5; r++) {
+    const ry = swampY + r * 20 + Math.sin(t*0.03 + r)*3;
+    ctx.beginPath();
+    ctx.moveTo(0, ry);
+    for (let x = 0; x < W; x += 10) {
+      ctx.lineTo(x, ry + Math.sin(x*0.05 + t*0.04 + r)*3);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  // Lily pads
+  for (let l = 0; l < 4; l++) {
+    const lx = 80 + l*160;
+    const ly = swampY + 15 + Math.sin(l)*8;
+    ctx.fillStyle = '#3a6a20';
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, 30, 12, Math.sin(l)*0.3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#4a8a30';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Fog wisps
+  ctx.globalAlpha = 0.12;
+  for (let f = 0; f < 3; f++) {
+    const fx = (t*0.3 + f*200) % (W+100) - 50;
+    const fy = swampY + 20 + f*15;
+    const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, 80);
+    fg.addColorStop(0, '#aaffaa');
+    fg.addColorStop(1, 'transparent');
+    ctx.fillStyle = fg;
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, 80, 25, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// Baron character
+function drawBaron(x, y, sinkDepth, armPose, eyeExpr, hairPull) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Shadow only if above surface
+  if (sinkDepth < 0.8) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(0, 10, 20*(1-sinkDepth*0.5), 6*(1-sinkDepth*0.5), 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Clipping for sinking effect
+  if (sinkDepth > 0) {
+    ctx.save();
+    // show only part of body
+    const visibleH = 180 * (1 - sinkDepth * 0.85);
+    ctx.beginPath();
+    ctx.rect(-60, -180, 120, visibleH + 20);
+    ctx.clip();
+  }
+
+  // Boots
+  if (sinkDepth < 0.5) {
+    ctx.fillStyle = '#2a1a0a';
+    ctx.beginPath(); ctx.ellipse(-12, 5, 12, 6, 0.2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(12, 5, 12, 6, -0.2, 0, Math.PI*2); ctx.fill();
+    // boot tops
+    ctx.fillStyle = '#3a2a1a';
+    ctx.fillRect(-20, -30, 14, 36);
+    ctx.fillRect(6, -30, 14, 36);
+  }
+
+  // Legs
+  ctx.fillStyle = '#8a6a30';
+  if (sinkDepth < 0.4) {
+    ctx.fillRect(-14, -60, 10, 30);
+    ctx.fillRect(4, -60, 10, 30);
+  }
+
+  // Body / coat
+  const coatGrad = ctx.createLinearGradient(-22, -130, 22, -60);
+  coatGrad.addColorStop(0, '#6a2a10');
+  coatGrad.addColorStop(0.5, '#8a3a18');
+  coatGrad.addColorStop(1, '#5a2008');
+  ctx.fillStyle = coatGrad;
+  ctx.beginPath();
+  ctx.roundRect(-22, -130, 44, 75, [4, 4, 8, 8]);
+  ctx.fill();
+  // coat buttons
+  ctx.fillStyle = '#d4a843';
+  for (let b = 0; b < 4; b++) {
+    ctx.beginPath();
+    ctx.arc(0, -120 + b*15, 3, 0, Math.PI*2);
+    ctx.fill();
+  }
+  // coat collar
+  ctx.fillStyle = '#4a1a08';
+  ctx.beginPath();
+  ctx.moveTo(-22, -130);
+  ctx.lineTo(-8, -115);
+  ctx.lineTo(0, -125);
+  ctx.lineTo(8, -115);
+  ctx.lineTo(22, -130);
+  ctx.closePath();
+  ctx.fill();
+
+  // Arms
+  ctx.strokeStyle = '#6a2a10';
+  ctx.lineWidth = 12;
+  ctx.lineCap = 'round';
+
+  if (armPose === 'walking') {
+    const swing = Math.sin(t * 0.15) * 20;
+    ctx.save();
+    ctx.translate(-18, -110);
+    ctx.rotate((-30 + swing) * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,40); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(18, -110);
+    ctx.rotate((30 - swing) * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,40); ctx.stroke();
+    ctx.restore();
+  } else if (armPose === 'panic') {
+    const flail = Math.sin(t * 0.25) * 40;
+    ctx.save();
+    ctx.translate(-18, -110);
+    ctx.rotate((-80 + flail) * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,40); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(18, -110);
+    ctx.rotate((80 - flail) * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,40); ctx.stroke();
+    ctx.restore();
+  } else if (armPose === 'pulling') {
+    // arms up, pulling hair
+    const strain = Math.sin(t * 0.2) * 5;
+    ctx.save();
+    ctx.translate(-18, -125);
+    ctx.rotate(-110 * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,38); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(18, -125);
+    ctx.rotate(110 * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,38); ctx.stroke();
+    ctx.restore();
+    // hands grabbing hair
+    ctx.fillStyle = '#c8a070';
+    ctx.beginPath();
+    ctx.arc(-18 + Math.cos((-110+90)*Math.PI/180)*38, -125 + Math.sin((-110+90)*Math.PI/180)*38, 7, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(18 + Math.cos((110-90)*Math.PI/180)*38, -125 + Math.sin((110-90)*Math.PI/180)*38, 7, 0, Math.PI*2);
+    ctx.fill();
+  } else if (armPose === 'triumph') {
+    ctx.save();
+    ctx.translate(-18, -115);
+    ctx.rotate(-140 * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,40); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(18, -115);
+    ctx.rotate(140 * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,40); ctx.stroke();
+    ctx.restore();
+  } else {
+    // neutral
+    ctx.save();
+    ctx.translate(-18, -110);
+    ctx.rotate(-15 * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,38); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.translate(18, -110);
+    ctx.rotate(15 * Math.PI/180);
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,38); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Neck
+  ctx.fillStyle = '#c8a070';
+  ctx.fillRect(-6, -145, 12, 18);
+
+  // Head
+  ctx.fillStyle = '#c8a070';
+  ctx.beginPath();
+  ctx.ellipse(0, -165, 22, 26, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes
+  const eyeY = -168;
+  if (eyeExpr === 'normal') {
+    ctx.fillStyle = '#1a1a2a';
+    ctx.beginPath(); ctx.ellipse(-9, eyeY, 4, 5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, eyeY, 4, 5, 0, 0, Math.PI*2); ctx.fill();
+    // pupils
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(-8, eyeY-1, 1.5, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(10, eyeY-1, 1.5, 0, Math.PI*2); ctx.fill();
+    // eyebrows
+    ctx.strokeStyle = '#5a3010';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-13, eyeY-7); ctx.lineTo(-5, eyeY-8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(5, eyeY-8); ctx.lineTo(13, eyeY-7); ctx.stroke();
+  } else if (eyeExpr === 'panic') {
+    // wide open
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(-9, eyeY, 6, 7, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, eyeY, 6, 7, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#2a2a4a';
+    ctx.beginPath(); ctx.arc(-9, eyeY+1, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9, eyeY+1, 3, 0, Math.PI*2); ctx.fill();
+    // raised eyebrows
+    ctx.strokeStyle = '#5a3010';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-14, eyeY-10); ctx.lineTo(-4, eyeY-8); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, eyeY-8); ctx.lineTo(14, eyeY-10); ctx.stroke();
+  } else if (eyeExpr === 'eureka') {
+    // one eye bigger (lightbulb moment)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.ellipse(-9, eyeY, 5, 6, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, eyeY, 7, 8, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#2a2a6a';
+    ctx.beginPath(); ctx.arc(-9, eyeY, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(9, eyeY, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(10, eyeY-2, 1.5, 0, Math.PI*2); ctx.fill();
+    // one brow raised dramatically
+    ctx.strokeStyle = '#5a3010';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-14, eyeY-7); ctx.lineTo(-4, eyeY-6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, eyeY-12); ctx.lineTo(14, eyeY-8); ctx.stroke();
+  } else if (eyeExpr === 'strain') {
+    // squinting with effort
+    ctx.strokeStyle = '#3a2010';
+    ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(-14, eyeY); ctx.lineTo(-4, eyeY+1); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, eyeY+1); ctx.lineTo(14, eyeY); ctx.stroke();
+    // strain lines
+    ctx.strokeStyle = '#8a5030';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(-18, eyeY-8); ctx.lineTo(-14, eyeY-3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(14, eyeY-3); ctx.lineTo(18, eyeY-8); ctx.stroke();
+  } else if (eyeExpr === 'triumph') {
+    ctx.fillStyle = '#1a1a2a';
+    ctx.beginPath(); ctx.ellipse(-9, eyeY, 4, 5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(9, eyeY, 4, 5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(-8, eyeY-1, 2, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(10, eyeY-1, 2, 0, Math.PI*2); ctx.fill();
+    // victory brows
+    ctx.strokeStyle = '#5a3010';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(-14, eyeY-10); ctx.quadraticCurveTo(-9, eyeY-14), (-4, eyeY-11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(4, eyeY-11); ctx.quadraticCurveTo(9, eyeY-14), (14, eyeY-10); ctx.stroke();
+  }
+
+  // Nose
+  ctx.fillStyle = '#b89060';
+  ctx.beginPath();
+  ctx.ellipse(0, -158, 5, 4, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Mouth
+  ctx.strokeStyle = '#8a5030';
+  ctx.lineWidth = 2;
+  if (eyeExpr === 'panic') {
+    // open mouth scream
+    ctx.fillStyle = '#3a1010';
+    ctx.beginPath();
+    ctx.ellipse(0, -150, 8, 6, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = '#2a0808';
+    ctx.stroke();
+  } else if (eyeExpr === 'eureka') {
+    // "O" shape
+    ctx.fillStyle = '#3a1010';
+    ctx.beginPath();
+    ctx.arc(0, -150, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.stroke();
+  } else if (eyeExpr === 'strain') {
+    // grimace
+    ctx.beginPath();
+    ctx.moveTo(-8, -150);
+    for (let i = -8; i <= 8; i++) {
+      ctx.lineTo(i, -150 + Math.sin(i*0.8)*3);
+    }
+    ctx.stroke();
+  } else if (eyeExpr === 'triumph') {
+    // big smile
+    ctx.beginPath();
+    ctx.arc(0, -157, 10, 0.2, Math.PI-0.2);
+    ctx.stroke();
+  } else {
+    // normal smile
+    ctx.beginPath();
+    ctx.arc(0, -156, 7, 0.3, Math.PI-0.3);
+    ctx.stroke();
+  }
+
+  // Mustache
+  ctx.fillStyle = '#3a2010';
+  ctx.beginPath();
+  ctx.moveTo(-12, -153);
+  ctx.quadraticCurveTo(-6, -148, 0, -153);
+  ctx.quadraticCurveTo(6, -148, 12, -153);
+  ctx.quadraticCurveTo(6, -155, 0, -154);
+  ctx.quadraticCurveTo(-6, -155, -12, -153);
+  ctx.fill();
+
+  // Hair / wig (the magnificent mane)
+  const hairColor = '#d4a020';
+  ctx.fillStyle = hairColor;
+
+  if (hairPull > 0) {
+    // Hair being pulled upward
+    const pullY = -hairPull * 30;
+    ctx.beginPath();
+    ctx.moveTo(-20, -185);
+    ctx.bezierCurveTo(-30, -195+pullY, -20, -210+pullY, 0, -215+pullY*1.5);
+    ctx.bezierCurveTo(20, -210+pullY, 30, -195+pullY, 20, -185);
+    ctx.fill();
+    // Hair strands going up
+    ctx.strokeStyle = '#c49010';
+    ctx.lineWidth = 3;
+    for (let s = -3; s <= 3; s++) {
+      ctx.beginPath();
+      ctx.moveTo(s*5, -188);
+      ctx.bezierCurveTo(s*5-5, -200+pullY, s*5+5, -220+pullY*1.5, s*4, -230+pullY*2);
+      ctx.stroke();
+    }
+  } else {
+    // Normal powdered wig
+    ctx.beginPath();
+    ctx.arc(0, -175, 24, Math.PI, 0);
+    ctx.fill();
+    // Wig curls
+    ctx.beginPath();
+    ctx.arc(-22, -172, 8, 0, Math.PI*2);
+    ctx.arc(-16, -182, 6, 0, Math.PI*2);
+    ctx.arc(22, -172, 8, 0, Math.PI*2);
+    ctx.arc(16, -182, 6, 0, Math.PI*2);
+    ctx.arc(0, -186, 7, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Hat (tricorn)
+  ctx.fillStyle = '#1a1a1a';
+  // hat brim
+  ctx.beginPath();
+  ctx.ellipse(0, -188, 28, 7, 0, 0, Math.PI*2);
+  ctx.fill();
+  // hat crown
+  ctx.fillStyle = '#2a2a2a';
+  ctx.beginPath();
+  ctx.moveTo(-18, -188);
+  ctx.lineTo(-14, -218);
+  ctx.lineTo(14, -218);
+  ctx.lineTo(18, -188);
+  ctx.closePath();
+  ctx.fill();
+  // hat feather
+  ctx.strokeStyle = '#cc4444';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(14, -218);
+  ctx.bezierCurveTo(30, -225, 35, -240, 25, -250);
+  ctx.stroke();
+
+  if (sinkDepth > 0) {
+    ctx.restore(); // remove clip
+    // Mud splash at surface
+    ctx.save();
+    const swampY = H*0.55 - y;
+    for (let m = -3; m <= 3; m++) {
+      ctx.fillStyle = `hsl(${30+Math.random()*10},50%,${15+Math.random()*15}%)`;
+      ctx.beginPath();
+      ctx.ellipse(m*8, swampY, 6+Math.abs(m)*2, 4, Math.sin(m)*0.5, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawSpeechBubble(x, y, text, style) {
+  if (!text) return;
+  ctx.save();
+
+  const lines = text.split('\n');
+  const lineH = 22;
+  const padding = 16;
+  const maxW = Math.max(...lines.map(l => ctx.measureText(l).width)) + padding*2;
+  const bH = lines.length * lineH + padding*2;
+
+  let bx = x - maxW/2;
+  let by = y - bH - 30;
+
+  // Keep on screen
+  bx = Math.max(10, Math.min(W - maxW - 10, bx));
+  by = Math.max(10, by);
+
+  // Bubble fill
+  if (style === 'thought') {
+    ctx.fillStyle = 'rgba(220,240,255,0.95)';
+    ctx.strokeStyle = '#8ab0d0';
+  } else if (style === 'shout') {
+    ctx.fillStyle = 'rgba(255,240,200,0.97)';
+    ctx.strokeStyle = '#c89030';
+  } else {
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.strokeStyle = '#888888';
+  }
+
+  ctx.lineWidth = 2.5;
+  ctx.shadowBlur = 10;
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.roundRect(bx, by, maxW, bH, 12);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.stroke();
+
+  // Tail
+  if (style !== 'thought') {
+    ctx.fillStyle = style==='shout' ? 'rgba(255,240,200,0.97)' : 'rgba(255,255,255,0.95)';
+    ctx.beginPath();
+    ctx.moveTo(x-8, by+bH);
+    ctx.lineTo(x, y-10);
+    ctx.lineTo(x+8, by+bH);
+    ctx.fill();
+    ctx.strokeStyle = style==='shout' ? '#c89030' : '#888888';
+    ctx.beginPath();
+    ctx.moveTo(x-8, by+bH);
+    ctx.lineTo(x, y-10);
+    ctx.lineTo(x+8, by+bH);
+    ctx.stroke();
+  } else {
+    // thought bubbles
+    for (let i = 0; i < 3; i++) {
+      const cx2 = x - 5 + i*4;
+      const cy2 = by + bH + 8 + i*10;
+      const r = 5 - i;
+      ctx.fillStyle = 'rgba(220,240,255,0.95)';
+      ctx.strokeStyle = '#8ab0d0';
+      ctx.beginPath();
+      ctx.arc(cx2, cy2, r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+    }
+  }
+
+  // Text
+  ctx.fillStyle = style==='shout' ? '#8a4010' : '#1a1a3a';
+  ctx.font = style==='shout' ? 'bold 14px Georgia' : '13px Georgia';
+  ctx.textAlign = 'center';
+  lines.forEach((line, i) => {
+    ctx.fillText(line, bx + maxW/2, by + padding + (i+1)*lineH - 6);
+  });
+
+  ctx.restore();
+}
+
+function drawSceneLabel(label) {
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(0, H-36, W, 36);
+  ctx.fillStyle = '#d4a843';
+  ctx.font = 'italic 14px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, W/2, H-14);
+  ctx.restore();
+}
+
+// ── Scene renderers ────────────────────────────────────────────────────────
+
+function renderScene0() { // Walking
+  drawSky();
+  drawSwamp();
+
+  const barX = -100 + (t * 2.5) % (W + 200);
+  const bobY = Math.sin(t * 0.2) * 4;
+  const footSwing = Math.sin(t * 0.2);
+
+  drawBaron(barX, H*0.55, 0, 'walking', 'normal', 0);
+
+  if (t > 30) {
+    drawSpeechBubble(barX, H*0.55 - 190, 'What a fine evening\nfor an adventure!', 'normal');
+  }
+
+  if (t === 60) spawnParticles('mud', barX, H*0.55+5, 5);
+
+  drawSceneLabel('Scene 1: A Confident Stroll...');
+
+  if (t > 120 && autoAdvanceAt === null) autoAdvanceAt = t + 30;
+}
+
+function renderScene1() { // Sinking
+  drawSky();
+  drawSwamp();
+
+  const depth = Math.min(t / 80, 0.75);
+  const barX = W * 0.45;
+  const barY = H*0.55 + depth * 60;
+
+  if (t % 8 === 0 && depth > 0.1) spawnParticles('mud', barX + (Math.random()-0.5)*30, H*0.55+5, 3);
+  if (t % 12 === 0) spawnParticles('bubble', barX + (Math.random()-0.5)*20, H*0.55+10, 2);
+
+  drawBaron(barX, barY, depth, depth < 0.3 ? 'normal' : 'panic', depth < 0.3 ? 'normal' : 'panic', 0);
+
+  if (t > 20 && t < 60) drawSpeechBubble(barX, barY - 185 + depth*50, 'Hmm, the ground\nfeels rather soft...', 'normal');
+  if (t >= 60) drawSpeechBubble(barX, barY - 185 + depth*50, 'Oh dear! Oh my!\nQUICKSAND!', 'shout');
+
+  drawSceneLabel('Scene 2: The Treacherous Swamp Strikes!');
+  if (t > 110 && autoAdvanceAt === null) autoAdvanceAt = t + 20;
+}
+
+function renderScene2() { // Panic
+  drawSky();
+  drawSwamp();
+
+  const depth = 0.75 + Math.sin(t * 0.1) * 0.02;
+  const barX = W * 0.45;
+  const barY = H*0.55 + depth * 60;
+  const shake = Math.sin(t * 0.4) * 3;
+
+  if (t % 5 === 0) spawnParticles('mud', barX + (Math.random()-0.5)*25, H*0.55+5, 4);
+  if (t % 8 === 0) spawnParticles('bubble', barX + (Math.random()-0.5)*30, H*0.55+8, 3);
+
+  drawBaron(barX + shake, barY, depth, 'panic', 'panic', 0);
+
+  const panics = [
+    'HELP! HELP!\nI\'M SINKING!!!',
+    'Someone save me!\nOh the HUMANITY!',
+    'This cannot be\nthe end of the Baron!',
+    'I defeated GIANTS!\nNot a mere swamp!'
+  ];
+  drawSpeechBubble(barX + shake, barY - 80, panics[Math.floor(t/25) % panics.length], 'shout');
+
+  // Sweat drops
+  ctx.fillStyle = '#88aaff';
+  ctx.globalAlpha = 0.7;
+  for (let s = 0; s < 4; s++) {
+    const sx = barX + shake - 15 + s*10;
+    const sy = barY - 135 + Math.sin(t*0.3+s)*5;
+    ctx.beginPath();
+    ctx.arc(sx, sy, 3, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  drawSceneLabel('Scene 3: PANIC! Complete and utter PANIC!');
+  if (t > 100 && autoAdvanceAt === null) autoAdvanceAt = t + 20;
+}
+
+function renderScene3() { // Eureka
+  drawSky();
+  drawSwamp();
+
+  const depth = 0.75;
+  const barX = W * 0.45;
+  const barY = H*0.55 + depth * 60;
+
+  drawBaron(barX, barY, depth, 'neutral', 'eureka', 0);
+
+  // Lightbulb effect
+  if (t > 15) {
+    ctx.save();
+    const lx = barX + 35;
+    const ly = barY - 200;
+    const glow = Math.sin(t * 0.15) * 0.3 + 0.7;
+    ctx.globalAlpha = glow;
+    ctx.shadowBlur = 30;
+    ctx.shadowColor = '#ffff44';
+    ctx.fillStyle = '#ffffaa';
+    ctx.beginPath();
+    ctx.arc(lx, ly, 15, 0, Math.PI*2);
+    ctx.fill();
+    // filament
+    ctx.strokeStyle = '#cc8800';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 0;
+    ctx.beginPath();
+    ctx.moveTo(lx-4, ly+6);
+    ctx.quadraticCurveTo(lx-2, ly, lx, ly-2);
+    ctx.quadraticCurveTo(lx+2, ly, lx+4, ly+6);
+    ctx.stroke();
+    // base
+    ctx.fillStyle = '#8a8a8a';
+    ctx.fillRect(lx-5, ly+10, 10, 6);
+    ctx.restore();
+  }
+
+  if (t > 20) spawnParticles('sparkle', barX + 35 + (Math.random()-0.5)*20, barY - 210, 1);
+
+  if (t < 40) {
+    drawSpeechBubble(barX, barY - 80, '...wait a moment.\nWAIT A MOMENT!', 'normal');
+  } else {
+    drawSpeechBubble(barX, barY - 80, 'I shall pull myself\nup by my OWN HAIR!', 'shout');
+  }
+
+  drawSceneLabel('Scene 4: EUREKA! A Genius Idea Strikes!');
+  if (t > 100 && autoAdvanceAt === null) autoAdvanceAt = t + 20;
+}
+
+function renderScene4() { // Pulling hair
+  drawSky();
+  drawSwamp();
+
+  const depth = Math.max(0.75 - t * 0.004, 0.3);
+  const hairPull = Math.min(t / 40, 1.5);
+  const barX = W * 0.45;
+  const barY = H*0.55 + depth * 60;
+  const strain = Math.sin(t * 0.25) * 2;
+
+  if (t % 15 === 0) spawnParticles('mud', barX + (Math.random()-0.5)*30, H*0.55+5, 6);
+  if (t % 10 === 0) spawnParticles('bubble', barX + (Math.random()-0.5)*25, H*0.55+8, 3);
+
+  drawBaron(barX + strain, barY, depth, 'pulling', 'strain', hairPull);
+
+  const strains = [
+    'UNNGH!',
+    'Almost... THERE!',
+    'This WILL work!\nIt HAS to!',
+    'GRRRRrrrr...!'
+  ];
+  drawSpeechBubble(barX + strain, barY - 80, strains[Math.floor(t/22) % strains.length], 'shout');
+
+  // Effort lines
+  ctx.strokeStyle = '#ff8844';
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.6 + Math.sin(t*0.3)*0.4;
+  for (let e = 0; e < 4; e++) {
+    const ex = barX - 40 + e*20 + strain;
+    ctx.beginPath();
+    ctx.moveTo(ex, barY - 200);
+    ctx.lineTo(ex + 10, barY - 220);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  drawSceneLabel('Scene 5: The Heroic Self-Extraction Begins!');
+  if (t > 110 && autoAdvanceAt === null) autoAdvanceAt = t + 20;
+}
+
+function renderScene5() { // Rising
+  drawSky();
+  drawSwamp();
+
+  const rise = Math.min(t / 80, 1);
+  const depth = Math.max(0.3 - rise * 0.3, 0);
+  const barX = W * 0.45;
+  const barY = H*0.55 + depth * 60 - rise * 20;
+  const hairPull = 1.5 - rise;
+
+  if (t % 10 === 0) spawnParticles('mud', barX + (Math.random()-0.5)*40, H*0.55+5, 8);
+  if (t % 8 === 0) spawnParticles('bubble', barX + (Math.random()-0.5)*30, H*0.55+8, 4);
+  if (t % 6 === 0 && rise > 0.5) spawnParticles('sparkle', barX + (Math.random()-0.5)*50, barY - 150, 2);
+
+  drawBaron(barX, barY, Math.max(depth, 0), rise > 0.5 ? 'triumph' : 'pulling', rise > 0.5 ? 'triumph' : 'strain', Math.max(hairPull, 0));
+
+  if (t > 20 && rise < 0.6) {
+    drawSpeechBubble(barX, barY - 185, 'IT\'S WORKING!\nIT\'S ACTUALLY\nWORKING!!!', 'shout');
+  } else if (rise >= 0.6) {
+    drawSpeechBubble(barX, barY - 185, 'HA HA HA!\nVICTORY IS MINE!', 'shout');
+  }
+
+  drawSceneLabel('Scene 6: The Impossible Becomes Possible!');
+  if (t > 120 && autoAdvanceAt === null) autoAdvanceAt = t + 30;
+}
+
+function renderScene6() { // Triumph
+  drawSky();
+  drawSwamp();
+
+  const barX = W * 0.45;
+  const barY = H*0.55 - 5;
+  const bounce = Math.abs(Math.sin(t * 0.08)) * 8;
+
+  if (t % 4 === 0) spawnParticles('sparkle', barX + (Math.random()-0.5)*100, barY - 100 - Math.random()*100, 3);
+  if (t % 20 === 0) spawnParticles('sparkle', W*Math.random(), H*Math.random()*0.6, 5);
+
+  drawBaron(barX, barY - bounce, 0, 'triumph', 'triumph', 0);
+
+  // Victory flash
+  if (t < 20) {
+    ctx.fillStyle = `rgba(255,255,200,${Math.max(0, (20-t)/20 * 0.5)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  drawSpeechBubble(barX, barY - bounce - 190, 'MAGNIFICENT!\nOnce again Baron\nMunchausen PREVAILS!', 'shout');
+
+  // Stars/confetti
+  ctx.save();
+  for (let c = 0; c < 6; c++) {
+    const cx = 50 + c * 110;
+    const cy = 60 + Math.sin(t*0.1 + c)*20;
+    ctx.fillStyle = `hsl(${c*60 + t},100%,60%)`;
+    ctx.font = 'bold 24px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(['⭐','🌟','✨','💫','⭐','🌟'][c], cx, cy);
+  }
+  ctx.restore();
+
+  // Click to replay
+  if (t > 60) {
+    ctx.save();
+    ctx.fillStyle = `rgba(212,168,67,${0.7 + Math.sin(t*0.1)*0.3})`;
+    ctx.font = 'italic 16px Georgia';
+    ctx.textAlign = 'center';
+    ctx.fillText('✨ Click anywhere to replay the adventure! ✨', W/2, H - 50);
+    ctx.restore();
+  }
+
+  drawSceneLabel('Scene 7: TRIUMPH! The Legend Grows!');
+}
+
+// ── Main loop ──────────────────────────────────────────────────────────────
+function render() {
+  ctx.clearRect(0, 0, W, H);
+
+  switch(scene) {
+    case 0: renderScene0(); break;
+    case 1: renderScene1(); break;
+    case 2: renderScene2(); break;
+    case 3: renderScene3(); break;
+    case 4: renderScene4(); break;
+    case 5: renderScene5(); break;
+    case 6: renderScene6(); break;
+  }
+
+  drawParticles();
+  updateParticles();
+
+  t++;
+
+  // Auto advance
+  if (autoAdvanceAt !== null && t >= autoAdvanceAt) {
+    advanceScene();
+  }
+
+  requestAnimationFrame(render);
+}
+
+function advanceScene() {
+  autoAdvanceAt = null;
+  if (scene < 6) {
+    scene++;
+    t = 0;
+    particles = [];
+    // Spawn entry particles
+    if (scene === 1) spawnParticles('mud', W*0.45, H*0.55+5, 15);
+    if (scene === 5) spawnParticles('sparkle', W*0.45, H*0.55-80, 20);
+    if (scene === 6) {
+      spawnParticles('sparkle', W*0.45, H*0.55-80, 30);
+      for (let i = 0; i < 5; i++) spawnParticles('sparkle', Math.random()*W, Math.random()*H*0.5, 10);
+    }
+  } else {
+    // Replay
+    scene = 0;
+    t = 0;
+    particles = [];
+  }
+}
+
+canvas.addEventListener('click', () => {
+  advanceScene();
+});
+
+// Start!
+render();
+</script>
+</body>
+</html>

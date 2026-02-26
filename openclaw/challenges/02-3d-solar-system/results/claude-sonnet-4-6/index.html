@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Solar System Sandbox</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #000; color: #fff; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+  #canvas-container { position: fixed; inset: 0; }
+  #ui { position: fixed; top: 0; left: 0; width: 280px; height: 100vh; background: rgba(0,0,10,0.85); backdrop-filter: blur(10px); border-right: 1px solid rgba(100,150,255,0.2); overflow-y: auto; z-index: 10; padding: 12px; }
+  #ui h1 { font-size: 14px; color: #88aaff; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; text-align: center; }
+  .section { margin-bottom: 12px; border: 1px solid rgba(100,150,255,0.15); border-radius: 6px; overflow: hidden; }
+  .section-header { background: rgba(100,150,255,0.1); padding: 6px 10px; font-size: 11px; color: #aac; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
+  .section-header:hover { background: rgba(100,150,255,0.2); }
+  .section-body { padding: 8px; }
+  .ctrl-row { display: flex; align-items: center; margin-bottom: 6px; gap: 6px; }
+  .ctrl-row label { font-size: 11px; color: #99b; min-width: 80px; flex-shrink: 0; }
+  .ctrl-row input[type=range] { flex: 1; height: 4px; accent-color: #66aaff; }
+  .ctrl-row .val { font-size: 11px; color: #88f; min-width: 40px; text-align: right; }
+  .ctrl-row input[type=text], .ctrl-row input[type=number] { flex: 1; background: rgba(255,255,255,0.07); border: 1px solid rgba(100,150,255,0.3); border-radius: 4px; color: #fff; padding: 3px 6px; font-size: 11px; }
+  .btn { background: rgba(100,150,255,0.2); border: 1px solid rgba(100,150,255,0.4); color: #aad; border-radius: 4px; padding: 5px 10px; font-size: 11px; cursor: pointer; transition: all 0.2s; }
+  .btn:hover { background: rgba(100,150,255,0.4); color: #fff; }
+  .btn.danger { background: rgba(255,80,80,0.2); border-color: rgba(255,80,80,0.4); color: #faa; }
+  .btn.danger:hover { background: rgba(255,80,80,0.4); }
+  .btn.primary { background: rgba(80,200,120,0.2); border-color: rgba(80,200,120,0.4); color: #afa; }
+  .btn.primary:hover { background: rgba(80,200,120,0.4); }
+  .btn-row { display: flex; gap: 4px; flex-wrap: wrap; }
+  .body-list { max-height: 180px; overflow-y: auto; }
+  .body-item { display: flex; align-items: center; padding: 4px 6px; border-radius: 4px; cursor: pointer; font-size: 11px; gap: 6px; }
+  .body-item:hover { background: rgba(255,255,255,0.07); }
+  .body-item.selected { background: rgba(100,150,255,0.2); }
+  .body-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .body-name { flex: 1; color: #ccd; }
+  .body-mass { color: #88a; font-size: 10px; }
+  .body-del { color: #f55; cursor: pointer; padding: 0 4px; font-size: 13px; }
+  .body-del:hover { color: #f99; }
+  #info-bar { position: fixed; bottom: 10px; left: 290px; right: 10px; display: flex; gap: 10px; align-items: center; font-size: 11px; color: #667; }
+  #fps { color: #484; }
+  #status { color: #66a; }
+  #tooltip { position: fixed; pointer-events: none; background: rgba(0,0,20,0.9); border: 1px solid rgba(100,150,255,0.4); border-radius: 6px; padding: 6px 10px; font-size: 11px; color: #aad; display: none; z-index: 20; }
+  .color-row { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 6px; }
+  .color-swatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: border-color 0.1s; }
+  .color-swatch.selected { border-color: #fff; }
+  select { background: rgba(255,255,255,0.07); border: 1px solid rgba(100,150,255,0.3); border-radius: 4px; color: #fff; padding: 3px 6px; font-size: 11px; flex: 1; }
+  select option { background: #111; }
+  .toggle { width: 34px; height: 18px; background: #333; border-radius: 9px; position: relative; cursor: pointer; flex-shrink: 0; transition: background 0.2s; }
+  .toggle.on { background: #3a8; }
+  .toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; transition: left 0.2s; }
+  .toggle.on::after { left:18px; }
+  #placing-hint { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,30,0.8); border: 1px solid rgba(100,150,255,0.5); border-radius: 8px; padding: 12px 20px; font-size: 13px; color: #aaf; text-align: center; pointer-events: none; display: none; z-index: 15; }
+</style>
+</head>
+<body>
+<div id="canvas-container"></div>
+<div id="ui">
+  <h1>⚡ Solar Sandbox</h1>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection(this)">🎮 Controls <span>▼</span></div>
+    <div class="section-body">
+      <div class="btn-row" style="margin-bottom:6px">
+        <button class="btn primary" id="btn-pause" onclick="togglePause()">⏸ Pause</button>
+        <button class="btn" onclick="resetSim()">↺ Reset</button>
+        <button class="btn danger" onclick="clearAll()">✕ Clear</button>
+      </div>
+      <div class="ctrl-row">
+        <label>Gravity G</label>
+        <input type="range" id="sl-gravity" min="-2" max="2" step="0.01" value="0">
+        <span class="val" id="v-gravity">1.00</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Time Scale</label>
+        <input type="range" id="sl-speed" min="-1" max="1" step="0.01" value="0">
+        <span class="val" id="v-speed">1.00</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Trail Length</label>
+        <input type="range" id="sl-trail" min="0" max="500" step="10" value="200">
+        <span class="val" id="v-trail">200</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Softening</label>
+        <input type="range" id="sl-soft" min="0.1" max="5" step="0.1" value="1.0">
+        <span class="val" id="v-soft">1.0</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Grid/Warp</label>
+        <div class="toggle on" id="tog-grid" onclick="toggleGrid()"></div>
+        <label>Collisions</label>
+        <div class="toggle on" id="tog-col" onclick="toggleCollisions()"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection(this)">➕ Add Body <span>▼</span></div>
+    <div class="section-body">
+      <div class="ctrl-row">
+        <label>Name</label>
+        <input type="text" id="inp-name" value="Body" placeholder="Name">
+      </div>
+      <div class="ctrl-row">
+        <label>Mass</label>
+        <input type="range" id="sl-mass" min="0.1" max="4" step="0.05" value="1">
+        <span class="val" id="v-mass">10</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Velocity X</label>
+        <input type="number" id="inp-vx" value="0" step="0.5">
+      </div>
+      <div class="ctrl-row">
+        <label>Velocity Y</label>
+        <input type="number" id="inp-vy" value="0" step="0.5">
+      </div>
+      <div class="ctrl-row">
+        <label>Velocity Z</label>
+        <input type="number" id="inp-vz" value="0" step="0.5">
+      </div>
+      <div class="ctrl-row">
+        <label>Color</label>
+      </div>
+      <div class="color-row" id="color-row"></div>
+      <div class="ctrl-row">
+        <label>Preset</label>
+        <select id="sel-preset">
+          <option value="custom">Custom</option>
+          <option value="star">Star</option>
+          <option value="planet">Planet</option>
+          <option value="moon">Moon</option>
+          <option value="asteroid">Asteroid</option>
+          <option value="blackhole">Black Hole</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn primary" onclick="startPlacing()">📍 Click to Place</button>
+        <button class="btn" onclick="addRandom()">🎲 Random</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection(this)">🌍 Presets <span>▼</span></div>
+    <div class="section-body">
+      <div class="btn-row">
+        <button class="btn" onclick="loadPreset('solar')">☀ Solar Sys</button>
+        <button class="btn" onclick="loadPreset('binary')">⊙⊙ Binary</button>
+        <button class="btn" onclick="loadPreset('chaos')">💥 Chaos</button>
+        <button class="btn" onclick="loadPreset('galaxy')">🌀 Galaxy</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header" onclick="toggleSection(this)">📋 Bodies <span>▼</span></div>
+    <div class="section-body" style="padding:4px">
+      <div class="body-list" id="body-list"></div>
+    </div>
+  </div>
+
+  <div class="section" id="sel-section" style="display:none">
+    <div class="section-header" onclick="toggleSection(this)">✏ Selected Body <span>▼</span></div>
+    <div class="section-body" id="sel-body-ui"></div>
+  </div>
+</div>
+
+<div id="info-bar">
+  <span id="fps">FPS: --</span>
+  <span id="status">Bodies: 0</span>
+  <span>| Click body to select | Drag to orbit | Scroll to zoom | Right-drag to pan</span>
+</div>
+
+<div id="tooltip"></div>
+<div id="placing-hint">Click in space to place body<br><small>ESC to cancel</small></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─── Scene Setup ───────────────────────────────────────────────────────────
+const container = document.getElementById('canvas-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 10000);
+camera.position.set(0, 80, 200);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true;
+container.appendChild(renderer.domElement);
+
+// Ambient + point lights
+scene.add(new THREE.AmbientLight(0x222244, 1));
+const sunLight = new THREE.PointLight(0xffffff, 2, 1000);
+scene.add(sunLight);
+
+// Stars background
+const starGeo = new THREE.BufferGeometry();
+const starCount = 3000;
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) starPos[i] = (Math.random() - 0.5) * 4000;
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.5, sizeAttenuation: true })));
+
+// ─── Gravity Grid (curvature) ────────────────────────────────────────────────
+const GRID_SIZE = 60;
+const GRID_SEG = 40;
+const gridGeo = new THREE.PlaneGeometry(GRID_SIZE * 2, GRID_SIZE * 2, GRID_SEG, GRID_SEG);
+gridGeo.rotateX(-Math.PI / 2);
+const gridMat = new THREE.MeshBasicMaterial({ color: 0x1133aa, wireframe: true, transparent: true, opacity: 0.25 });
+const gridMesh = new THREE.Mesh(gridGeo, gridMat);
+gridMesh.position.y = -30;
+scene.add(gridMesh);
+const gridOrigY = new Float32Array(gridGeo.attributes.position.array.length / 3);
+for (let i = 0; i < gridOrigY.length; i++) gridOrigY[i] = gridGeo.attributes.position.getY(i);
+
+function updateGrid() {
+  if (!gridMesh.visible) return;
+  const pos = gridGeo.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), z = pos.getZ(i);
+    let dy = 0;
+    for (const b of bodies) {
+      const dx = x - b.mesh.position.x, dz = z - b.mesh.position.z;
+      const dist = Math.sqrt(dx*dx + dz*dz) + 4;
+      dy -= b.mass * 0.8 / dist;
+    }
+    pos.setY(i, gridOrigY[i] + Math.max(dy, -20));
+  }
+  pos.needsUpdate = true;
+  gridGeo.computeVertexNormals();
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let bodies = [];
+let paused = false;
+let gravityMult = 1;
+let timeScale = 1;
+let trailLength = 200;
+let softening = 1.0;
+let collisionsOn = true;
+let gridOn = true;
+let selectedBody = null;
+let placingMode = false;
+let bodyCounter = 0;
+
+const G_BASE = 6.674;
+
+const COLORS = [
+  '#ffdd44','#ff8800','#ff4444','#ff44aa','#cc44ff',
+  '#4488ff','#44ffee','#44ff88','#88ff44','#ffffff',
+  '#ffaa66','#66aaff','#ff6688','#aaffcc','#ffccaa'
+];
+let selectedColor = COLORS[0];
+
+// ─── Color palette ───────────────────────────────────────────────────────────
+const colorRow = document.getElementById('color-row');
+COLORS.forEach((c, i) => {
+  const sw = document.createElement('div');
+  sw.className = 'color-swatch' + (i === 0 ? ' selected' : '');
+  sw.style.background = c;
+  sw.onclick = () => {
+    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    sw.classList.add('selected');
+    selectedColor = c;
+  };
+  colorRow.appendChild(sw);
+});
+
+// ─── Slider wiring ───────────────────────────────────────────────────────────
+function setupSlider(id, valId, fn, transform) {
+  const sl = document.getElementById(id);
+  const vl = document.getElementById(valId);
+  sl.addEventListener('input', () => {
+    const v = transform ? transform(+sl.value) : +sl.value;
+    vl.textContent = typeof v === 'number' ? v.toFixed(v < 10 ? 2 : 0) : v;
+    fn(v, +sl.value);
+  });
+  // Init
+  const v = transform ? transform(+sl.value) : +sl.value;
+  vl.textContent = typeof v === 'number' ? v.toFixed(v < 10 ? 2 : 0) : v;
+}
+setupSlider('sl-gravity','v-gravity', v => gravityMult = v, v => Math.pow(10, v));
+setupSlider('sl-speed','v-speed', v => timeScale = v, v => Math.pow(10, v));
+setupSlider('sl-trail','v-trail', v => trailLength = v);
+setupSlider('sl-soft','v-soft', v => softening = v);
+setupSlider('sl-mass','v-mass', (v, raw) => {}, v => Math.round(Math.pow(10, v)));
+
+function getMassFromSlider() {
+  return Math.round(Math.pow(10, +document.getElementById('sl-mass').value));
+}
+
+// ─── Body class ──────────────────────────────────────────────────────────────
+class Body {
+  constructor({ name, mass, position, velocity, color, isBlackHole }) {
+    this.id = ++bodyCounter;
+    this.name = name || `Body ${this.id}`;
+    this.mass = mass;
+    this.color = color || '#ffffff';
+    this.isBlackHole = isBlackHole || false;
+    this.velocity = velocity ? velocity.clone() : new THREE.Vector3();
+    this.acc = new THREE.Vector3();
+    this.trail = [];
+    this.alive = true;
+
+    const radius = this.getRadius();
+    let geo, mat;
+
+    if (this.isBlackHole) {
+      geo = new THREE.SphereGeometry(radius, 16, 16);
+      mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+    } else {
+      geo = new THREE.SphereGeometry(radius, 16, 16);
+      mat = new THREE.MeshPhongMaterial({ color: new THREE.Color(this.color), emissive: new THREE.Color(this.color).multiplyScalar(0.3), shininess: 80 });
+    }
+
+    this.mesh = new THREE.Mesh(geo, mat);
+    this.mesh.position.copy(position || new THREE.Vector3());
+    this.mesh.castShadow = true;
+    this.mesh.userData.bodyId = this.id;
+    scene.add(this.mesh);
+
+    // Glow sprite
+    if (!this.isBlackHole) {
+      const glowMat = new THREE.SpriteMaterial({
+        map: makeGlowTexture(this.color),
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+      });
+      this.glow = new THREE.Sprite(glowMat);
+      this.glow.scale.set(radius * 6, radius * 6, 1);
+      this.mesh.add(this.glow);
+    }
+
+    // Trail line
+    this.trailGeo = new THREE.BufferGeometry();
+    const trailPos = new Float32Array(500 * 3);
+    this.trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+    this.trailLine = new THREE.Line(this.trailGeo, new THREE.LineBasicMaterial({
+      color: new THREE.Color(this.color), transparent: true, opacity: 0.5,
+      blending: THREE.AdditiveBlending, depthWrite: false
+    }));
+    scene.add(this.trailLine);
+
+    // Event ring for black holes
+    if (this.isBlackHole) {
+      const rGeo = new THREE.TorusGeometry(radius * 2, 0.3, 8, 32);
+      const rMat = new THREE.MeshBasicMaterial({ color: 0xff6600 });
+      this.ring = new THREE.Mesh(rGeo, rMat);
+      this.ring.rotation.x = Math.PI / 3;
+      this.mesh.add(this.ring);
+    }
+  }
+
+  getRadius() {
+    if (this.isBlackHole) return Math.cbrt(this.mass) * 0.6;
+    return Math.cbrt(this.mass) * 0.5 + 0.5;
+  }
+
+  addTrailPoint() {
+    this.trail.push(this.mesh.position.clone());
+    const maxLen = Math.max(trailLength, 10);
+    if (this.trail.length > maxLen) this.trail.shift();
+    this.updateTrailMesh();
+  }
+
+  updateTrailMesh() {
+    const pts = this.trail;
+    const arr = this.trailGeo.attributes.position.array;
+    const n = Math.min(pts.length, 500);
+    for (let i = 0; i < n; i++) {
+      arr[i * 3]     = pts[pts.length - n + i].x;
+      arr[i * 3 + 1] = pts[pts.length - n + i].y;
+      arr[i * 3 + 2] = pts[pts.length - n + i].z;
+    }
+    this.trailGeo.setDrawRange(0, n);
+    this.trailGeo.attributes.position.needsUpdate = true;
+  }
+
+  dispose() {
+    scene.remove(this.mesh);
+    scene.remove(this.trailLine);
+    this.mesh.geometry.dispose();
+    this.trailGeo.dispose();
+    if (this.ring) { this.ring.geometry.dispose(); }
+  }
+
+  updateScale() {
+    const r = this.getRadius();
+    this.mesh.scale.setScalar(1); // already correct from constructor, update geo if needed
+  }
+}
+
+function makeGlowTexture(color) {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32,32,2,32,32,32);
+  g.addColorStop(0, color);
+  g.addColorStop(0.4, color + '88');
+  g.addColorStop(1, 'transparent');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,64,64);
+  const tex = new THREE.CanvasTexture(c);
+  return tex;
+}
+
+// ─── Physics ─────────────────────────────────────────────────────────────────
+const tmpV = new THREE.Vector3();
+
+function computeAccelerations() {
+  for (const b of bodies) b.acc.set(0, 0, 0);
+
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i], b = bodies[j];
+      tmpV.subVectors(b.mesh.position, a.mesh.position);
+      const distSq = tmpV.lengthSq() + softening * softening;
+      const dist = Math.sqrt(distSq);
+      const force = G_BASE * gravityMult * a.mass * b.mass / distSq;
+      const fx = tmpV.x / dist * force;
+      const fy = tmpV.y / dist * force;
+      const fz = tmpV.z / dist * force;
+      a.acc.x += fx / a.mass;
+      a.acc.y += fy / a.mass;
+      a.acc.z += fz / a.mass;
+      b.acc.x -= fx / b.mass;
+      b.acc.y -= fy / b.mass;
+      b.acc.z -= fz / b.mass;
+    }
+  }
+}
+
+function integrate(dt) {
+  // Leapfrog / Verlet for stability
+  for (const b of bodies) {
+    b.velocity.x += b.acc.x * dt * 0.5;
+    b.velocity.y += b.acc.y * dt * 0.5;
+    b.velocity.z += b.acc.z * dt * 0.5;
+  }
+  computeAccelerations();
+  for (const b of bodies) {
+    b.velocity.x += b.acc.x * dt * 0.5;
+    b.velocity.y += b.acc.y * dt * 0.5;
+    b.velocity.z += b.acc.z * dt * 0.5;
+    b.mesh.position.x += b.velocity.x * dt;
+    b.mesh.position.y += b.velocity.y * dt;
+    b.mesh.position.z += b.velocity.z * dt;
+  }
+}
+
+function checkCollisions() {
+  if (!collisionsOn) return;
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i + 1; j < bodies.length; j++) {
+      const a = bodies[i], b = bodies[j];
+      const dist = a.mesh.position.distanceTo(b.mesh.position);
+      const rA = a.getRadius(), rB = b.getRadius();
+      if (dist < (rA + rB) * 0.8) {
+        mergeBodies(a, b);
+        return; // one merge per frame for stability
+      }
+    }
+  }
+}
+
+function mergeBodies(a, b) {
+  const totalMass = a.mass + b.mass;
+  // Conservation of momentum
+  const newVel = new THREE.Vector3(
+    (a.velocity.x * a.mass + b.velocity.x * b.mass) / totalMass,
+    (a.velocity.y * a.mass + b.velocity.y * b.mass) / totalMass,
+    (a.velocity.z * a.mass + b.velocity.z * b.mass) / totalMass
+  );
+  const newPos = new THREE.Vector3(
+    (a.mesh.position.x * a.mass + b.mesh.position.x * b.mass) / totalMass,
+    (a.mesh.position.y * a.mass + b.mesh.position.y * b.mass) / totalMass,
+    (a.mesh.position.z * a.mass + b.mesh.position.z * b.mass) / totalMass
+  );
+  const larger = a.mass >= b.mass ? a : b;
+  const smaller = a.mass >= b.mass ? b : a;
+
+  // Remove smaller
+  smaller.dispose();
+  bodies = bodies.filter(x => x !== smaller);
+
+  // Update larger
+  larger.mass = totalMass;
+  larger.velocity.copy(newVel);
+  larger.mesh.position.copy(newPos);
+
+  // Update mesh scale
+  const newR = larger.getRadius();
+  larger.mesh.geometry.dispose();
+  larger.mesh.geometry = new THREE.SphereGeometry(newR, 16, 16);
+  if (larger.glow) larger.glow.scale.set(newR * 6, newR * 6, 1);
+
+  if (larger === selectedBody) updateSelectedUI();
+  updateBodyList();
+  showMergeEffect(newPos, larger.color);
+}
+
+function showMergeEffect(pos, color) {
+  const geo = new THREE.SphereGeometry(2, 8, 8);
+  const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.8 });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(pos);
+  scene.add(mesh);
+  let scale = 1;
+  function fade() {
+    scale += 0.3; mesh.scale.setScalar(scale);
+    mat.opacity -= 0.05;
+    if (mat.opacity > 0) requestAnimationFrame(fade);
+    else { scene.remove(mesh); geo.dispose(); mat.dispose(); }
+  }
+  fade();
+}
+
+// ─── Camera Controls ─────────────────────────────────────────────────────────
+let camTheta = 0.8, camPhi = Math.PI / 3, camRadius = 200;
+let camTarget = new THREE.Vector3(0, 0, 0);
+let isDragging = false, isRightDrag = false;
+let lastMouse = { x: 0, y: 0 };
+
+renderer.domElement.addEventListener('mousedown', e => {
+  if (e.target !== renderer.domElement) return;
+  isDragging = true;
+  isRightDrag = e.button === 2;
+  lastMouse = { x: e.clientX, y: e.clientY };
+});
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = e.clientX - lastMouse.x;
+  const dy = e.clientY - lastMouse.y;
+  if (isRightDrag) {
+    const right = new THREE.Vector3().crossVectors(camera.getWorldDirection(new THREE.Vector3()), camera.up).normalize();
+    const up = camera.up.clone().normalize();
+    camTarget.addScaledVector(right, -dx * 0.2);
+    camTarget.addScaledVector(up, dy * 0.2);
+  } else {
+    camTheta -= dx * 0.005;
+    camPhi = Math.max(0.05, Math.min(Math.PI - 0.05, camPhi - dy * 0.005));
+  }
+  lastMouse = { x: e.clientX, y: e.clientY };
+});
+renderer.domElement.addEventListener('wheel', e => {
+  camRadius *= (1 + e.deltaY * 0.001);
+  camRadius = Math.max(5, Math.min(2000, camRadius));
+  e.preventDefault();
+}, { passive: false });
+renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+function updateCamera() {
+  camera.position.set(
+    camTarget.x + camRadius * Math.sin(camPhi) * Math.sin(camTheta),
+    camTarget.y + camRadius * Math.cos(camPhi),
+    camTarget.z + camRadius * Math.sin(camPhi) * Math.cos(camTheta)
+  );
+  camera.lookAt(camTarget);
+  sunLight.position.copy(camera.position);
+}
+
+// ─── Click to select / place ─────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse2D = new THREE.Vector2();
+
+renderer.domElement.addEventListener('click', e => {
+  if (e.target !== renderer.domElement) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse2D.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse2D.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+  if (placingMode) {
+    // Place at intersection with y=0 plane
+    raycaster.setFromCamera(mouse2D, camera);
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const pt = new THREE.Vector3();
+    raycaster.ray.intersectPlane(plane, pt);
+    if (pt) {
+      const mass = getMassFromSlider();
+      const vx = +document.getElementById('inp-vx').value;
+      const vy = +document.getElementById('inp-vy').value;
+      const vz = +document.getElementById('inp-vz').value;
+      const preset = document.getElementById('sel-preset').value;
+      addBody({
+        name: document.getElementById('inp-name').value || `Body ${bodyCounter+1}`,
+        mass,
+        position: pt,
+        velocity: new THREE.Vector3(vx, vy, vz),
+        color: selectedColor,
+        isBlackHole: preset === 'blackhole'
+      });
+    }
+    setPlacingMode(false);
+    return;
+  }
+
+  // Select body
+  raycaster.setFromCamera(mouse2D, camera);
+  const meshes = bodies.map(b => b.mesh);
+  const hits = raycaster.intersectObjects(meshes);
+  if (hits.length > 0) {
+    const bid = hits[0].object.userData.bodyId;
+    const body = bodies.find(b => b.id === bid);
+    selectBody(body);
+  } else {
+    selectBody(null);
+  }
+});
+
+// Tooltip on hover
+renderer.domElement.addEventListener('mousemove', e => {
+  if (placingMode || isDragging) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  mouse2D.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+  mouse2D.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(mouse2D, camera);
+  const meshes = bodies.map(b => b.mesh);
+  const hits = raycaster.intersectObjects(meshes);
+  const tip = document.getElementById('tooltip');
+  if (hits.length > 0) {
+    const bid = hits[0].object.userData.bodyId;
+    const body = bodies.find(b => b.id === bid);
+    if (body) {
+      tip.style.display = 'block';
+      tip.style.left = (e.clientX + 12) + 'px';
+      tip.style.top = (e.clientY - 20) + 'px';
+      const speed = body.velocity.length().toFixed(2);
+      tip.innerHTML = `<b>${body.name}</b><br>Mass: ${body.mass}<br>Speed: ${speed}`;
+    }
+  } else {
+    tip.style.display = 'none';
+  }
+});
+
+// ─── Body management ─────────────────────────────────────────────────────────
+function addBody(opts) {
+  const body = new Body(opts);
+  bodies.push(body);
+  updateBodyList();
+  return body;
+}
+
+function removeBody(body) {
+  body.dispose();
+  bodies = bodies.filter(b => b !== body);
+  if (selectedBody === body) selectBody(null);
+  updateBodyList();
+}
+
+function selectBody(body) {
+  selectedBody = body;
+  document.querySelectorAll('.body-item').forEach(el => el.classList.remove('selected'));
+  if (body) {
+    const el = document.querySelector(`.body-item[data-id="${body.id}"]`);
+    if (el) el.classList.add('selected');
+    document.getElementById('sel-section').style.display = '';
+    updateSelectedUI();
+  } else {
+    document.getElementById('sel-section').style.display = 'none';
+  }
+}
+
+function updateSelectedUI() {
+  if (!selectedBody) return;
+  const b = selectedBody;
+  const ui = document.getElementById('sel-body-ui');
+  ui.innerHTML = `
+    <div class="ctrl-row"><label>Name</label><input type="text" id="sel-name" value="${b.name}"></div>
+    <div class="ctrl-row"><label>Mass</label>
+      <input type="range" id="sel-mass" min="1" max="10000" step="1" value="${b.mass}" style="flex:1">
+      <span class="val" id="sel-mass-v">${b.mass}</span>
+    </div>
+    <div class="ctrl-row"><label>Vel X</label><input type="number" id="sel-vx" value="${b.velocity.x.toFixed(2)}" step="0.1"></div>
+    <div class="ctrl-row"><label>Vel Y</label><input type="number" id="sel-vy" value="${b.velocity.y.toFixed(2)}" step="0.1"></div>
+    <div class="ctrl-row"><label>Vel Z</label><input type="number" id="sel-vz" value="${b.velocity.z.toFixed(2)}" step="0.1"></div>
+    <div class="ctrl-row"><label>Pos X</label><span style="font-size:11px;color:#88a">${b.mesh.position.x.toFixed(1)}</span></div>
+    <div class="ctrl-row"><label>Pos Y</label><span style="font-size:11px;color:#88a">${b.mesh.position.y.toFixed(1)}</span></div>
+    <div class="ctrl-row"><label>Pos Z</label><span style="font-size:11px;color:#88a">${b.mesh.position.z.toFixed(1)}</span></div>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn primary" onclick="applySelEdit()">Apply</button>
+      <button class="btn danger" onclick="removeBody(selectedBody); updateBodyList()">Delete</button>
+      <button class="btn" onclick="focusBody(selectedBody)">Focus</button>
+    </div>
+  `;
+  document.getElementById('sel-mass').addEventListener('input', function() {
+    document.getElementById('sel-mass-v').textContent = this.value;
+  });
+}
+
+function applySelEdit() {
+  if (!selectedBody) return;
+  const b = selectedBody;
+  b.name = document.getElementById('sel-name').value;
+  b.mass = +document.getElementById('sel-mass').value;
+  b.velocity.x = +document.getElementById('sel-vx').value;
+  b.velocity.y = +document.getElementById('sel-vy').value;
+  b.velocity.z = +document.getElementById('sel-vz').value;
+  // Update mesh
+  const r = b.getRadius();
+  b.mesh.geometry.dispose();
+  b.mesh.geometry = new THREE.SphereGeometry(r, 16, 16);
+  if (b.glow) b.glow.scale.set(r*6,r*6,1);
+  updateBodyList();
+}
+
+function focusBody(body) {
+  if (!body) return;
+  camTarget.copy(body.mesh.position);
+  camRadius = body.getRadius() * 15 + 30;
+}
+
+function updateBodyList() {
+  const list = document.getElementById('body-list');
+  list.innerHTML = '';
+  bodies.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'body-item' + (b === selectedBody ? ' selected' : '');
+    item.dataset.id = b.id;
+    item.innerHTML = `
+      <div class="body-dot" style="background:${b.color}"></div>
+      <span class="body-name">${b.name}</span>
+      <span class="body-mass">m=${b.mass}</span>
+      <span class="body-del" onclick="event.stopPropagation();removeBody(bodies.find(x=>x.id==${b.id}))">×</span>
+    `;
+    item.onclick = () => selectBody(b);
+    list.appendChild(item);
+  });
+  document.getElementById('status').textContent = `Bodies: ${bodies.length}`;
+}
+
+// ─── Controls ────────────────────────────────────────────────────────────────
+function togglePause() {
+  paused = !paused;
+  document.getElementById('btn-pause').textContent = paused ? '▶ Resume' : '⏸ Pause';
+}
+
+function toggleGrid() {
+  gridOn = !gridOn;
+  gridMesh.visible = gridOn;
+  document.getElementById('tog-grid').classList.toggle('on', gridOn);
+}
+
+function toggleCollisions() {
+  collisionsOn = !collisionsOn;
+  document.getElementById('tog-col').classList.toggle('on', collisionsOn);
+}
+
+function toggleSection(header) {
+  const body = header.nextElementSibling;
+  const arrow = header.querySelector('span');
+  if (body.style.display === 'none') {
+    body.style.display = '';
+    if (arrow) arrow.textContent = '▼';
+  } else {
+    body.style.display = 'none';
+    if (arrow) arrow.textContent = '▶';
+  }
+}
+
+function startPlacing() {
+  setPlacingMode(true);
+}
+function setPlacingMode(on) {
+  placingMode = on;
+  document.getElementById('placing-hint').style.display = on ? 'block' : 'none';
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { setPlacingMode(false); selectBody(null); }
+  if (e.key === ' ') { e.preventDefault(); togglePause(); }
+});
+
+function clearAll() {
+  bodies.forEach(b => b.dispose());
+  bodies = [];
+  selectBody(null);
+  updateBodyList();
+}
+
+function resetSim() {
+  clearAll();
+  loadPreset('solar');
+}
+
+function addRandom() {
+  const angle = Math.random() * Math.PI * 2;
+  const r = 20 + Math.random() * 60;
+  const mass = Math.round(Math.random() * 50 + 1);
+  const speed = Math.sqrt(G_BASE * gravityMult * (bodies[0]?.mass || 1000) / r) * 0.6;
+  addBody({
+    name: `Rnd ${bodyCounter+1}`,
+    mass,
+    position: new THREE.Vector3(Math.cos(angle) * r, (Math.random()-0.5) * 10, Math.sin(angle) * r),
+    velocity: new THREE.Vector3(-Math.sin(angle) * speed, (Math.random()-0.5)*0.5, Math.cos(angle) * speed),
+    color: COLORS[Math.floor(Math.random() * COLORS.length)]
+  });
+}
+
+// ─── Presets ─────────────────────────────────────────────────────────────────
+function loadPreset(name) {
+  clearAll();
+  camTarget.set(0,0,0);
+  camRadius = 200;
+  camTheta = 0.8;
+  camPhi = Math.PI / 3;
+
+  if (name === 'solar') {
+    // Sun
+    addBody({ name:'Sun', mass:1000, position:new THREE.Vector3(0,0,0), velocity:new THREE.Vector3(0,0,0), color:'#ffee44' });
+    const planets = [
+      { name:'Mercury', mass:2, r:18, color:'#aaa' },
+      { name:'Venus',   mass:8, r:28, color:'#ffcc66' },
+      { name:'Earth',   mass:10,r:40, color:'#44aaff' },
+      { name:'Mars',    mass:5, r:55, color:'#ff6644' },
+      { name:'Jupiter', mass:80,r:80, color:'#ffaa88' },
+      { name:'Saturn',  mass:60,r:110,color:'#eedd99' },
+      { name:'Uranus',  mass:30,r:140,color:'#88eeff' },
+      { name:'Neptune', mass:28,r:170,color:'#4466ff' },
+    ];
+    planets.forEach(p => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = Math.sqrt(G_BASE * 1 * 1000 / p.r);
+      addBody({
+        name: p.name, mass: p.mass,
+        position: new THREE.Vector3(Math.cos(angle)*p.r, (Math.random()-0.5)*3, Math.sin(angle)*p.r),
+        velocity: new THREE.Vector3(-Math.sin(angle)*speed, 0, Math.cos(angle)*speed),
+        color: p.color
+      });
+    });
+    // Moon around Earth
+    const earth = bodies.find(b => b.name==='Earth');
+    if (earth) {
+      const mAngle = Math.random() * Math.PI * 2;
+      const moonSpeed = Math.sqrt(G_BASE * 1 * 10 / 5);
+      addBody({
+        name:'Moon', mass:1,
+        position: new THREE.Vector3(earth.mesh.position.x + Math.cos(mAngle)*5, 0, earth.mesh.position.z + Math.sin(mAngle)*5),
+        velocity: new THREE.Vector3(earth.velocity.x - Math.sin(mAngle)*moonSpeed, 0, earth.velocity.z + Math.cos(mAngle)*moonSpeed),
+        color:'#cccccc'
+      });
+    }
+  } else if (name === 'binary') {
+    const r = 30, speed = Math.sqrt(G_BASE * 1 * 500 / (2*r));
+    addBody({ name:'Star A', mass:500, position:new THREE.Vector3(-r,0,0), velocity:new THREE.Vector3(0,0,-speed), color:'#ffee44' });
+    addBody({ name:'Star B', mass:500, position:new THREE.Vector3( r,0,0), velocity:new THREE.Vector3(0,0, speed), color:'#44aaff' });
+    for (let i = 0; i < 8; i++) {
+      const a = (i/8) * Math.PI * 2;
+      const d = 80 + Math.random()*30;
+      const s = Math.sqrt(G_BASE * 1 * 1000 / d) * 0.9;
+      addBody({
+        name:`Rock ${i+1}`, mass:1,
+        position:new THREE.Vector3(Math.cos(a)*d,0,Math.sin(a)*d),
+        velocity:new THREE.Vector3(-Math.sin(a)*s,0,Math.cos(a)*s),
+        color:COLORS[i%COLORS.length]
+      });
+    }
+  } else if (name === 'chaos') {
+    for (let i = 0; i < 12; i++) {
+      const mass = Math.round(Math.random()*200 + 10);
+      addBody({
+        name:`Chaos ${i+1}`, mass,
+        position:new THREE.Vector3((Math.random()-0.5)*120,(Math.random()-0.5)*40,(Math.random()-0.5)*120),
+        velocity:new THREE.Vector3((Math.random()-0.5)*8,(Math.random()-0.5)*2,(Math.random()-0.5)*8),
+        color:COLORS[i%COLORS.length]
+      });
+    }
+  } else if (name === 'galaxy') {
+    addBody({ name:'Core', mass:5000, position:new THREE.Vector3(0,0,0), velocity:new THREE.Vector3(0,0,0), color:'#ffffcc', isBlackHole:true });
+    for (let i = 0; i < 20; i++) {
+      const angle = (i/20)*Math.PI*2 + Math.random()*0.4;
+      const r = 20 + i*6 + Math.random()*10;
+      const speed = Math.sqrt(G_BASE * 1 * 5000 / r) * 0.85;
+      addBody({
+        name:`Star ${i+1}`, mass:Math.round(Math.random()*20+1),
+        position:new THREE.Vector3(Math.cos(angle)*r,(Math.random()-0.5)*5,Math.sin(angle)*r),
+        velocity:new THREE.Vector3(-Math.sin(angle)*speed,(Math.random()-0.5)*0.2,Math.cos(angle)*speed),
+        color:COLORS[i%COLORS.length]
+      });
+    }
+  }
+  updateBodyList();
+}
+
+// ─── Preset selector ─────────────────────────────────────────────────────────
+document.getElementById('sel-preset').addEventListener('change', function() {
+  const v = this.value;
+  if (v === 'star') { document.getElementById('sl-mass').value = 3; document.getElementById('v-mass').textContent = '1000'; selectedColor = '#ffee44'; }
+  if (v === 'planet') { document.getElementById('sl-mass').value = 1; document.getElementById('v-mass').textContent = '10'; selectedColor = '#44aaff'; }
+  if (v === 'moon') { document.getElementById('sl-mass').value = 0.1; document.getElementById('v-mass').textContent = '1'; selectedColor = '#cccccc'; }
+  if (v === 'asteroid') { document.getElementById('sl-mass').value = 0.2; document.getElementById('v-mass').textContent = '2'; selectedColor = '#aa9988'; }
+  if (v === 'blackhole') { document.getElementById('sl-mass').value = 4; document.getElementById('v-mass').textContent = '10000'; selectedColor = '#220011'; }
+});
+
+// ─── Animation Loop ──────────────────────────────────────────────────────────
+let lastTime = performance.now();
+let fpsCount = 0, fpsTime = 0;
+
+function animate(now) {
+  requestAnimationFrame(animate);
+  const raw = (now - lastTime) / 1000;
+  lastTime = now;
+  const dt = Math.min(raw, 0.05) * timeScale;
+
+  fpsCount++;
+  fpsTime += raw;
+  if (fpsTime >= 1) {
+    document.getElementById('fps').textContent = `FPS: ${fpsCount}`;
+    fpsCount = 0; fpsTime = 0;
+  }
+
+  if (!paused && bodies.length > 0) {
+    const steps = 4;
+    for (let s = 0; s < steps; s++) {
+      computeAccelerations();
+      integrate(dt / steps);
+    }
+    checkCollisions();
+
+    // Update trails
+    bodies.forEach(b => b.addTrailPoint());
+
+    // Update grid
+    updateGrid();
+
+    // If tracking selected body
+    if (selectedBody) updateSelectedUI();
+
+    // Rotate black hole rings
+    bodies.forEach(b => { if (b.ring) b.ring.rotation.z += 0.02; });
+  }
+
+  updateCamera();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// Boot
+loadPreset('solar');
+animate(performance.now());
+</script>
+</body>
+</html>
