@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Baron Munchausen — The Swamp Escape</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #0a0a0a; overflow: hidden; cursor: pointer; }
+canvas { display: block; }
+#subtitle {
+  position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%);
+  color: #f0e6d2; font-family: 'Georgia', serif; font-size: 20px;
+  text-align: center; opacity: 0; transition: opacity 0.5s;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.9); pointer-events: none;
+  max-width: 80%; line-height: 1.4;
+}
+#hint {
+  position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%);
+  color: rgba(240,230,210,0.4); font-family: 'Georgia', serif; font-size: 13px;
+  pointer-events: none;
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="subtitle"></div>
+<div id="hint">click to advance</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const sub = document.getElementById('subtitle');
+
+let W, H;
+function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+resize();
+addEventListener('resize', resize);
+
+// --- SCENE STATE ---
+const SCENES = ['walking','sinking','panic','eureka','pulling','rising','triumph'];
+let sceneIndex = 0, sceneTime = 0, globalTime = 0, transitioning = false;
+let autoAdvanceTimers = [4000, 3500, 3000, 2500, 4000, 4500, 5000];
+
+const SUBTITLES = [
+  '"A fine day for a stroll!" said the Baron, twirling his magnificent mustache.',
+  '"Oh dear... this isn\'t cobblestone..." The mud had other plans.',
+  '"HELP! SOMEONE! ANYONE! ...No? Just frogs? Splendid."',
+  '"Wait... I\'ve got it! If I pull hard enough on my own hair..."',
+  '"HRRRNNNGGGH!! Come on, you beautiful fool!"',
+  '"BY THUNDER, IT\'S WORKING! EAT MUD, SWAMP!"',
+  '"And THAT, my friends, is how it\'s done." *adjusts hat*'
+];
+
+// --- PARTICLES ---
+let particles = [];
+class Particle {
+  constructor(x, y, vx, vy, color, life, size, type='circle') {
+    Object.assign(this, {x, y, vx, vy, color, life, maxLife: life, size, type});
+  }
+  update(dt) {
+    this.x += this.vx * dt; this.y += this.vy * dt;
+    this.vy += 120 * dt; // gravity
+    this.life -= dt;
+  }
+  draw() {
+    let a = Math.max(0, this.life / this.maxLife);
+    ctx.globalAlpha = a;
+    if (this.type === 'bubble') {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size, 0, Math.PI*2);
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    } else if (this.type === 'sparkle') {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(globalTime * 3);
+      let s = this.size;
+      ctx.fillStyle = this.color;
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(-1, -s, 2, s*2);
+        ctx.rotate(Math.PI/4);
+      }
+      ctx.restore();
+    } else {
+      ctx.fillStyle = this.color;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.size * a, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+function spawnMud(x, y, count=8) {
+  for (let i = 0; i < count; i++) {
+    let angle = -Math.PI/2 + (Math.random()-0.5)*2;
+    let speed = 80 + Math.random()*160;
+    let colors = ['#4a3728','#5c4033','#3b2a1a','#6b4f3a'];
+    particles.push(new Particle(x+Math.random()*20-10, y, Math.cos(angle)*speed, Math.sin(angle)*speed,
+      colors[Math.floor(Math.random()*colors.length)], 0.8+Math.random()*0.6, 3+Math.random()*5));
+  }
+}
+function spawnBubbles(x, y, count=3) {
+  for (let i = 0; i < count; i++) {
+    particles.push(new Particle(x+Math.random()*40-20, y, (Math.random()-0.5)*20, -30-Math.random()*40,
+      'rgba(180,200,160,0.6)', 1+Math.random(), 3+Math.random()*5, 'bubble'));
+  }
+}
+function spawnSparkles(x, y, count=6) {
+  for (let i = 0; i < count; i++) {
+    let angle = Math.random()*Math.PI*2;
+    let speed = 40+Math.random()*80;
+    let colors = ['#ffd700','#fff8dc','#ffec8b','#fffacd'];
+    particles.push(new Particle(x+Math.random()*30-15, y+Math.random()*30-15,
+      Math.cos(angle)*speed, Math.sin(angle)*speed-40,
+      colors[Math.floor(Math.random()*colors.length)], 0.6+Math.random()*0.8, 2+Math.random()*3, 'sparkle'));
+  }
+}
+
+// --- DRAWING HELPERS ---
+function drawSky(nightFactor=0) {
+  let grad = ctx.createLinearGradient(0, 0, 0, H*0.6);
+  let r1 = lerp(130, 20, nightFactor), g1 = lerp(170, 25, nightFactor), b1 = lerp(200, 50, nightFactor);
+  let r2 = lerp(200, 40, nightFactor), g2 = lerp(180, 35, nightFactor), b2 = lerp(140, 60, nightFactor);
+  grad.addColorStop(0, `rgb(${r1},${g1},${b1})`);
+  grad.addColorStop(1, `rgb(${r2},${g2},${b2})`);
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawMoon(x, y) {
+  ctx.fillStyle = '#f0e8c8';
+  ctx.beginPath(); ctx.arc(x, y, 40, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#e8ddb8';
+  ctx.beginPath(); ctx.arc(x-8, y-5, 8, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+12, y+10, 5, 0, Math.PI*2); ctx.fill();
+  // glow
+  ctx.globalAlpha = 0.15;
+  ctx.fillStyle = '#fffff0';
+  ctx.beginPath(); ctx.arc(x, y, 80, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawStars() {
+  let seed = 42;
+  function seededRandom() { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; }
+  ctx.fillStyle = '#fff';
+  for (let i = 0; i < 60; i++) {
+    let sx = seededRandom() * W, sy = seededRandom() * H * 0.5;
+    let twinkle = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(globalTime * 2 + i * 7));
+    ctx.globalAlpha = twinkle * 0.8;
+    ctx.beginPath(); ctx.arc(sx, sy, 1 + seededRandom(), 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawSwamp(swampY) {
+  // Swamp water
+  let grad = ctx.createLinearGradient(0, swampY, 0, H);
+  grad.addColorStop(0, '#3a4a2a');
+  grad.addColorStop(0.3, '#2d3a1e');
+  grad.addColorStop(1, '#1a2210');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, swampY, W, H - swampY);
+
+  // Surface ripples
+  ctx.strokeStyle = 'rgba(120,150,80,0.3)';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    for (let x = 0; x < W; x += 5) {
+      let y = swampY + 3 + Math.sin(x * 0.02 + globalTime * 1.5 + i * 2) * 4;
+      x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+
+  // Lily pads
+  for (let i = 0; i < 4; i++) {
+    let lx = W * 0.15 + i * W * 0.22;
+    let ly = swampY + 10 + Math.sin(globalTime + i * 3) * 3;
+    ctx.fillStyle = '#4a6a2a';
+    ctx.beginPath();
+    ctx.ellipse(lx, ly, 18, 10, 0.3 * i, 0, Math.PI * 1.8);
+    ctx.fill();
+    if (i === 1) {
+      // flower
+      ctx.fillStyle = '#d4a0c0';
+      for (let p = 0; p < 5; p++) {
+        ctx.beginPath();
+        let pa = p * Math.PI * 2 / 5;
+        ctx.ellipse(lx + Math.cos(pa)*6, ly - 8 + Math.sin(pa)*4, 4, 7, pa, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#e8d050';
+      ctx.beginPath(); ctx.arc(lx, ly - 8, 3, 0, Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+function drawTrees() {
+  // Dead trees silhouettes
+  function tree(x, baseY, h, lean) {
+    ctx.strokeStyle = '#1a1a10';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(x, baseY);
+    ctx.quadraticCurveTo(x + lean * 20, baseY - h * 0.5, x + lean * 10, baseY - h);
+    ctx.stroke();
+    // branches
+    ctx.lineWidth = 3;
+    let branchY = baseY - h * 0.6;
+    ctx.beginPath();
+    ctx.moveTo(x + lean * 14, branchY);
+    ctx.quadraticCurveTo(x + lean * 14 + 30, branchY - 20, x + lean * 14 + 40, branchY - 10);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + lean * 14, branchY + 15);
+    ctx.quadraticCurveTo(x + lean * 14 - 25, branchY - 10, x + lean * 14 - 35, branchY + 5);
+    ctx.stroke();
+  }
+  tree(W * 0.08, H * 0.58, 160, -0.5);
+  tree(W * 0.88, H * 0.55, 180, 0.7);
+  tree(W * 0.95, H * 0.6, 120, 0.3);
+}
+
+function drawFog(swampY) {
+  ctx.globalAlpha = 0.12;
+  ctx.fillStyle = '#8a9a6a';
+  for (let i = 0; i < 6; i++) {
+    let fx = (i * W/4 + Math.sin(globalTime * 0.3 + i) * 60) % (W + 200) - 100;
+    let fy = swampY - 20 + Math.sin(globalTime * 0.5 + i * 2) * 10;
+    ctx.beginPath();
+    ctx.ellipse(fx, fy, 100 + i * 20, 15, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// --- BARON CHARACTER ---
+function drawBaron(x, y, sinkDepth, opts = {}) {
+  let {
+    walkPhase = 0, armRaise = 0, panicShake = 0, hairPull = 0,
+    faceExpr = 'normal', hatTilt = 0, bodySquash = 1, triumph = false
+  } = opts;
+
+  let shake = panicShake * Math.sin(globalTime * 20) * 5;
+  x += shake;
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  let clipY = sinkDepth; // how much of lower body is hidden
+
+  // Legs (if visible)
+  if (clipY < 60) {
+    ctx.fillStyle = '#2a2a3a';
+    // Left leg
+    let lLeg = Math.sin(walkPhase) * 15;
+    ctx.save();
+    ctx.translate(-10, 40);
+    ctx.rotate(lLeg * Math.PI / 180);
+    ctx.fillRect(-5, 0, 10, 35 - clipY);
+    // Boot
+    if (clipY < 50) {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(-7, 30 - clipY, 16, 8);
+    }
+    ctx.restore();
+    // Right leg
+    ctx.fillStyle = '#2a2a3a';
+    ctx.save();
+    ctx.translate(10, 40);
+    ctx.rotate(-lLeg * Math.PI / 180);
+    ctx.fillRect(-5, 0, 10, 35 - clipY);
+    if (clipY < 50) {
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(-7, 30 - clipY, 16, 8);
+    }
+    ctx.restore();
+  }
+
+  // Body / coat
+  ctx.fillStyle = '#8b1a1a'; // deep red coat
+  let bh = 45 * bodySquash;
+  ctx.beginPath();
+  ctx.moveTo(-18, -bh + 40);
+  ctx.quadraticCurveTo(-20, 20, -15, 40);
+  ctx.lineTo(15, 40);
+  ctx.quadraticCurveTo(20, 20, 18, -bh + 40);
+  ctx.closePath();
+  ctx.fill();
+
+  // Coat details - buttons
+  ctx.fillStyle = '#c8a832';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(0, -bh + 50 + i * 12, 2.5, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Epaulettes
+  ctx.fillStyle = '#c8a832';
+  ctx.beginPath(); ctx.ellipse(-18, -bh + 42, 8, 4, -0.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(18, -bh + 42, 8, 4, 0.3, 0, Math.PI*2); ctx.fill();
+
+  // Arms
+  ctx.strokeStyle = '#8b1a1a';
+  ctx.lineWidth = 8;
+  ctx.lineCap = 'round';
+  // Left arm
+  ctx.beginPath();
+  let laAngle = -0.3 + armRaise * 2.5;
+  ctx.moveTo(-18, -bh + 48);
+  ctx.quadraticCurveTo(-30 - armRaise * 10, -bh + 55 - armRaise * 40,
+    -22 + armRaise * 20, -bh + 35 - armRaise * 50);
+  ctx.stroke();
+  // Hand
+  ctx.fillStyle = '#e8c8a0';
+  let lhx = -22 + armRaise * 20, lhy = -bh + 35 - armRaise * 50;
+  ctx.beginPath(); ctx.arc(lhx, lhy, 5, 0, Math.PI*2); ctx.fill();
+
+  // Right arm
+  ctx.strokeStyle = '#8b1a1a';
+  ctx.beginPath();
+  ctx.moveTo(18, -bh + 48);
+  ctx.quadraticCurveTo(30 + armRaise * 10, -bh + 55 - armRaise * 40,
+    22 - armRaise * 20, -bh + 35 - armRaise * 50);
+  ctx.stroke();
+  let rhx = 22 - armRaise * 20, rhy = -bh + 35 - armRaise * 50;
+  ctx.fillStyle = '#e8c8a0';
+  ctx.beginPath(); ctx.arc(rhx, rhy, 5, 0, Math.PI*2); ctx.fill();
+
+  // Neck
+  ctx.fillStyle = '#e8c8a0';
+  ctx.fillRect(-5, -bh + 30, 10, 12);
+
+  // Head
+  let headY = -bh + 15;
+  ctx.fillStyle = '#e8c8a0';
+  ctx.beginPath();
+  ctx.ellipse(0, headY, 16, 18, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Magnificent mustache!
+  ctx.strokeStyle = '#3a2a1a';
+  ctx.lineWidth = 3;
+  let mustacheWiggle = Math.sin(globalTime * 4) * 2;
+  ctx.beginPath();
+  ctx.moveTo(-3, headY + 5);
+  ctx.quadraticCurveTo(-15, headY + 3 + mustacheWiggle, -22, headY + mustacheWiggle);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(3, headY + 5);
+  ctx.quadraticCurveTo(15, headY + 3 - mustacheWiggle, 22, headY - mustacheWiggle);
+  ctx.stroke();
+  // Mustache curls
+  ctx.beginPath(); ctx.arc(-22, headY + mustacheWiggle - 2, 3, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(22, headY - mustacheWiggle - 2, 3, 0, Math.PI*2); ctx.stroke();
+
+  // Eyes
+  let eyeW = faceExpr === 'panic' ? 5 : faceExpr === 'eureka' ? 6 : 4;
+  let eyeH = faceExpr === 'panic' ? 6 : faceExpr === 'eureka' ? 7 : 4;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.ellipse(-7, headY - 5, eyeW, eyeH, 0, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(7, headY - 5, eyeW, eyeH, 0, 0, Math.PI*2); ctx.fill();
+  // Pupils
+  let pupilSize = faceExpr === 'panic' ? 1.5 : faceExpr === 'eureka' ? 1 : 2;
+  ctx.fillStyle = '#1a1a2a';
+  ctx.beginPath(); ctx.arc(-7, headY - 4, pupilSize, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(7, headY - 4, pupilSize, 0, Math.PI*2); ctx.fill();
+
+  // Eyebrows
+  ctx.strokeStyle = '#3a2a1a';
+  ctx.lineWidth = 2.5;
+  if (faceExpr === 'panic') {
+    ctx.beginPath(); ctx.moveTo(-12, headY - 13); ctx.lineTo(-3, headY - 11); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(12, headY - 13); ctx.lineTo(3, headY - 11); ctx.stroke();
+  } else if (faceExpr === 'eureka') {
+    ctx.beginPath(); ctx.moveTo(-12, headY - 15); ctx.lineTo(-3, headY - 14); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(12, headY - 15); ctx.lineTo(3, headY - 14); ctx.stroke();
+  } else if (faceExpr === 'triumph') {
+    ctx.beginPath(); ctx.moveTo(-12, headY - 12); ctx.lineTo(-3, headY - 13); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(12, headY - 12); ctx.lineTo(3, headY - 13); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.moveTo(-12, headY - 11); ctx.lineTo(-3, headY - 12); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(12, headY - 11); ctx.lineTo(3, headY - 12); ctx.stroke();
+  }
+
+  // Mouth
+  ctx.strokeStyle = '#8b3030';
+  ctx.lineWidth = 2;
+  if (faceExpr === 'panic') {
+    ctx.beginPath(); ctx.ellipse(0, headY + 10, 6, 8, 0, 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = '#5a1010'; ctx.fill();
+  } else if (faceExpr === 'strain') {
+    ctx.beginPath();
+    ctx.moveTo(-6, headY + 8);
+    ctx.lineTo(6, headY + 8);
+    for (let i = 0; i < 5; i++) {
+      ctx.lineTo(6 - i * 3, headY + 8 + (i%2 ? 3 : 0));
+    }
+    ctx.stroke();
+  } else if (faceExpr === 'triumph') {
+    ctx.beginPath();
+    ctx.arc(0, headY + 6, 8, 0, Math.PI);
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(-5, headY + 6, 10, 4);
+  } else if (faceExpr === 'eureka') {
+    ctx.beginPath(); ctx.arc(0, headY + 8, 5, 0, Math.PI*2);
+    ctx.fillStyle = '#5a1010'; ctx.fill();
+  } else {
+    ctx.beginPath();
+    ctx.arc(0, headY + 8, 5, 0.1, Math.PI - 0.1);
+    ctx.stroke();
+  }
+
+  // Hair - magnificent flowing hair!
+  ctx.fillStyle = '#c8a040';
+  let hairBase = headY - 16;
+  // Base hair on head
+  ctx.beginPath();
+  ctx.ellipse(0, hairBase, 17, 8, 0, Math.PI, Math.PI * 2);
+  ctx.fill();
+
+  if (hairPull > 0) {
+    // Hair being pulled upward - dramatic flowing strands
+    ctx.strokeStyle = '#c8a040';
+    ctx.lineWidth = 3;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      let hx = i * 5;
+      ctx.moveTo(hx, hairBase);
+      let pullHeight = hairPull * 60;
+      let wave = Math.sin(globalTime * 8 + i) * 5 * hairPull;
+      ctx.quadraticCurveTo(hx + wave, hairBase - pullHeight * 0.5,
+        hx + wave * 0.5, hairBase - pullHeight);
+      ctx.stroke();
+    }
+    // Hands gripping hair at top
+    if (armRaise > 0.5) {
+      ctx.fillStyle = '#e8c8a0';
+      ctx.beginPath(); ctx.arc(wave_x || 0, hairBase - hairPull * 55, 6, 0, Math.PI*2); ctx.fill();
+    }
+  } else {
+    // Normal flowing hair
+    ctx.strokeStyle = '#c8a040';
+    ctx.lineWidth = 2.5;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(i * 5, hairBase);
+      let wave = Math.sin(globalTime * 2 + i * 2) * 3;
+      ctx.quadraticCurveTo(i * 7 + wave, hairBase - 10, i * 6, hairBase - 15 + Math.abs(i)*2);
+      ctx.stroke();
+    }
+  }
+
+  // Hat (tricorn!)
+  ctx.save();
+  ctx.rotate(hatTilt);
+  let hatY = headY - 22;
+  ctx.fillStyle = '#1a1a3a';
+  // Brim
+  ctx.beginPath();
+  ctx.ellipse(0, hatY + 5, 24, 6, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Crown
+  ctx.beginPath();
+  ctx.moveTo(-16, hatY + 3);
+  ctx.lineTo(-10, hatY - 15);
+  ctx.lineTo(10, hatY - 15);
+  ctx.lineTo(16, hatY + 3);
+  ctx.closePath();
+  ctx.fill();
+  // Feather!
+  ctx.strokeStyle = '#e04040';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(8, hatY - 14);
+  let featherWave = Math.sin(globalTime * 3) * 5;
+  ctx.quadraticCurveTo(25, hatY - 30 + featherWave, 15, hatY - 40 + featherWave);
+  ctx.stroke();
+  ctx.strokeStyle = '#c03030';
+  ctx.beginPath();
+  ctx.moveTo(8, hatY - 14);
+  ctx.quadraticCurveTo(22, hatY - 25 + featherWave, 18, hatY - 35 + featherWave);
+  ctx.stroke();
+  // Hat band
+  ctx.fillStyle = '#c8a832';
+  ctx.fillRect(-10, hatY - 1, 20, 4);
+  ctx.restore();
+
+  // Sweat drops (panic)
+  if (faceExpr === 'panic' || faceExpr === 'strain') {
+    ctx.fillStyle = 'rgba(100,180,255,0.7)';
+    let sweatPhase = globalTime * 5;
+    for (let i = 0; i < 3; i++) {
+      let sy = headY - 10 + ((sweatPhase + i * 10) % 30);
+      let sx = (i - 1) * 20;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(sx - 3, sy + 5, sx, sy + 8);
+      ctx.quadraticCurveTo(sx + 3, sy + 5, sx, sy);
+      ctx.fill();
+    }
+  }
+
+  // Triumph sparkles
+  if (triumph) {
+    if (Math.random() < 0.15) {
+      spawnSparkles(x + (Math.random()-0.5)*60, y + headY + (Math.random()-0.5)*40, 2);
+    }
+  }
+
+  ctx.restore();
+}
+
+// --- SCENE RENDERING ---
+let baronX, baronY, sinkDepth = 0;
+let nightFactor = 0;
+
+function lerp(a, b, t) { return a + (b - a) * Math.max(0, Math.min(1, t)); }
+function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+function easeOut(t) { return 1-(1-t)*(1-t); }
+
+let wave_x = 0; // for hair pull hand position
+
+function renderScene(dt) {
+  let scene = SCENES[sceneIndex];
+  let t = sceneTime; // time in current scene
+  let swampY = H * 0.55;
+  let groundY = H * 0.58;
+
+  // Night gets darker as story progresses
+  nightFactor = sceneIndex >= 2 ? Math.min(0.6, (sceneIndex - 2) * 0.15) : 0;
+  if (scene === 'triumph') nightFactor = 0.1; // dawn breaks!
+
+  drawSky(nightFactor);
+  if (nightFactor > 0.2) {
+    drawMoon(W * 0.8, H * 0.12);
+    drawStars();
+  }
+  drawTrees();
+  drawFog(swampY);
+
+  baronX = W * 0.5;
+  baronY = groundY;
+
+  let opts = {};
+
+  switch(scene) {
+    case 'walking': {
+      baronX = W * 0.2 + easeOut(Math.min(1, t / 3.5)) * W * 0.3;
+      baronY = groundY - 30;
+      opts.walkPhase = t * 6;
+      opts.faceExpr = 'normal';
+      opts.hatTilt = Math.sin(t * 6) * 0.05;
+      sinkDepth = 0;
+      break;
+    }
+    case 'sinking': {
+      baronX = W * 0.5;
+      sinkDepth = easeInOut(Math.min(1, t / 3)) * 55;
+      baronY = groundY - 30 + sinkDepth * 0.5;
+      opts.faceExpr = t > 1 ? 'panic' : 'normal';
+      opts.hatTilt = Math.sin(t * 3) * 0.1;
+      opts.bodySquash = 1 - sinkDepth * 0.003;
+      // Mud bubbles
+      if (Math.random() < 0.08) spawnBubbles(baronX, swampY + 5);
+      if (t > 0.5 && Math.random() < 0.05) spawnMud(baronX, swampY, 3);
+      break;
+    }
+    case 'panic': {
+      baronX = W * 0.5;
+      sinkDepth = 55 + easeInOut(Math.min(1, t / 2.5)) * 15;
+      baronY = groundY - 30 + sinkDepth * 0.5;
+      opts.faceExpr = 'panic';
+      opts.panicShake = 0.5 + Math.sin(t * 3) * 0.3;
+      opts.armRaise = 0.3 + Math.sin(t * 4) * 0.2;
+      opts.hatTilt = Math.sin(t * 8) * 0.15;
+      if (Math.random() < 0.12) spawnBubbles(baronX, swampY + 5);
+      if (Math.random() < 0.08) spawnMud(baronX + (Math.random()-0.5)*40, swampY, 2);
+      // Frog
+      drawFrog(baronX + 80, swampY + 5, t);
+      break;
+    }
+    case 'eureka': {
+      baronX = W * 0.5;
+      sinkDepth = 70;
+      baronY = groundY - 30 + sinkDepth * 0.5;
+      opts.faceExpr = 'eureka';
+      opts.panicShake = 0;
+      let bulbPhase = Math.min(1, t / 1);
+      opts.armRaise = 0.1;
+      // Light bulb moment!
+      if (bulbPhase > 0.3) {
+        drawLightBulb(baronX + 25, baronY - 100, bulbPhase);
+      }
+      if (t > 1.5) opts.armRaise = lerp(0.1, 0.8, (t - 1.5) / 1);
+      break;
+    }
+    case 'pulling': {
+      baronX = W * 0.5;
+      let pullProgress = easeInOut(Math.min(1, t / 3.5));
+      sinkDepth = lerp(70, 50, pullProgress * 0.5);
+      baronY = groundY - 30 + sinkDepth * 0.5;
+      opts.faceExpr = 'strain';
+      opts.armRaise = 0.8 + Math.sin(t * 6) * 0.15;
+      opts.hairPull = 0.5 + pullProgress * 0.5;
+      opts.panicShake = 0.2;
+      opts.bodySquash = 1 + Math.sin(t * 8) * 0.03;
+      wave_x = Math.sin(globalTime * 8) * 5;
+      if (Math.random() < 0.1) spawnMud(baronX, swampY, 4);
+      if (Math.random() < 0.06) spawnBubbles(baronX, swampY + 5);
+      // Strain lines
+      drawStrainLines(baronX, baronY - 60, t);
+      break;
+    }
+    case 'rising': {
+      baronX = W * 0.5;
+      let riseProgress = easeOut(Math.min(1, t / 4));
+      sinkDepth = lerp(50, -20, riseProgress);
+      baronY = groundY - 30 + Math.max(-30, sinkDepth * 0.5);
+      opts.faceExpr = t > 2 ? 'triumph' : 'strain';
+      opts.armRaise = lerp(0.9, 0.3, riseProgress);
+      opts.hairPull = lerp(1, 0.2, riseProgress);
+      opts.hatTilt = Math.sin(t * 2) * 0.1;
+      wave_x = Math.sin(globalTime * 8) * 3;
+      if (riseProgress < 0.7 && Math.random() < 0.15) spawnMud(baronX, swampY, 6);
+      if (Math.random() < 0.05) spawnSparkles(baronX, baronY - 40, 2);
+      break;
+    }
+    case 'triumph': {
+      baronX = W * 0.5;
+      baronY = groundY - 50 + Math.sin(t * 2) * 5;
+      sinkDepth = 0;
+      opts.faceExpr = 'triumph';
+      opts.triumph = true;
+      opts.armRaise = 0.5 + Math.sin(t * 3) * 0.2;
+      opts.hatTilt = Math.sin(t * 1.5) * 0.2;
+      opts.walkPhase = t * 2;
+      if (Math.random() < 0.1) spawnSparkles(baronX + (Math.random()-0.5)*100, baronY - 60, 3);
+      // Triumphant pose - hat toss effect
+      if (t > 1 && t < 1.5) {
+        opts.hatTilt = (t - 1) * 4;
+      }
+      break;
+    }
+  }
+
+  // Draw swamp BEHIND baron for walking, in front for sinking
+  if (sinkDepth <= 0 && scene !== 'sinking' && scene !== 'panic' && scene !== 'eureka' && scene !== 'pulling') {
+    drawSwamp(swampY);
+    drawBaron(baronX, baronY, Math.max(0, sinkDepth), opts);
+  } else {
+    drawBaron(baronX, baronY, 0, opts);
+    drawSwamp(swampY);
+    // Redraw upper body above swamp
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, W, swampY + 5);
+    ctx.clip();
+    drawBaron(baronX, baronY, 0, opts);
+    ctx.restore();
+  }
+
+  // Vignette
+  let vgrad = ctx.createRadialGradient(W/2, H/2, W*0.3, W/2, H/2, W*0.8);
+  vgrad.addColorStop(0, 'rgba(0,0,0,0)');
+  vgrad.addColorStop(1, 'rgba(0,0,0,0.5)');
+  ctx.fillStyle = vgrad;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawFrog(x, y, t) {
+  let bobY = Math.sin(t * 3) * 3;
+  ctx.fillStyle = '#4a8a3a';
+  ctx.beginPath();
+  ctx.ellipse(x, y + bobY, 12, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#c8d830';
+  ctx.beginPath(); ctx.arc(x - 5, y + bobY - 6, 4, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 5, y + bobY - 6, 4, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#111';
+  ctx.beginPath(); ctx.arc(x - 5, y + bobY - 6, 2, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 5, y + bobY - 6, 2, 0, Math.PI*2); ctx.fill();
+  // Judgemental stare at baron
+  if (Math.floor(t * 2) % 4 === 0) {
+    // Blink
+    ctx.strokeStyle = '#3a7a2a';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x-7, y+bobY-6); ctx.lineTo(x-3, y+bobY-6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x+3, y+bobY-6); ctx.lineTo(x+7, y+bobY-6); ctx.stroke();
+  }
+}
+
+function drawLightBulb(x, y, phase) {
+  ctx.globalAlpha = Math.min(1, phase * 2);
+  // Glow
+  ctx.fillStyle = 'rgba(255,255,150,0.2)';
+  ctx.beginPath(); ctx.arc(x, y, 30 + Math.sin(globalTime * 10) * 5, 0, Math.PI*2); ctx.fill();
+  // Bulb
+  ctx.fillStyle = '#fff8a0';
+  ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#888';
+  ctx.fillRect(x - 5, y + 10, 10, 8);
+  // Rays
+  ctx.strokeStyle = '#ffe040';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 8; i++) {
+    let a = i * Math.PI / 4 + globalTime * 2;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(a) * 16, y + Math.sin(a) * 16);
+    ctx.lineTo(x + Math.cos(a) * 24, y + Math.sin(a) * 24);
+    ctx.stroke();
+  }
+  // "!" text
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 18px Georgia';
+  ctx.textAlign = 'center';
+  ctx.fillText('!', x, y + 5);
+  ctx.globalAlpha = 1;
+}
+
+function drawStrainLines(x, y, t) {
+  ctx.strokeStyle = 'rgba(255,255,200,0.4)';
+  ctx.lineWidth = 2;
+  let n = 6;
+  for (let i = 0; i < n; i++) {
+    let angle = (i / n) * Math.PI * 2 + t * 3;
+    let r1 = 25 + Math.sin(t * 10 + i) * 5;
+    let r2 = r1 + 12;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.cos(angle) * r1, y + Math.sin(angle) * r1);
+    ctx.lineTo(x + Math.cos(angle) * r2, y + Math.sin(angle) * r2);
+    ctx.stroke();
+  }
+}
+
+// --- SUBTITLE ---
+function showSubtitle(text) {
+  sub.textContent = text;
+  sub.style.opacity = 1;
+}
+function hideSubtitle() {
+  sub.style.opacity = 0;
+}
+
+// --- MAIN LOOP ---
+let lastTime = 0;
+let autoTimer = 0;
+
+function frame(now) {
+  let dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+  globalTime += dt;
+  sceneTime += dt;
+  autoTimer += dt * 1000;
+
+  // Auto-advance
+  if (autoTimer > autoAdvanceTimers[sceneIndex] && sceneIndex < SCENES.length - 1) {
+    advanceScene();
+  }
+
+  renderScene(dt);
+
+  // Update particles
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => { p.update(dt); p.draw(); });
+
+  requestAnimationFrame(frame);
+}
+
+function advanceScene() {
+  if (sceneIndex < SCENES.length - 1) {
+    sceneIndex++;
+  } else {
+    sceneIndex = 0; // replay
+  }
+  sceneTime = 0;
+  autoTimer = 0;
+  showSubtitle(SUBTITLES[sceneIndex]);
+}
+
+// Click to advance
+canvas.addEventListener('click', () => advanceScene());
+
+// Start
+showSubtitle(SUBTITLES[0]);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
