@@ -3,638 +3,609 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>梯云纵 · Stairway to the Clouds</title>
+  <title>梯云纵 · Oddity Arena Challenge 06</title>
   <style>
-    :root {
-      --bg: #0c1018;
-      --ink: #0f1218;
-      --mist: rgba(230, 236, 255, 0.08);
-      --moon: #f5f0dc;
-      --cyan: #75d9ff;
-      --gold: #f0c96d;
-    }
-    * { box-sizing: border-box; }
     html, body {
       margin: 0;
       width: 100%;
       height: 100%;
+      background: radial-gradient(circle at 50% 15%, #1e2735, #0a0d12 60%, #05070a);
       overflow: hidden;
-      background: var(--bg);
-      color: #d8dbe6;
-      font-family: "Noto Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-select: none;
     }
-    canvas { display: block; width: 100vw; height: 100vh; cursor: pointer; }
-    .hud {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 2;
-    }
-    .title {
-      position: absolute;
-      top: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-      letter-spacing: 0.2em;
-      color: rgba(244, 236, 215, 0.86);
-      text-shadow: 0 0 24px rgba(255,255,255,0.2);
-      font-size: clamp(16px, 2.2vw, 24px);
-      white-space: nowrap;
-    }
-    .sub {
+    canvas {
       display: block;
-      margin-top: 6px;
-      letter-spacing: 0.28em;
-      font-size: clamp(10px, 1.2vw, 13px);
-      color: rgba(160, 180, 220, 0.85);
-      text-transform: uppercase;
+      width: 100vw;
+      height: 100vh;
     }
     .hint {
-      position: absolute;
-      bottom: 18px;
+      position: fixed;
       left: 50%;
+      bottom: 18px;
       transform: translateX(-50%);
-      font-size: clamp(11px, 1.2vw, 14px);
-      color: rgba(210, 220, 245, 0.66);
-      letter-spacing: 0.08em;
-      padding: 8px 12px;
-      border: 1px solid rgba(180, 200, 255, 0.2);
-      border-radius: 999px;
-      background: rgba(12, 16, 24, 0.35);
-      backdrop-filter: blur(2px);
-      transition: opacity .25s ease;
+      color: rgba(230, 235, 245, 0.75);
+      font-family: "Noto Serif SC", "Songti SC", serif;
+      font-size: 14px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 12px rgba(255,255,255,0.15);
+      pointer-events: none;
     }
   </style>
 </head>
 <body>
-  <canvas id="stage"></canvas>
-  <div class="hud">
-    <div class="title">梯 云 纵<span class="sub">Stairway to the Clouds</span></div>
-    <div class="hint" id="hint">点击屏幕开始 / 重播</div>
-  </div>
+<canvas id="c"></canvas>
+<div class="hint">点击重演 · 梯云纵</div>
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
 
-  <script>
-    (() => {
-      const canvas = document.getElementById('stage');
-      const ctx = canvas.getContext('2d');
-      const hint = document.getElementById('hint');
+  let w = 0, h = 0, dpr = Math.max(1, Math.min(2, devicePixelRatio || 1));
+  const gravity = 1700;
 
-      let W = 0, H = 0, DPR = Math.max(1, Math.min(2, devicePixelRatio || 1));
-      function resize() {
-        W = innerWidth;
-        H = innerHeight;
-        canvas.width = Math.floor(W * DPR);
-        canvas.height = Math.floor(H * DPR);
-        canvas.style.width = W + 'px';
-        canvas.style.height = H + 'px';
-        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const state = {
+    t0: performance.now(),
+    replayFade: 1,
+    cameraY: 0,
+    peakY: -1200,
+    phase: 'setup',
+    fighter: {
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      pose: 'stand',
+      facing: 1
+    },
+    stepPlatforms: [],
+    particles: [],
+    waves: [],
+    afterimages: [],
+    moon: { x: 0, y: 0, r: 0 }
+  };
+
+  const timeline = {
+    setupEnd: 1.4,
+    leapEnd: 2.5,
+    stepsStart: 2.5,
+    stepsEnd: 6.4,
+    peakEnd: 7.4,
+    landingEnd: 9.8,
+    total: 11.2
+  };
+
+  const stepTimes = [2.65, 3.1, 3.55, 4.0, 4.45, 4.9, 5.35, 5.8, 6.15];
+
+  function resize() {
+    w = innerWidth;
+    h = innerHeight;
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    state.fighter.x = w * 0.5;
+    state.fighter.y = h * 0.75;
+    state.moon.x = w * 0.78;
+    state.moon.y = h * 0.2;
+    state.moon.r = Math.min(w, h) * 0.095;
+    buildParallax();
+  }
+
+  const parallax = {
+    mountainsFar: [],
+    mountainsNear: [],
+    bamboos: [],
+    clouds: []
+  };
+
+  function rand(min, max) { return min + Math.random() * (max - min); }
+
+  function buildParallax() {
+    parallax.mountainsFar = [];
+    parallax.mountainsNear = [];
+    parallax.bamboos = [];
+    parallax.clouds = [];
+
+    for (let i = 0; i < 8; i++) {
+      parallax.mountainsFar.push({
+        x: (i / 7) * w + rand(-50, 50),
+        y: h * rand(0.58, 0.73),
+        bw: rand(220, 360),
+        bh: rand(110, 220)
+      });
+    }
+    for (let i = 0; i < 7; i++) {
+      parallax.mountainsNear.push({
+        x: (i / 6) * w + rand(-60, 60),
+        y: h * rand(0.64, 0.8),
+        bw: rand(200, 300),
+        bh: rand(140, 280)
+      });
+    }
+    for (let i = 0; i < 24; i++) {
+      parallax.bamboos.push({
+        x: rand(-40, w + 40),
+        y: h * rand(0.55, 1.1),
+        h: rand(150, 380),
+        sw: rand(1.5, 4),
+        tilt: rand(-0.08, 0.08),
+        layer: Math.random() < 0.55 ? 0 : 1
+      });
+    }
+    for (let i = 0; i < 16; i++) {
+      parallax.clouds.push({
+        x: rand(-100, w + 100),
+        y: rand(-2200, h * 0.5),
+        r: rand(28, 72),
+        speed: rand(4, 16),
+        alpha: rand(0.08, 0.22)
+      });
+    }
+  }
+
+  function resetScene() {
+    state.t0 = performance.now();
+    state.cameraY = 0;
+    state.peakY = -1400;
+    state.phase = 'setup';
+    state.fighter.x = w * 0.5;
+    state.fighter.y = h * 0.75;
+    state.fighter.vx = 0;
+    state.fighter.vy = 0;
+    state.fighter.pose = 'stand';
+    state.stepPlatforms = [];
+    state.particles = [];
+    state.waves = [];
+    state.afterimages = [];
+    stepTimes.forEach((t, idx) => {
+      state.stepPlatforms.push({
+        trigger: t,
+        done: false,
+        x: w * 0.5 + (idx % 2 === 0 ? -1 : 1) * (24 + idx * 2.5),
+        y: h * 0.69 - idx * 130,
+        foot: idx % 2 === 0 ? 'L' : 'R',
+        life: 1,
+        born: 0
+      });
+    });
+  }
+
+  function qiBurst(x, y, scale = 1) {
+    for (let i = 0; i < 2; i++) {
+      state.waves.push({ x, y, r: 10 * scale, a: 0.45, grow: rand(220, 360) * scale });
+    }
+    for (let i = 0; i < 70; i++) {
+      const ang = rand(0, Math.PI * 2);
+      const sp = rand(90, 580) * scale;
+      state.particles.push({
+        x, y,
+        vx: Math.cos(ang) * sp,
+        vy: Math.sin(ang) * sp,
+        r: rand(1, 3.4) * scale,
+        a: rand(0.25, 0.9),
+        ink: Math.random() < 0.7,
+        life: rand(0.35, 1.05)
+      });
+    }
+  }
+
+  function update(dt, t) {
+    const f = state.fighter;
+
+    if (t < timeline.setupEnd) {
+      state.phase = 'setup';
+      f.pose = 'prepare';
+      f.y = h * 0.75 + Math.sin(t * 7) * 3;
+    } else if (t < timeline.leapEnd) {
+      if (state.phase !== 'leap') {
+        state.phase = 'leap';
+        f.vy = -740;
+        qiBurst(f.x, f.y + 48, 1.1);
       }
-      addEventListener('resize', resize);
-      resize();
-
-      const state = {
-        running: false,
-        t: 0,
-        sceneStart: 0,
-        scene: 0, // 0 setup ->1 leap ->2 steps ->3 peak ->4 landing ->5 done
-        cameraY: 0,
-        replayReady: true,
-      };
-
-      const fighter = {
-        x: 0,
-        y: 0,
-        vx: 0,
-        vy: 0,
-        dir: 1,
-        frame: 0,
-      };
-
-      const world = {
-        groundY: 0,
-        moonX: 0,
-        moonY: 0,
-      };
-
-      const particles = [];
-      const afterimages = [];
-      const stepBursts = [];
-
-      function resetWorld() {
-        world.groundY = H * 0.80;
-        world.moonX = W * 0.78;
-        world.moonY = H * 0.16;
-
-        fighter.x = W * 0.50;
-        fighter.y = world.groundY - 64;
-        fighter.vx = 0;
-        fighter.vy = 0;
-        fighter.dir = 1;
-        fighter.frame = 0;
-
-        state.t = 0;
-        state.sceneStart = 0;
-        state.scene = 0;
-        state.cameraY = 0;
-        state.running = false;
-        state.replayReady = true;
-
-        particles.length = 0;
-        afterimages.length = 0;
-        stepBursts.length = 0;
-      }
-      resetWorld();
-
-      function rand(a, b) { return a + Math.random() * (b - a); }
-
-      function spawnParticle(x, y, opts = {}) {
-        particles.push({
-          x, y,
-          vx: opts.vx ?? rand(-1, 1),
-          vy: opts.vy ?? rand(-2, -0.4),
-          life: opts.life ?? rand(0.6, 1.2),
-          maxLife: opts.life ?? rand(0.6, 1.2),
-          size: opts.size ?? rand(1.5, 4.5),
-          color: opts.color ?? 'rgba(120,180,220,0.9)',
-          drag: opts.drag ?? 0.985,
-          gravity: opts.gravity ?? 0.04,
-          kind: opts.kind ?? 'dot',
-        });
-      }
-
-      function shockwave(x, y, hue = 195) {
-        stepBursts.push({ x, y, r: 4, a: 0.6, hue });
-      }
-
-      function addAfterimage() {
-        afterimages.push({ x: fighter.x, y: fighter.y, life: 0.35 });
-      }
-
-      function beginRun() {
-        state.running = true;
-        state.replayReady = false;
-        state.scene = 0;
-        state.sceneStart = 0;
-        state.t = 0;
-        fighter.x = W * 0.50;
-        fighter.y = world.groundY - 64;
-        fighter.vx = 0;
-        fighter.vy = 0;
-        particles.length = 0;
-        afterimages.length = 0;
-        stepBursts.length = 0;
-        hint.style.opacity = '0';
-      }
-
-      function sceneTime() { return state.t - state.sceneStart; }
-      function gotoScene(id) { state.scene = id; state.sceneStart = state.t; }
-
-      const TIYUN_STEP_TIMES = [0.25, 0.56, 0.89, 1.23, 1.58, 1.92, 2.30];
-      let stepIndex = 0;
-
-      function emitInkSplash(x, y, n = 10) {
-        for (let i = 0; i < n; i++) {
-          const a = rand(-Math.PI, 0);
-          const sp = rand(0.8, 4.2);
-          spawnParticle(x, y, {
-            vx: Math.cos(a) * sp,
-            vy: Math.sin(a) * sp,
-            color: `rgba(30,36,46,${rand(0.35,0.75)})`,
-            gravity: 0.12,
-            life: rand(0.5, 1.0),
-            size: rand(2, 6)
-          });
-        }
-      }
-
-      function emitQi(x, y, n = 18) {
-        for (let i = 0; i < n; i++) {
-          const a = rand(0, Math.PI * 2);
-          const sp = rand(0.6, 3.8);
-          spawnParticle(x, y, {
-            vx: Math.cos(a) * sp,
-            vy: Math.sin(a) * sp,
-            color: `hsla(${rand(185,210)}, 90%, 72%, ${rand(0.55,0.95)})`,
-            gravity: 0.02,
-            life: rand(0.45, 1.05),
-            size: rand(1.5, 4.2)
-          });
-        }
-      }
-
-      function physics(dt) {
-        if (!state.running) return;
-
-        fighter.frame += dt * 8;
-
-        if (state.scene === 0) {
-          // setup pose
-          fighter.vx = 0;
-          fighter.vy = 0;
-          fighter.y = world.groundY - 64 + Math.sin(state.t * 5) * 0.6;
-          if (sceneTime() > 0.9) {
-            gotoScene(1);
-            emitInkSplash(fighter.x, world.groundY, 18);
-            shockwave(fighter.x, world.groundY, 45);
-          }
-        }
-        else if (state.scene === 1) {
-          // initial leap
-          if (sceneTime() < 0.05) {
-            fighter.vy = -16.4;
-            fighter.vx = 0.3;
-          }
-          fighter.vy += 0.72 * dt * 60;
-          fighter.x += fighter.vx * dt * 60;
-          fighter.y += fighter.vy * dt * 60;
-
-          if (sceneTime() > 0.32) {
-            gotoScene(2);
-            stepIndex = 0;
-          }
-        }
-        else if (state.scene === 2) {
-          // tiyunzong core: step-on-foot upward boosts
-          const st = sceneTime();
-          fighter.vy += 0.63 * dt * 60;
-          fighter.y += fighter.vy * dt * 60;
-          fighter.x += Math.sin(state.t * 18) * 0.22;
-
-          if (stepIndex < TIYUN_STEP_TIMES.length && st >= TIYUN_STEP_TIMES[stepIndex]) {
-            fighter.vy = -11.6 - stepIndex * 0.55;
-            addAfterimage();
-            emitQi(fighter.x, fighter.y + 22, 24);
-            emitInkSplash(fighter.x, fighter.y + 28, 8);
-            shockwave(fighter.x, fighter.y + 30, 195 + stepIndex * 3);
-            stepIndex++;
-          }
-
-          // occasional trail
-          if (Math.random() < 0.45) addAfterimage();
-
-          if (st > 2.68) {
-            gotoScene(3);
-          }
-        }
-        else if (state.scene === 3) {
-          // peak moment in sky
-          fighter.vy += 0.2 * dt * 60;
-          fighter.y += fighter.vy * dt * 60;
-          fighter.x += Math.sin(state.t * 6) * 0.08;
-          if (Math.random() < 0.30) emitQi(fighter.x + rand(-16,16), fighter.y + rand(-16,16), 2);
-          if (sceneTime() > 0.82) gotoScene(4);
-        }
-        else if (state.scene === 4) {
-          // landing
-          fighter.vy += 0.95 * dt * 60;
-          fighter.y += fighter.vy * dt * 60;
-          if (fighter.y >= world.groundY - 64) {
-            fighter.y = world.groundY - 64;
-            fighter.vy = 0;
-            emitInkSplash(fighter.x, world.groundY, 20);
-            shockwave(fighter.x, world.groundY, 28);
-            gotoScene(5);
-          }
-        }
-        else if (state.scene === 5) {
-          if (sceneTime() > 1.2) {
-            state.running = false;
-            state.replayReady = true;
-            hint.style.opacity = '1';
-            hint.textContent = '点击重播 / Click to replay';
-          }
-        }
-
-        // camera follows ascent upward
-        const targetCam = Math.min(0, fighter.y - H * 0.45);
-        state.cameraY += (targetCam - state.cameraY) * 0.10;
-
-        // particles update
-        for (let i = particles.length - 1; i >= 0; i--) {
-          const p = particles[i];
-          p.vx *= p.drag;
-          p.vy = p.vy * p.drag + p.gravity;
-          p.x += p.vx * dt * 60;
-          p.y += p.vy * dt * 60;
-          p.life -= dt;
-          if (p.life <= 0) particles.splice(i, 1);
-        }
-
-        for (let i = afterimages.length - 1; i >= 0; i--) {
-          afterimages[i].life -= dt * 1.2;
-          if (afterimages[i].life <= 0) afterimages.splice(i, 1);
-        }
-
-        for (let i = stepBursts.length - 1; i >= 0; i--) {
-          const b = stepBursts[i];
-          b.r += 220 * dt;
-          b.a -= 1.2 * dt;
-          if (b.a <= 0) stepBursts.splice(i, 1);
+      f.pose = 'leap';
+      f.vy += gravity * dt * 0.65;
+      f.y += f.vy * dt;
+    } else if (t < timeline.stepsEnd) {
+      state.phase = 'steps';
+      f.pose = 'step';
+      for (const st of state.stepPlatforms) {
+        if (!st.done && t >= st.trigger) {
+          st.done = true;
+          st.born = t;
+          f.y = st.y - 56;
+          f.vy = -620 - (st.trigger - timeline.stepsStart) * 24;
+          qiBurst(st.x, st.y + 8, 0.95 + (st.trigger - timeline.stepsStart) * 0.06);
+          state.afterimages.push({ x: f.x, y: f.y, life: 0.65, pose: f.pose });
         }
       }
-
-      function drawSky() {
-        const g = ctx.createLinearGradient(0, 0, 0, H);
-        g.addColorStop(0, '#0b111c');
-        g.addColorStop(0.45, '#121a28');
-        g.addColorStop(1, '#192233');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, 0, W, H);
-
-        // moon
-        const mx = world.moonX;
-        const my = world.moonY - state.cameraY * 0.06;
-        const mg = ctx.createRadialGradient(mx, my, 10, mx, my, 120);
-        mg.addColorStop(0, 'rgba(245,240,220,0.30)');
-        mg.addColorStop(1, 'rgba(245,240,220,0)');
-        ctx.fillStyle = mg;
-        ctx.beginPath(); ctx.arc(mx, my, 120, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = 'rgba(245,240,220,0.92)';
-        ctx.beginPath(); ctx.arc(mx, my, 34, 0, Math.PI * 2); ctx.fill();
-
-        // clouds
-        const cloudYBase = H * 0.30 - state.cameraY * 0.14;
-        for (let i = 0; i < 7; i++) {
-          const x = (i * 260 + (state.t * 22) % (W + 280)) - 180;
-          const y = cloudYBase + (i % 3) * 46 + Math.sin(state.t * 0.9 + i) * 8;
-          ctx.fillStyle = `rgba(220,228,255,${0.05 + (i % 3) * 0.02})`;
-          ellipse(x, y, 120, 20);
-          ellipse(x + 60, y - 8, 95, 16);
-          ellipse(x - 52, y + 2, 80, 14);
-        }
+      f.vy += gravity * dt * 0.72;
+      f.y += f.vy * dt;
+    } else if (t < timeline.peakEnd) {
+      if (state.phase !== 'peak') {
+        state.phase = 'peak';
+        qiBurst(f.x, f.y, 1.3);
       }
-
-      function drawMountains() {
-        const oy = -state.cameraY;
-
-        // far layer
-        ctx.fillStyle = '#121827';
-        ctx.beginPath();
-        ctx.moveTo(0, H);
-        for (let x = 0; x <= W; x += 6) {
-          const y = H * 0.58 + Math.sin(x * 0.004 + 0.2) * 42 + Math.sin(x * 0.010) * 16 + oy * 0.09;
-          ctx.lineTo(x, y);
-        }
-        ctx.lineTo(W, H);
-        ctx.closePath();
-        ctx.fill();
-
-        // mid layer
-        ctx.fillStyle = '#1a2233';
-        ctx.beginPath();
-        ctx.moveTo(0, H);
-        for (let x = 0; x <= W; x += 6) {
-          const y = H * 0.67 + Math.sin(x * 0.006 + 1.8) * 52 + Math.sin(x * 0.015) * 18 + oy * 0.16;
-          ctx.lineTo(x, y);
-        }
-        ctx.lineTo(W, H);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      function drawBamboo() {
-        const oy = -state.cameraY * 0.22;
-        const stems = [0.08, 0.14, 0.21, 0.78, 0.86, 0.92];
-        ctx.lineCap = 'round';
-        for (let i = 0; i < stems.length; i++) {
-          const x = W * stems[i];
-          const sway = Math.sin(state.t * 1.8 + i * 1.7) * 7;
-          ctx.strokeStyle = 'rgba(58,82,66,0.38)';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.moveTo(x, H + 40);
-          ctx.quadraticCurveTo(x + sway, H * 0.62 + oy, x + sway * 1.2, H * 0.28 + oy * 0.2);
-          ctx.stroke();
-
-          ctx.strokeStyle = 'rgba(95,128,105,0.24)';
-          ctx.lineWidth = 2;
-          for (let n = 0; n < 8; n++) {
-            const ly = H * 0.72 - n * 42 + oy;
-            ctx.beginPath();
-            ctx.moveTo(x + sway * 0.7, ly);
-            ctx.quadraticCurveTo(x + 18 + sway * 1.2, ly - 8, x + 30 + sway * 1.6, ly - 2);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(x + sway * 0.5, ly + 8);
-            ctx.quadraticCurveTo(x - 20 + sway * 0.8, ly, x - 32 + sway * 1.2, ly + 4);
-            ctx.stroke();
-          }
-        }
-      }
-
-      function drawGround() {
-        const gy = world.groundY - state.cameraY;
-        const gg = ctx.createLinearGradient(0, gy, 0, H);
-        gg.addColorStop(0, '#202c22');
-        gg.addColorStop(1, '#11180f');
-        ctx.fillStyle = gg;
-        ctx.fillRect(0, gy, W, H - gy + 80);
-
-        ctx.strokeStyle = 'rgba(180,200,170,0.12)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < 34; i++) {
-          const x = i * (W / 33);
-          ctx.beginPath();
-          ctx.moveTo(x, gy + 8);
-          ctx.lineTo(x + Math.sin(i + state.t * 2) * 4, gy - 10 - (i % 3) * 4);
-          ctx.stroke();
-        }
-      }
-
-      function drawShockwaves() {
-        for (const b of stepBursts) {
-          ctx.strokeStyle = `hsla(${b.hue}, 90%, 72%, ${b.a})`;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.arc(b.x, b.y - state.cameraY, b.r, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-
-      function drawParticles() {
-        for (const p of particles) {
-          const a = Math.max(0, p.life / p.maxLife);
-          ctx.globalAlpha = a;
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y - state.cameraY, p.size, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.globalAlpha = 1;
-      }
-
-      function drawAfterimages() {
-        for (const a of afterimages) {
-          drawFighter(a.x, a.y, true, a.life * 0.35);
-        }
-      }
-
-      function drawFighter(x, y, ghost = false, alphaMul = 1) {
-        const sx = x;
-        const sy = y - state.cameraY;
-        const phase = state.t * 10;
-        const robeSwing = Math.sin(phase) * 3;
-
-        ctx.save();
-        ctx.globalAlpha = (ghost ? 0.28 : 1) * alphaMul;
-        ctx.translate(sx, sy);
-
-        // afterimage glow
-        if (ghost) {
-          ctx.strokeStyle = 'rgba(130,210,255,0.35)';
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.arc(0, -40, 20, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-
-        // sword back silhouette
-        ctx.strokeStyle = ghost ? 'rgba(145,170,220,0.5)' : 'rgba(86,108,142,0.8)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(-6, -18);
-        ctx.lineTo(16, -68);
-        ctx.stroke();
-
-        // body/robe
-        ctx.fillStyle = ghost ? 'rgba(108,130,188,0.48)' : '#2a3250';
-        ctx.beginPath();
-        ctx.moveTo(-13, -20);
-        ctx.quadraticCurveTo(-20 + robeSwing, 12, -14, 35);
-        ctx.lineTo(13, 35);
-        ctx.quadraticCurveTo(22 + robeSwing, 10, 13, -20);
-        ctx.closePath();
-        ctx.fill();
-
-        // inner robe
-        ctx.fillStyle = ghost ? 'rgba(150,178,230,0.35)' : '#4a5f8b';
-        ctx.beginPath();
-        ctx.moveTo(-6, -18);
-        ctx.lineTo(-6, 31);
-        ctx.lineTo(6, 31);
-        ctx.lineTo(6, -18);
-        ctx.closePath();
-        ctx.fill();
-
-        // belt
-        ctx.fillStyle = ghost ? 'rgba(220,188,90,0.35)' : '#b58b43';
-        ctx.fillRect(-14, -2, 28, 4);
-
-        // head
-        ctx.fillStyle = ghost ? 'rgba(208,220,255,0.44)' : '#d8c7ad';
-        ctx.beginPath();
-        ctx.arc(0, -34, 10, 0, Math.PI * 2);
-        ctx.fill();
-
-        // hair bun
-        ctx.fillStyle = ghost ? 'rgba(28,38,54,0.55)' : '#111821';
-        ctx.beginPath();
-        ctx.arc(0, -46, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // arms (dynamic step pose)
-        const stepping = state.scene === 2 || state.scene === 3;
-        ctx.strokeStyle = ghost ? 'rgba(115,145,210,0.55)' : '#2f4268';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(-10, -12);
-        ctx.lineTo(stepping ? -20 : -16, stepping ? -26 : 2);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(10, -12);
-        ctx.lineTo(stepping ? 24 : 16, stepping ? -2 : 3);
-        ctx.stroke();
-
-        // legs (one foot stepping effect)
-        ctx.strokeStyle = ghost ? 'rgba(115,145,210,0.58)' : '#253553';
-        ctx.lineWidth = 5;
-        if (stepping) {
-          ctx.beginPath();
-          ctx.moveTo(-5, 34);
-          ctx.lineTo(-8, 52);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(4, 34);
-          ctx.lineTo(9, 42);
-          ctx.lineTo(-1, 47);
-          ctx.stroke();
+      f.pose = 'peak';
+      f.vy += gravity * dt * 0.35;
+      f.y += f.vy * dt;
+    } else if (t < timeline.landingEnd) {
+      state.phase = 'landing';
+      f.pose = 'fall';
+      f.vy += gravity * dt;
+      f.y += f.vy * dt;
+      const ground = h * 0.75;
+      if (f.y >= ground) {
+        f.y = ground;
+        if (f.vy > 220) {
+          qiBurst(f.x, ground + 52, 1.15);
+          f.vy = -f.vy * 0.18;
         } else {
-          ctx.beginPath();
-          ctx.moveTo(-5, 34);
-          ctx.lineTo(-7, 52);
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(5, 34);
-          ctx.lineTo(7, 52);
-          ctx.stroke();
-        }
-
-        // qi aura at peak
-        if (!ghost && (state.scene === 2 || state.scene === 3)) {
-          const ag = ctx.createRadialGradient(0, 0, 4, 0, 0, 42);
-          ag.addColorStop(0, 'rgba(125,220,255,0.16)');
-          ag.addColorStop(1, 'rgba(125,220,255,0)');
-          ctx.fillStyle = ag;
-          ctx.beginPath(); ctx.arc(0, 0, 42, 0, Math.PI * 2); ctx.fill();
-        }
-
-        ctx.restore();
-      }
-
-      function drawOverlayInk() {
-        // vignette
-        const vg = ctx.createRadialGradient(W * 0.5, H * 0.5, Math.min(W, H) * 0.2, W * 0.5, H * 0.5, Math.max(W, H) * 0.72);
-        vg.addColorStop(0, 'rgba(0,0,0,0)');
-        vg.addColorStop(1, 'rgba(4,6,10,0.35)');
-        ctx.fillStyle = vg;
-        ctx.fillRect(0, 0, W, H);
-
-        // drifting ink haze
-        ctx.fillStyle = `rgba(12,18,28,${0.07 + Math.sin(state.t * 0.5) * 0.015})`;
-        for (let i = 0; i < 4; i++) {
-          const x = (i * 250 + (state.t * 14) % (W + 240)) - 120;
-          const y = H * (0.2 + i * 0.17) + Math.sin(state.t + i) * 8;
-          ellipse(x, y, 180, 30);
+          f.vy = 0;
+          f.pose = 'land';
         }
       }
+    } else {
+      state.phase = 'end';
+      f.pose = 'still';
+      f.vy = 0;
+      f.y = h * 0.75;
+    }
 
-      function ellipse(x, y, rx, ry) {
+    const targetCam = Math.min(0, -((h * 0.75 - f.y) - h * 0.25));
+    state.cameraY += (targetCam - state.cameraY) * Math.min(1, dt * 3.8);
+
+    for (const p of state.particles) {
+      p.vy += gravity * dt * (p.ink ? 0.4 : 0.2);
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.a -= dt * (p.ink ? 0.6 : 1.1);
+      p.life -= dt;
+    }
+    state.particles = state.particles.filter(p => p.life > 0 && p.a > 0.02);
+
+    for (const wv of state.waves) {
+      wv.r += wv.grow * dt;
+      wv.a -= dt * 0.55;
+    }
+    state.waves = state.waves.filter(wv => wv.a > 0.01);
+
+    for (const a of state.afterimages) a.life -= dt;
+    state.afterimages = state.afterimages.filter(a => a.life > 0);
+
+    for (const cl of parallax.clouds) {
+      cl.x += cl.speed * dt;
+      if (cl.x > w + 130) cl.x = -130;
+    }
+  }
+
+  function inkStroke(pathFn, alpha = 1) {
+    ctx.save();
+    ctx.globalAlpha *= alpha;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    pathFn();
+    ctx.restore();
+  }
+
+  function drawBackground() {
+    const gy = state.cameraY;
+    ctx.save();
+    const grd = ctx.createLinearGradient(0, 0, 0, h);
+    grd.addColorStop(0, '#182230');
+    grd.addColorStop(0.55, '#0f1722');
+    grd.addColorStop(1, '#080b10');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, w, h);
+
+    const moonY = state.moon.y - gy * 0.08;
+    const moonGrad = ctx.createRadialGradient(state.moon.x, moonY, 0, state.moon.x, moonY, state.moon.r * 1.8);
+    moonGrad.addColorStop(0, 'rgba(240,245,255,0.24)');
+    moonGrad.addColorStop(0.55, 'rgba(220,230,245,0.10)');
+    moonGrad.addColorStop(1, 'rgba(220,230,245,0.00)');
+    ctx.fillStyle = moonGrad;
+    ctx.beginPath();
+    ctx.arc(state.moon.x, moonY, state.moon.r * 1.8, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(220,228,240,0.14)';
+    ctx.beginPath();
+    ctx.arc(state.moon.x, moonY, state.moon.r, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(0, -gy * 0.12);
+    for (const m of parallax.mountainsFar) {
+      ctx.fillStyle = 'rgba(30,38,48,0.55)';
+      ctx.beginPath();
+      ctx.moveTo(m.x - m.bw * 0.5, m.y);
+      ctx.quadraticCurveTo(m.x, m.y - m.bh, m.x + m.bw * 0.5, m.y);
+      ctx.lineTo(m.x + m.bw * 0.5, h + 3000);
+      ctx.lineTo(m.x - m.bw * 0.5, h + 3000);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(0, -gy * 0.23);
+    for (const m of parallax.mountainsNear) {
+      ctx.fillStyle = 'rgba(22,30,38,0.72)';
+      ctx.beginPath();
+      ctx.moveTo(m.x - m.bw * 0.5, m.y);
+      ctx.quadraticCurveTo(m.x, m.y - m.bh, m.x + m.bw * 0.5, m.y);
+      ctx.lineTo(m.x + m.bw * 0.5, h + 3000);
+      ctx.lineTo(m.x - m.bw * 0.5, h + 3000);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(0, -gy * 0.35);
+    for (const cl of parallax.clouds) {
+      ctx.fillStyle = `rgba(212,222,238,${cl.alpha})`;
+      ctx.beginPath();
+      ctx.ellipse(cl.x, cl.y, cl.r * 1.35, cl.r * 0.58, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(0, -gy * 0.4);
+    for (const b of parallax.bamboos) {
+      const dep = b.layer === 0 ? 0.5 : 1;
+      ctx.strokeStyle = b.layer === 0 ? 'rgba(46,74,58,0.32)' : 'rgba(58,96,70,0.45)';
+      ctx.lineWidth = b.sw * dep;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y);
+      ctx.lineTo(b.x + b.tilt * b.h, b.y - b.h);
+      ctx.stroke();
+      const seg = 5;
+      for (let i = 1; i <= seg; i++) {
+        const yy = b.y - (b.h / seg) * i;
+        ctx.strokeStyle = 'rgba(70,110,82,0.35)';
+        ctx.lineWidth = Math.max(1, b.sw * 0.7);
         ctx.beginPath();
-        ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.moveTo(b.x + b.tilt * (b.h * i / seg) - 5, yy);
+        ctx.lineTo(b.x + b.tilt * (b.h * i / seg) + 5, yy);
+        ctx.stroke();
       }
+    }
+    ctx.restore();
+  }
 
-      function render() {
-        drawSky();
-        drawMountains();
-        drawBamboo();
-        drawGround();
-        drawShockwaves();
-        drawAfterimages();
-        drawParticles();
-        drawFighter(fighter.x, fighter.y, false, 1);
-        drawOverlayInk();
-      }
+  function drawFighter(x, y, pose, alpha = 1, stepLeg = 'R') {
+    ctx.save();
+    ctx.translate(x, y + state.cameraY);
+    ctx.globalAlpha *= alpha;
 
-      let last = performance.now();
-      function frame(now) {
-        const dt = Math.min(0.033, (now - last) / 1000);
-        last = now;
-        state.t += dt;
-        physics(dt);
-        render();
-        requestAnimationFrame(frame);
-      }
-      requestAnimationFrame(frame);
+    const brush = '#e8ecf4';
+    const ink = '#0b0f14';
+    const robe = '#131923';
 
-      function handleStart() {
-        if (!state.running && state.replayReady) beginRun();
+    ctx.strokeStyle = brush;
+    ctx.fillStyle = robe;
+    ctx.lineWidth = 3.2;
+
+    const sway = pose === 'prepare' ? Math.sin(performance.now() * 0.01) * 2 : 0;
+
+    // Head
+    ctx.fillStyle = brush;
+    ctx.beginPath();
+    ctx.arc(0, -44 + sway, 8.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Torso robe
+    ctx.fillStyle = robe;
+    ctx.beginPath();
+    ctx.moveTo(-9, -34 + sway);
+    ctx.lineTo(9, -34 + sway);
+    ctx.lineTo(13, -4 + sway);
+    ctx.lineTo(0, 8 + sway);
+    ctx.lineTo(-13, -4 + sway);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = brush;
+    ctx.beginPath();
+    ctx.moveTo(0, -34 + sway);
+    ctx.lineTo(0, 6 + sway);
+    ctx.stroke();
+
+    // Arms
+    ctx.lineWidth = 2.8;
+    const armSwing = pose === 'leap' ? -16 : pose === 'fall' ? 10 : pose === 'step' ? -8 : 0;
+    ctx.beginPath();
+    ctx.moveTo(-3, -24 + sway);
+    ctx.quadraticCurveTo(-18, -15 + armSwing + sway, -26, -4 + armSwing * 0.3 + sway);
+    ctx.moveTo(3, -24 + sway);
+    ctx.quadraticCurveTo(18, -15 - armSwing + sway, 26, -2 - armSwing * 0.3 + sway);
+    ctx.stroke();
+
+    // Legs with clear foot-on-foot articulation
+    ctx.lineWidth = 3.4;
+    let l1 = { x: -5, y: 5 + sway }, l2 = { x: -14, y: 26 + sway }, l3 = { x: -4, y: 39 + sway };
+    let r1 = { x: 5, y: 5 + sway }, r2 = { x: 14, y: 26 + sway }, r3 = { x: 8, y: 42 + sway };
+
+    if (pose === 'step') {
+      const phase = (performance.now() * 0.008) % 1;
+      if (stepLeg === 'L') {
+        l2 = { x: -20, y: 14 + sway - phase * 7 };
+        l3 = { x: -8, y: 2 + sway - phase * 12 }; // stepping up
+        r2 = { x: 12, y: 28 + sway };
+        r3 = { x: 5, y: 44 + sway };
+      } else {
+        r2 = { x: 21, y: 14 + sway - phase * 7 };
+        r3 = { x: 8, y: 1 + sway - phase * 12 };
+        l2 = { x: -11, y: 29 + sway };
+        l3 = { x: -3, y: 44 + sway };
       }
-      canvas.addEventListener('click', handleStart);
-      canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleStart(); }, { passive: false });
-    })();
-  </script>
+    }
+    if (pose === 'leap') {
+      l2 = { x: -16, y: 19 + sway }; l3 = { x: -6, y: 36 + sway };
+      r2 = { x: 18, y: 11 + sway };  r3 = { x: 15, y: 28 + sway };
+    }
+    if (pose === 'peak') {
+      l2 = { x: -14, y: 17 + sway }; l3 = { x: -2, y: 30 + sway };
+      r2 = { x: 15, y: 17 + sway };  r3 = { x: 2, y: 30 + sway };
+    }
+    if (pose === 'fall') {
+      l2 = { x: -8, y: 28 + sway }; l3 = { x: -2, y: 44 + sway };
+      r2 = { x: 10, y: 30 + sway }; r3 = { x: 4, y: 46 + sway };
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(l1.x, l1.y); ctx.lineTo(l2.x, l2.y); ctx.lineTo(l3.x, l3.y);
+    ctx.moveTo(r1.x, r1.y); ctx.lineTo(r2.x, r2.y); ctx.lineTo(r3.x, r3.y);
+    ctx.stroke();
+
+    // Feet
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.moveTo(l3.x - 4, l3.y); ctx.lineTo(l3.x + 5, l3.y);
+    ctx.moveTo(r3.x - 4, r3.y); ctx.lineTo(r3.x + 5, r3.y);
+    ctx.stroke();
+
+    // Belt stroke
+    ctx.strokeStyle = ink;
+    ctx.globalAlpha *= 0.45;
+    ctx.beginPath();
+    ctx.moveTo(-8, -4 + sway); ctx.lineTo(8, -4 + sway);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawEffects(t) {
+    // Step footholds (ink footprints in air)
+    for (const st of state.stepPlatforms) {
+      if (!st.done) continue;
+      const age = Math.max(0, t - st.born);
+      const a = Math.max(0, 0.85 - age * 0.24);
+      if (a <= 0) continue;
+      const yy = st.y + state.cameraY;
+
+      ctx.save();
+      ctx.globalAlpha = a;
+      ctx.translate(st.x, yy);
+      ctx.rotate(st.foot === 'L' ? -0.2 : 0.2);
+      ctx.fillStyle = 'rgba(230,236,246,0.65)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 13, 5.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(245,250,255,0.35)';
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 17 + age * 12, 7 + age * 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Shockwaves
+    for (const wv of state.waves) {
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, wv.a);
+      ctx.strokeStyle = 'rgba(226,238,255,0.7)';
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      ctx.ellipse(wv.x, wv.y + state.cameraY, wv.r * 1.3, wv.r * 0.45, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Particles / ink splash
+    for (const p of state.particles) {
+      ctx.save();
+      ctx.globalAlpha = p.a;
+      ctx.fillStyle = p.ink ? 'rgba(14,18,24,0.9)' : 'rgba(220,235,255,0.85)';
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y + state.cameraY, p.r * (p.ink ? 1.5 : 1), p.r, Math.atan2(p.vy, p.vx), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Afterimages
+    for (const a of state.afterimages) {
+      drawFighter(a.x, a.y, a.pose, a.life * 0.35);
+    }
+  }
+
+  function drawForeground() {
+    // Ground ink mist
+    const gy = h * 0.78 + state.cameraY * 0.05;
+    const g = ctx.createLinearGradient(0, gy - 80, 0, gy + 140);
+    g.addColorStop(0, 'rgba(35,45,58,0.0)');
+    g.addColorStop(0.5, 'rgba(25,32,42,0.5)');
+    g.addColorStop(1, 'rgba(16,20,28,0.9)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, gy - 80, w, h - gy + 180);
+
+    // Ink brush vignette
+    const vignette = ctx.createRadialGradient(w * 0.5, h * 0.55, h * 0.2, w * 0.5, h * 0.5, h * 0.85);
+    vignette.addColorStop(0, 'rgba(0,0,0,0)');
+    vignette.addColorStop(1, 'rgba(0,0,0,0.5)');
+    ctx.fillStyle = vignette;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  function drawPoem(t) {
+    if (t < timeline.landingEnd - 0.1) return;
+    const p = Math.min(1, (t - (timeline.landingEnd - 0.2)) / 1.6);
+    ctx.save();
+    ctx.globalAlpha = p * 0.9;
+    ctx.fillStyle = 'rgba(235,240,248,0.92)';
+    ctx.font = `${Math.max(20, Math.min(34, w * 0.035))}px "Kaiti SC", "STKaiti", serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(220,230,255,0.25)';
+    ctx.shadowBlur = 12;
+    ctx.fillText('踏虚蹈空上九天，一步一生一念间', w * 0.5, h * 0.16);
+    ctx.restore();
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.033, (now - last) / 1000);
+    last = now;
+    const t = (now - state.t0) / 1000;
+
+    if (t > timeline.total) {
+      // hold final frame
+    }
+
+    update(dt, Math.min(t, timeline.total));
+
+    ctx.clearRect(0, 0, w, h);
+    drawBackground();
+    drawEffects(Math.min(t, timeline.total));
+
+    // Determine stepping leg by closest step
+    let stepLeg = 'R';
+    if (state.phase === 'steps') {
+      let nearest = state.stepPlatforms[0];
+      let nd = Infinity;
+      for (const st of state.stepPlatforms) {
+        const d = Math.abs(((now - state.t0) / 1000) - st.trigger);
+        if (d < nd) { nd = d; nearest = st; }
+      }
+      stepLeg = nearest.foot;
+    }
+
+    drawFighter(state.fighter.x, state.fighter.y, state.fighter.pose, 1, stepLeg);
+    drawForeground();
+    drawPoem(Math.min(t, timeline.total));
+
+    requestAnimationFrame(frame);
+  }
+
+  addEventListener('resize', resize);
+  addEventListener('click', () => resetScene());
+
+  resize();
+  resetScene();
+  requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>
