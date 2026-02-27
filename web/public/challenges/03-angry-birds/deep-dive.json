@@ -10,7 +10,32 @@
       "write"
     ],
     "file_size_bytes": 16602,
-    "status": "ok",
-    "track": "openclaw"
+    "status": "ok"
+  },
+  "claude-sonnet-4-6": {
+    "challenge": "03-angry-birds",
+    "model": "claude-sonnet-4-6",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-26T22:04:30.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 21124,
+    "status": "ok"
+  },
+  "gpt-5.3-codex": {
+    "challenge": "03-angry-birds",
+    "model": "gpt-5.3-codex",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-27T00:31:00Z",
+    "rounds": 3,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 17823,
+    "status": "ok"
   }
 }

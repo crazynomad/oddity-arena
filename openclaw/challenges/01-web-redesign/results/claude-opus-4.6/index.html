@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — AI-Powered Workflow Automation</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #12121a;
+  --surface-2: #1a1a26;
+  --border: #2a2a3a;
+  --text: #e8e8f0;
+  --text-muted: #8888a0;
+  --primary: #6c5ce7;
+  --primary-light: #a29bfe;
+  --accent: #00cec9;
+  --accent-2: #fd79a8;
+  --gradient: linear-gradient(135deg, #6c5ce7, #00cec9);
+  --radius: 12px;
+  --max-w: 1200px;
+}
+
+html { scroll-behavior: smooth; font-size: 16px; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+a { color: var(--primary-light); text-decoration: none; transition: color .2s; }
+a:hover { color: var(--accent); }
+
+.container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+
+/* NAV */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: rgba(10,10,15,.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  transition: box-shadow .3s;
+}
+nav.scrolled { box-shadow: 0 4px 30px rgba(0,0,0,.3); }
+.nav-inner {
+  max-width: var(--max-w); margin: 0 auto; padding: 0 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  height: 72px;
+}
+.logo {
+  font-size: 1.5rem; font-weight: 800;
+  background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.nav-links { display: flex; gap: 32px; list-style: none; }
+.nav-links a { color: var(--text-muted); font-size: .9rem; font-weight: 500; }
+.nav-links a:hover { color: var(--text); }
+.nav-cta {
+  padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: .9rem;
+  background: var(--gradient); color: #fff; border: none; cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+}
+.nav-cta:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(108,92,231,.4); }
+.hamburger { display: none; background: none; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer; }
+
+/* HERO */
+.hero {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 120px 24px 80px; position: relative;
+}
+.hero::before {
+  content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+  width: 800px; height: 800px;
+  background: radial-gradient(circle, rgba(108,92,231,.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 20px; border-radius: 50px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: .85rem; color: var(--text-muted); margin-bottom: 32px;
+}
+.hero-badge span { color: var(--accent); font-weight: 600; }
+.hero h1 {
+  font-size: clamp(2.5rem, 6vw, 4.5rem); font-weight: 800;
+  line-height: 1.1; margin-bottom: 24px;
+  background: linear-gradient(135deg, #fff 0%, var(--primary-light) 50%, var(--accent) 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+.hero p {
+  font-size: 1.2rem; color: var(--text-muted); max-width: 600px; margin: 0 auto 40px;
+}
+.hero-actions { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.btn-primary {
+  padding: 16px 36px; border-radius: 10px; font-weight: 700; font-size: 1rem;
+  background: var(--gradient); color: #fff; border: none; cursor: pointer;
+  transition: transform .2s, box-shadow .2s;
+}
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(108,92,231,.4); }
+.btn-secondary {
+  padding: 16px 36px; border-radius: 10px; font-weight: 700; font-size: 1rem;
+  background: transparent; color: var(--text); border: 1px solid var(--border); cursor: pointer;
+  transition: border-color .2s, color .2s;
+}
+.btn-secondary:hover { border-color: var(--primary-light); color: var(--primary-light); }
+
+/* TRUST */
+.trust {
+  padding: 60px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.trust p { color: var(--text-muted); font-size: .85rem; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 24px; }
+.trust-logos { display: flex; justify-content: center; gap: 48px; flex-wrap: wrap; align-items: center; }
+.trust-logos span {
+  font-size: 1.1rem; font-weight: 700; color: var(--text-muted); opacity: .5;
+  letter-spacing: 1px;
+}
+
+/* FEATURES */
+.features { padding: 120px 0; }
+.section-header { text-align: center; margin-bottom: 64px; }
+.section-label {
+  font-size: .8rem; text-transform: uppercase; letter-spacing: 3px;
+  color: var(--accent); font-weight: 600; margin-bottom: 16px;
+}
+.section-header h2 {
+  font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; margin-bottom: 16px;
+}
+.section-header p { color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+.feature-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+}
+.feature-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 40px 32px; transition: transform .3s, border-color .3s, box-shadow .3s;
+  position: relative; overflow: hidden;
+}
+.feature-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--gradient); opacity: 0; transition: opacity .3s;
+}
+.feature-card:hover { transform: translateY(-4px); border-color: var(--primary); box-shadow: 0 20px 40px rgba(0,0,0,.3); }
+.feature-card:hover::before { opacity: 1; }
+.feature-icon {
+  width: 56px; height: 56px; border-radius: 12px;
+  background: var(--surface-2); display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; margin-bottom: 24px;
+}
+.feature-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 12px; }
+.feature-card p { color: var(--text-muted); font-size: .95rem; line-height: 1.7; }
+
+/* HOW IT WORKS */
+.how-it-works { padding: 120px 0; background: var(--surface); }
+.steps { display: flex; gap: 40px; margin-top: 64px; position: relative; }
+.steps::before {
+  content: ''; position: absolute; top: 40px; left: 0; right: 0; height: 2px;
+  background: var(--border);
+}
+.step {
+  flex: 1; text-align: center; position: relative; z-index: 1;
+}
+.step-num {
+  width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 24px;
+  background: var(--bg); border: 2px solid var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; font-weight: 800; color: var(--primary-light);
+}
+.step h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+.step p { color: var(--text-muted); font-size: .9rem; }
+
+/* TESTIMONIALS */
+.testimonials { padding: 120px 0; }
+.testimonial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.testimonial-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 32px; position: relative;
+}
+.testimonial-card::before {
+  content: '"'; position: absolute; top: 16px; left: 24px;
+  font-size: 4rem; color: var(--primary); opacity: .2; font-family: Georgia, serif; line-height: 1;
+}
+.testimonial-card p { color: var(--text-muted); font-size: .95rem; margin-bottom: 24px; line-height: 1.7; position: relative; z-index: 1; }
+.testimonial-author { display: flex; align-items: center; gap: 12px; }
+.testimonial-avatar {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: var(--gradient); display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .9rem;
+}
+.testimonial-info strong { display: block; font-size: .9rem; }
+.testimonial-info span { color: var(--text-muted); font-size: .8rem; }
+
+/* PRICING */
+.pricing { padding: 120px 0; background: var(--surface); }
+.pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }
+.price-card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 40px 32px; text-align: center; transition: transform .3s;
+}
+.price-card.featured {
+  border-color: var(--primary); position: relative;
+  transform: scale(1.05);
+  box-shadow: 0 20px 60px rgba(108,92,231,.2);
+}
+.price-card.featured::before {
+  content: 'Most Popular'; position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  background: var(--gradient); color: #fff; font-size: .75rem; font-weight: 700;
+  padding: 6px 20px; border-radius: 50px;
+}
+.price-card h3 { font-size: 1.1rem; font-weight: 600; color: var(--text-muted); margin-bottom: 16px; }
+.price-amount { font-size: 3rem; font-weight: 800; margin-bottom: 8px; }
+.price-amount span { font-size: 1rem; font-weight: 400; color: var(--text-muted); }
+.price-card .price-desc { color: var(--text-muted); font-size: .9rem; margin-bottom: 32px; }
+.price-features { list-style: none; margin-bottom: 32px; text-align: left; }
+.price-features li {
+  padding: 8px 0; color: var(--text-muted); font-size: .9rem;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.price-features li::before { content: '✓'; color: var(--accent); font-weight: 700; }
+.price-btn {
+  width: 100%; padding: 14px; border-radius: 10px; font-weight: 700; font-size: .95rem;
+  cursor: pointer; transition: transform .2s;
+  border: 1px solid var(--border); background: transparent; color: var(--text);
+}
+.price-card.featured .price-btn {
+  background: var(--gradient); border: none; color: #fff;
+}
+.price-btn:hover { transform: translateY(-2px); }
+
+/* CTA */
+.cta-section {
+  padding: 120px 0; text-align: center; position: relative;
+}
+.cta-section::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at center, rgba(108,92,231,.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+.cta-section h2 { font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; margin-bottom: 16px; }
+.cta-section p { color: var(--text-muted); font-size: 1.1rem; margin-bottom: 40px; max-width: 500px; margin-left: auto; margin-right: auto; }
+
+/* FOOTER */
+footer { padding: 60px 0 40px; border-top: 1px solid var(--border); }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 48px; }
+.footer-brand p { color: var(--text-muted); font-size: .9rem; margin-top: 12px; max-width: 280px; }
+.footer-col h4 { font-size: .85rem; text-transform: uppercase; letter-spacing: 2px; color: var(--text-muted); margin-bottom: 16px; }
+.footer-col ul { list-style: none; }
+.footer-col li { margin-bottom: 10px; }
+.footer-col a { color: var(--text-muted); font-size: .9rem; }
+.footer-col a:hover { color: var(--text); }
+.footer-bottom {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 24px; border-top: 1px solid var(--border);
+  color: var(--text-muted); font-size: .85rem;
+}
+
+/* ANIMATIONS */
+.fade-up {
+  opacity: 0; transform: translateY(30px);
+  transition: opacity .6s ease-out, transform .6s ease-out;
+}
+.fade-up.visible { opacity: 1; transform: translateY(0); }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .nav-links { display: none; }
+  .nav-cta { display: none; }
+  .hamburger { display: block; }
+  .feature-grid, .testimonial-grid, .pricing-grid { grid-template-columns: 1fr; }
+  .price-card.featured { transform: none; }
+  .steps { flex-direction: column; }
+  .steps::before { display: none; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+  .hero-actions { flex-direction: column; align-items: center; }
+  .trust-logos { gap: 24px; }
+}
+</style>
+</head>
+<body>
+
+<nav id="navbar">
+  <div class="nav-inner">
+    <div class="logo">Nexus</div>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How It Works</a></li>
+      <li><a href="#testimonials">Testimonials</a></li>
+      <li><a href="#pricing">Pricing</a></li>
+    </ul>
+    <button class="nav-cta">Get Started Free</button>
+    <button class="hamburger" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu">☰</button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge fade-up">🚀 <span>New</span> AI Agents now available in beta</div>
+    <h1 class="fade-up">Automate Your<br>Entire Workflow</h1>
+    <p class="fade-up">Nexus connects your tools, automates repetitive tasks, and gives your team superpowers — all without writing a single line of code.</p>
+    <div class="hero-actions fade-up">
+      <button class="btn-primary">Start Free Trial</button>
+      <button class="btn-secondary">Watch Demo ▶</button>
+    </div>
+  </div>
+</section>
+
+<section class="trust">
+  <div class="container">
+    <p class="fade-up">Trusted by innovative teams worldwide</p>
+    <div class="trust-logos fade-up">
+      <span>STRIPE</span>
+      <span>NOTION</span>
+      <span>FIGMA</span>
+      <span>VERCEL</span>
+      <span>LINEAR</span>
+      <span>RAYCAST</span>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-up">Features</div>
+      <h2 class="fade-up">Everything you need to ship faster</h2>
+      <p class="fade-up">Powerful automation tools designed for modern teams who value speed and simplicity.</p>
+    </div>
+    <div class="feature-grid">
+      <div class="feature-card fade-up">
+        <div class="feature-icon">⚡</div>
+        <h3>Lightning Automations</h3>
+        <p>Build complex workflows in minutes with our visual drag-and-drop builder. Connect 200+ apps instantly.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">🤖</div>
+        <h3>AI-Powered Agents</h3>
+        <p>Deploy intelligent agents that learn your patterns and handle tasks autonomously, 24/7.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">📊</div>
+        <h3>Real-Time Analytics</h3>
+        <p>Track every automation with detailed dashboards, alerts, and performance insights.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">🔒</div>
+        <h3>Enterprise Security</h3>
+        <p>SOC 2 certified, end-to-end encryption, RBAC, and audit logs. Your data stays yours.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">🔌</div>
+        <h3>200+ Integrations</h3>
+        <p>Slack, GitHub, Jira, Salesforce, HubSpot — connect everything your team already uses.</p>
+      </div>
+      <div class="feature-card fade-up">
+        <div class="feature-icon">🌐</div>
+        <h3>Global Infrastructure</h3>
+        <p>Edge-deployed worldwide with 99.99% uptime SLA. Your automations run everywhere, always.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how-it-works" id="how-it-works">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-up">How It Works</div>
+      <h2 class="fade-up">Up and running in 3 minutes</h2>
+      <p class="fade-up">No engineering team required. If you can click, you can automate.</p>
+    </div>
+    <div class="steps">
+      <div class="step fade-up">
+        <div class="step-num">1</div>
+        <h3>Connect Your Tools</h3>
+        <p>Link your apps with one-click OAuth. No API keys needed.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">2</div>
+        <h3>Build Your Flow</h3>
+        <p>Use the visual builder or describe what you want in plain English.</p>
+      </div>
+      <div class="step fade-up">
+        <div class="step-num">3</div>
+        <h3>Let It Run</h3>
+        <p>Activate and watch your workflow handle everything automatically.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="testimonials" id="testimonials">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-up">Testimonials</div>
+      <h2 class="fade-up">Loved by teams everywhere</h2>
+      <p class="fade-up">Don't take our word for it — hear from the teams who ship with Nexus.</p>
+    </div>
+    <div class="testimonial-grid">
+      <div class="testimonial-card fade-up">
+        <p>Nexus replaced 4 different tools for us. Our team saves 20+ hours per week on repetitive tasks.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">SK</div>
+          <div class="testimonial-info">
+            <strong>Sarah Kim</strong>
+            <span>Head of Ops, TechScale</span>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card fade-up">
+        <p>The AI agents are a game-changer. They learned our triage process in a day and now handle 80% of tickets automatically.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">MR</div>
+          <div class="testimonial-info">
+            <strong>Marcus Rodriguez</strong>
+            <span>CTO, DevForge</span>
+          </div>
+        </div>
+      </div>
+      <div class="testimonial-card fade-up">
+        <p>I'm not technical at all, but I built our entire onboarding automation in an afternoon. Absolutely magical.</p>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar">JL</div>
+          <div class="testimonial-info">
+            <strong>Jessica Liu</strong>
+            <span>People Lead, Orbitly</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label fade-up">Pricing</div>
+      <h2 class="fade-up">Simple, transparent pricing</h2>
+      <p class="fade-up">Start free. Scale when you're ready. No surprises.</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="price-card fade-up">
+        <h3>Starter</h3>
+        <div class="price-amount">$0<span>/mo</span></div>
+        <p class="price-desc">For individuals getting started</p>
+        <ul class="price-features">
+          <li>5 active workflows</li>
+          <li>1,000 runs/month</li>
+          <li>50+ integrations</li>
+          <li>Community support</li>
+        </ul>
+        <button class="price-btn">Get Started</button>
+      </div>
+      <div class="price-card featured fade-up">
+        <h3>Pro</h3>
+        <div class="price-amount">$29<span>/mo</span></div>
+        <p class="price-desc">For growing teams</p>
+        <ul class="price-features">
+          <li>Unlimited workflows</li>
+          <li>50,000 runs/month</li>
+          <li>200+ integrations</li>
+          <li>AI Agents (5)</li>
+          <li>Priority support</li>
+        </ul>
+        <button class="price-btn">Start Free Trial</button>
+      </div>
+      <div class="price-card fade-up">
+        <h3>Enterprise</h3>
+        <div class="price-amount">Custom</div>
+        <p class="price-desc">For large organizations</p>
+        <ul class="price-features">
+          <li>Everything in Pro</li>
+          <li>Unlimited runs</li>
+          <li>Unlimited AI Agents</li>
+          <li>SSO & SAML</li>
+          <li>Dedicated support</li>
+        </ul>
+        <button class="price-btn">Contact Sales</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <div class="container">
+    <h2 class="fade-up">Ready to automate everything?</h2>
+    <p class="fade-up">Join 10,000+ teams already shipping faster with Nexus.</p>
+    <button class="btn-primary fade-up">Start Free — No Credit Card</button>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="logo">Nexus</div>
+        <p>AI-powered workflow automation for modern teams. Connect, automate, and scale.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#">Features</a></li>
+          <li><a href="#">Integrations</a></li>
+          <li><a href="#">Pricing</a></li>
+          <li><a href="#">Changelog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Blog</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Terms</a></li>
+          <li><a href="#">Security</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Nexus. All rights reserved.</span>
+      <span>Made with ♥ for builders</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+// Scroll animations
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); observer.unobserve(e.target); }});
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-up').forEach(el => observer.observe(el));
+
+// Nav scroll effect
+window.addEventListener('scroll', () => {
+  document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 20);
+});
+
+// Smooth scroll for nav links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+</script>
+</body>
+</html>

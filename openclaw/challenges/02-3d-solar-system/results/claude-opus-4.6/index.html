@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Solar System Sandbox</title>
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body { background: #000; color: #e0e0e0; font-family: 'Courier New', monospace; overflow: hidden; }
+#ui {
+  position: fixed; top: 0; right: 0; width: 320px; height: 100vh; z-index: 100;
+  background: rgba(10,10,20,.92); border-left: 1px solid #333;
+  padding: 20px; overflow-y: auto;
+  backdrop-filter: blur(10px);
+}
+#ui h2 { font-size: 1.1rem; margin-bottom: 12px; color: #7ec8e3; border-bottom: 1px solid #333; padding-bottom: 8px; }
+#ui h3 { font-size: .85rem; margin: 16px 0 8px; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+.control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.control-row label { font-size: .8rem; color: #999; }
+.control-row input[type=range] { width: 140px; accent-color: #7ec8e3; }
+.control-row .val { font-size: .75rem; color: #7ec8e3; min-width: 40px; text-align: right; }
+button {
+  padding: 8px 16px; border: 1px solid #555; background: rgba(40,40,60,.8);
+  color: #ccc; font-family: inherit; font-size: .8rem; cursor: pointer; border-radius: 4px;
+  transition: background .2s;
+}
+button:hover { background: rgba(60,60,90,.9); border-color: #7ec8e3; color: #fff; }
+.btn-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+#body-list { max-height: 200px; overflow-y: auto; margin-top: 8px; }
+.body-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 8px; margin-bottom: 4px; border-radius: 4px;
+  background: rgba(30,30,50,.6); font-size: .8rem;
+}
+.body-item .dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+.body-item .name { flex: 1; }
+.body-item button { padding: 2px 8px; font-size: .7rem; }
+#info-bar {
+  position: fixed; bottom: 0; left: 0; right: 320px; z-index: 100;
+  background: rgba(10,10,20,.85); padding: 8px 16px;
+  font-size: .75rem; color: #666; display: flex; gap: 20px;
+  border-top: 1px solid #222;
+}
+canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <h2>🌌 Solar System Sandbox</h2>
+  <div class="btn-row">
+    <button id="btn-pause">⏸ Pause</button>
+    <button id="btn-reset">↻ Reset</button>
+    <button id="btn-add">+ Add Body</button>
+  </div>
+  <h3>Simulation</h3>
+  <div class="control-row">
+    <label>Gravity</label>
+    <input type="range" id="sl-gravity" min="0.1" max="5" step="0.1" value="1">
+    <span class="val" id="v-gravity">1.0</span>
+  </div>
+  <div class="control-row">
+    <label>Speed</label>
+    <input type="range" id="sl-speed" min="0.1" max="5" step="0.1" value="1">
+    <span class="val" id="v-speed">1.0</span>
+  </div>
+  <div class="control-row">
+    <label>Trail Len</label>
+    <input type="range" id="sl-trail" min="0" max="500" step="10" value="200">
+    <span class="val" id="v-trail">200</span>
+  </div>
+  <h3>Overlays</h3>
+  <div class="control-row">
+    <label>Curvature Grid</label>
+    <input type="checkbox" id="chk-grid" checked>
+  </div>
+  <div class="control-row">
+    <label>Trails</label>
+    <input type="checkbox" id="chk-trails" checked>
+  </div>
+  <div class="control-row">
+    <label>Labels</label>
+    <input type="checkbox" id="chk-labels" checked>
+  </div>
+  <h3>Bodies</h3>
+  <div id="body-list"></div>
+</div>
+<div id="info-bar">
+  <span id="info-bodies">Bodies: 0</span>
+  <span id="info-fps">FPS: 0</span>
+  <span>Scroll to zoom • Drag to orbit • Shift+Drag to pan</span>
+</div>
+
+<script>
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+// Fallback to 2D canvas with 3D projection for broader compat
+const ctx = !gl ? canvas.getContext('2d') : null;
+const use2D = !gl;
+
+// --- Vec3 helpers ---
+const V = {
+  add: (a,b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]],
+  sub: (a,b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]],
+  scale: (a,s) => [a[0]*s, a[1]*s, a[2]*s],
+  len: a => Math.sqrt(a[0]*a[0]+a[1]*a[1]+a[2]*a[2]),
+  norm: a => { const l=V.len(a)||1; return [a[0]/l,a[1]/l,a[2]/l]; },
+  dot: (a,b) => a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  cross: (a,b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]],
+};
+
+// --- Camera ---
+let cam = { dist: 600, theta: 0.6, phi: 0.8, target: [0,0,0] };
+let W, H;
+function resize() {
+  W = window.innerWidth - 320; H = window.innerHeight;
+  canvas.width = W; canvas.height = H;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+function camPos() {
+  const st = Math.sin(cam.theta), ct = Math.cos(cam.theta);
+  const sp = Math.sin(cam.phi), cp = Math.cos(cam.phi);
+  return [cam.target[0]+cam.dist*st*cp, cam.target[1]+cam.dist*ct, cam.target[2]+cam.dist*st*sp];
+}
+
+function project(p) {
+  const eye = camPos();
+  const fwd = V.norm(V.sub(cam.target, eye));
+  const right = V.norm(V.cross(fwd, [0,1,0]));
+  const up = V.cross(right, fwd);
+  const rel = V.sub(p, eye);
+  const z = V.dot(rel, fwd);
+  if (z < 1) return null;
+  const fov = 800;
+  const x = V.dot(rel, right) * fov / z + W/2;
+  const y = -V.dot(rel, up) * fov / z + H/2;
+  return { x, y, z, scale: fov / z };
+}
+
+// --- Bodies ---
+const COLORS = ['#FFD700','#4FC3F7','#FF7043','#66BB6A','#AB47BC','#EC407A','#26C6DA','#FFA726','#78909C','#EF5350'];
+let bodies = [];
+let paused = false;
+let gravityMul = 1, speedMul = 1, trailLen = 200;
+let showGrid = true, showTrails = true, showLabels = true;
+const G = 40;
+
+function makeBody(name, mass, pos, vel, color, radius) {
+  return { name, mass, pos: [...pos], vel: [...vel], color: color || COLORS[bodies.length % COLORS.length], radius: radius || Math.max(3, Math.pow(mass, 0.33)*2), trail: [] };
+}
+
+function resetSolarSystem() {
+  bodies = [
+    makeBody('Sun', 5000, [0,0,0], [0,0,0], '#FFD700', 25),
+    makeBody('Mercury', 5, [60,0,0], [0,0,10], '#B0BEC5', 4),
+    makeBody('Venus', 15, [100,0,0], [0,0,8], '#FFB74D', 6),
+    makeBody('Earth', 20, [150,0,0], [0,0,6.5], '#4FC3F7', 7),
+    makeBody('Mars', 10, [200,0,0], [0,0,5.5], '#FF7043', 5),
+    makeBody('Jupiter', 500, [300,0,0], [0,0,4], '#FFA726', 16),
+    makeBody('Saturn', 300, [420,0,0], [0,0,3.2], '#E0C068', 14),
+  ];
+  updateBodyList();
+}
+
+function addRandomBody() {
+  const angle = Math.random() * Math.PI * 2;
+  const dist = 80 + Math.random() * 300;
+  const mass = 5 + Math.random() * 50;
+  const speed = 3 + Math.random() * 5;
+  const pos = [Math.cos(angle)*dist, (Math.random()-.5)*40, Math.sin(angle)*dist];
+  const vel = [-Math.sin(angle)*speed, 0, Math.cos(angle)*speed];
+  bodies.push(makeBody('Body-' + (bodies.length+1), mass, pos, vel));
+  updateBodyList();
+}
+
+function removeBody(i) { bodies.splice(i,1); updateBodyList(); }
+
+function updateBodyList() {
+  const el = document.getElementById('body-list');
+  el.innerHTML = bodies.map((b,i) =>
+    `<div class="body-item"><span class="dot" style="background:${b.color}"></span><span class="name">${b.name} (${b.mass.toFixed(0)})</span><button onclick="removeBody(${i})">×</button></div>`
+  ).join('');
+  document.getElementById('info-bodies').textContent = 'Bodies: ' + bodies.length;
+}
+
+// --- Physics ---
+function step(dt) {
+  if (paused) return;
+  dt *= speedMul;
+  const softening = 10;
+  // compute accelerations
+  const acc = bodies.map(() => [0,0,0]);
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i+1; j < bodies.length; j++) {
+      const d = V.sub(bodies[j].pos, bodies[i].pos);
+      const dist2 = V.dot(d,d) + softening*softening;
+      const dist = Math.sqrt(dist2);
+      const f = G * gravityMul * bodies[i].mass * bodies[j].mass / dist2;
+      const dir = V.scale(d, 1/dist);
+      acc[i] = V.add(acc[i], V.scale(dir, f / bodies[i].mass));
+      acc[j] = V.add(acc[j], V.scale(dir, -f / bodies[j].mass));
+    }
+  }
+  // integrate
+  for (let i = 0; i < bodies.length; i++) {
+    bodies[i].vel = V.add(bodies[i].vel, V.scale(acc[i], dt));
+    bodies[i].pos = V.add(bodies[i].pos, V.scale(bodies[i].vel, dt));
+    bodies[i].trail.push([...bodies[i].pos]);
+    if (bodies[i].trail.length > trailLen) bodies[i].trail.shift();
+  }
+  // collisions
+  for (let i = 0; i < bodies.length; i++) {
+    for (let j = i+1; j < bodies.length; j++) {
+      const d = V.len(V.sub(bodies[i].pos, bodies[j].pos));
+      if (d < bodies[i].radius + bodies[j].radius) {
+        // merge into larger
+        const [big, small] = bodies[i].mass >= bodies[j].mass ? [i,j] : [j,i];
+        const bm = bodies[big].mass, sm = bodies[small].mass, tm = bm + sm;
+        bodies[big].vel = V.scale(V.add(V.scale(bodies[big].vel, bm), V.scale(bodies[small].vel, sm)), 1/tm);
+        bodies[big].mass = tm;
+        bodies[big].radius = Math.max(3, Math.pow(tm, 0.33)*2);
+        bodies.splice(small, 1);
+        updateBodyList();
+        return;
+      }
+    }
+  }
+}
+
+// --- Rendering (2D canvas with 3D projection) ---
+function drawGrid(ctx2d) {
+  if (!showGrid) return;
+  const gridY = 0;
+  const size = 500, div = 20, step = size*2/div;
+  ctx2d.strokeStyle = 'rgba(40,120,200,0.15)';
+  ctx2d.lineWidth = 1;
+  for (let i = 0; i <= div; i++) {
+    const pts = [];
+    for (let j = 0; j <= div; j++) {
+      const wx = -size + i * step;
+      const wz = -size + j * step;
+      // curvature deformation
+      let wy = gridY;
+      for (const b of bodies) {
+        const dx = wx - b.pos[0], dz = wz - b.pos[2];
+        const d2 = dx*dx + dz*dz + 100;
+        wy -= b.mass * 2 / Math.sqrt(d2);
+      }
+      pts.push([wx, wy, wz]);
+    }
+    // draw line along z
+    ctx2d.beginPath();
+    for (let j = 0; j < pts.length; j++) {
+      const p = project(pts[j]);
+      if (!p) continue;
+      j === 0 ? ctx2d.moveTo(p.x, p.y) : ctx2d.lineTo(p.x, p.y);
+    }
+    ctx2d.stroke();
+  }
+  // lines along x
+  for (let j = 0; j <= div; j++) {
+    ctx2d.beginPath();
+    for (let i = 0; i <= div; i++) {
+      const wx = -size + i * step;
+      const wz = -size + j * step;
+      let wy = gridY;
+      for (const b of bodies) {
+        const dx = wx - b.pos[0], dz = wz - b.pos[2];
+        const d2 = dx*dx + dz*dz + 100;
+        wy -= b.mass * 2 / Math.sqrt(d2);
+      }
+      const p = project([wx, wy, wz]);
+      if (!p) continue;
+      i === 0 ? ctx2d.moveTo(p.x, p.y) : ctx2d.lineTo(p.x, p.y);
+    }
+    ctx2d.stroke();
+  }
+}
+
+function render() {
+  const c2 = canvas.getContext('2d');
+  c2.fillStyle = '#000';
+  c2.fillRect(0, 0, W, H);
+
+  // Stars
+  if (!render.stars) {
+    render.stars = Array.from({length: 300}, () => ({
+      x: Math.random()*2000-1000, y: Math.random()*2000-1000, z: Math.random()*2000-1000,
+      brightness: .3 + Math.random()*.7
+    }));
+  }
+  for (const s of render.stars) {
+    const p = project([s.x, s.y, s.z]);
+    if (!p) continue;
+    c2.fillStyle = `rgba(255,255,255,${s.brightness * Math.min(1, 200/p.z)})`;
+    c2.fillRect(p.x, p.y, 1.5, 1.5);
+  }
+
+  drawGrid(c2);
+
+  // Sort bodies by z for painter's algorithm
+  const sorted = bodies.map((b,i) => ({b, i, p: project(b.pos)})).filter(x => x.p).sort((a,b) => b.p.z - a.p.z);
+
+  // Trails
+  if (showTrails) {
+    for (const {b} of sorted) {
+      if (b.trail.length < 2) continue;
+      c2.strokeStyle = b.color;
+      c2.lineWidth = 1;
+      c2.beginPath();
+      let started = false;
+      for (let t = 0; t < b.trail.length; t++) {
+        const p = project(b.trail[t]);
+        if (!p) continue;
+        c2.globalAlpha = t / b.trail.length * 0.6;
+        if (!started) { c2.moveTo(p.x, p.y); started = true; }
+        else c2.lineTo(p.x, p.y);
+      }
+      c2.stroke();
+      c2.globalAlpha = 1;
+    }
+  }
+
+  // Bodies
+  for (const {b, p} of sorted) {
+    const r = Math.max(2, b.radius * p.scale * 0.15);
+    // Glow
+    const glow = c2.createRadialGradient(p.x, p.y, 0, p.x, p.y, r*3);
+    glow.addColorStop(0, b.color + '40');
+    glow.addColorStop(1, 'transparent');
+    c2.fillStyle = glow;
+    c2.beginPath();
+    c2.arc(p.x, p.y, r*3, 0, Math.PI*2);
+    c2.fill();
+    // Body
+    const grad = c2.createRadialGradient(p.x - r*.3, p.y - r*.3, 0, p.x, p.y, r);
+    grad.addColorStop(0, '#fff');
+    grad.addColorStop(0.3, b.color);
+    grad.addColorStop(1, '#000');
+    c2.fillStyle = grad;
+    c2.beginPath();
+    c2.arc(p.x, p.y, r, 0, Math.PI*2);
+    c2.fill();
+    // Label
+    if (showLabels) {
+      c2.fillStyle = '#aaa';
+      c2.font = '11px Courier New';
+      c2.textAlign = 'center';
+      c2.fillText(b.name, p.x, p.y - r - 6);
+    }
+  }
+}
+
+// --- Controls ---
+let dragging = false, dragStart = null, shiftDrag = false;
+canvas.addEventListener('mousedown', e => { dragging = true; dragStart = {x:e.clientX, y:e.clientY}; shiftDrag = e.shiftKey; });
+window.addEventListener('mouseup', () => dragging = false);
+window.addEventListener('mousemove', e => {
+  if (!dragging) return;
+  const dx = e.clientX - dragStart.x, dy = e.clientY - dragStart.y;
+  dragStart = {x:e.clientX, y:e.clientY};
+  if (shiftDrag) {
+    const eye = camPos();
+    const fwd = V.norm(V.sub(cam.target, eye));
+    const right = V.norm(V.cross(fwd, [0,1,0]));
+    const up = V.cross(right, fwd);
+    cam.target = V.add(cam.target, V.add(V.scale(right, -dx*.5), V.scale(up, dy*.5)));
+  } else {
+    cam.phi -= dx * 0.005;
+    cam.theta = Math.max(0.1, Math.min(Math.PI-.1, cam.theta - dy * 0.005));
+  }
+});
+canvas.addEventListener('wheel', e => { cam.dist = Math.max(50, cam.dist + e.deltaY * .5); e.preventDefault(); }, {passive:false});
+
+document.getElementById('btn-pause').addEventListener('click', function() { paused = !paused; this.textContent = paused ? '▶ Play' : '⏸ Pause'; });
+document.getElementById('btn-reset').addEventListener('click', resetSolarSystem);
+document.getElementById('btn-add').addEventListener('click', addRandomBody);
+
+['gravity','speed','trail'].forEach(k => {
+  const sl = document.getElementById('sl-'+k);
+  const vl = document.getElementById('v-'+k);
+  sl.addEventListener('input', () => {
+    vl.textContent = parseFloat(sl.value).toFixed(1);
+    if (k==='gravity') gravityMul = parseFloat(sl.value);
+    if (k==='speed') speedMul = parseFloat(sl.value);
+    if (k==='trail') trailLen = parseInt(sl.value);
+  });
+});
+document.getElementById('chk-grid').addEventListener('change', e => showGrid = e.target.checked);
+document.getElementById('chk-trails').addEventListener('change', e => showTrails = e.target.checked);
+document.getElementById('chk-labels').addEventListener('change', e => showLabels = e.target.checked);
+
+// --- Loop ---
+let lastTime = 0, fpsFrames = 0, fpsTime = 0;
+function loop(t) {
+  const dt = Math.min((t - lastTime) / 1000, 0.05) || 0.016;
+  lastTime = t;
+  fpsFrames++;
+  if (t - fpsTime > 1000) {
+    document.getElementById('info-fps').textContent = 'FPS: ' + fpsFrames;
+    fpsFrames = 0; fpsTime = t;
+  }
+  step(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+resetSolarSystem();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

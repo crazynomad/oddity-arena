@@ -10,7 +10,32 @@
       "write"
     ],
     "file_size_bytes": 15658,
-    "status": "ok",
-    "track": "openclaw"
+    "status": "ok"
+  },
+  "claude-sonnet-4-6": {
+    "challenge": "06-tiyunzong",
+    "model": "claude-sonnet-4-6",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-26T23:00:00.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 23030,
+    "status": "ok"
+  },
+  "gpt-5.3-codex": {
+    "challenge": "06-tiyunzong",
+    "model": "gpt-5.3-codex",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-27T08:33:47.014013+08:00",
+    "rounds": 3,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 17398,
+    "status": "ok"
   }
 }

@@ -105,38 +105,67 @@ export default function HomePage() {
               </div>
             </Link>
 
-            {[
-              { emoji: '🛠️', title: lang === 'zh' ? '技能' : 'Skills', desc: lang === 'zh' ? '相同工具，不同模型。谁用得更好？' : 'Same tools, different models. Who uses them better?' },
-              { emoji: '🤖', title: lang === 'zh' ? '智能体' : 'Agent', desc: lang === 'zh' ? '一个目标，完全自主。AI 能搞定吗？' : 'One goal, full autonomy. Can AI handle it?' },
-            ].map((track) => (
-              <div key={track.title} style={{
-                textAlign: 'center',
-                padding: '2.5rem 1.5rem',
-                border: '1px solid #1A1A1A',
-                background: '#F5F0E1',
-                opacity: 0.45,
-              }}>
-                <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>{track.emoji}</div>
-                <h3 style={{ fontFamily: "'Special Elite', monospace", fontSize: '1rem', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
-                  {track.title}
-                </h3>
-                <p style={{ color: '#666', fontSize: '0.9em' }}>{track.desc}</p>
-                <div style={{ marginTop: '12px' }}>
-                  <span style={{
-                    display: 'inline-block',
-                    fontFamily: "'Special Elite', monospace",
-                    fontSize: '0.7rem',
-                    letterSpacing: '0.1em',
-                    padding: '0.3rem 0.75rem',
-                    border: '1px dashed #666',
-                    color: '#666',
-                    textTransform: 'uppercase',
-                  }}>
-                    {lang === 'zh' ? '即将推出' : 'Coming Soon'}
-                  </span>
-                </div>
+            <Link href="#challenges" style={{
+              textAlign: 'center',
+              padding: '2.5rem 1.5rem',
+              border: '1px solid #1A1A1A',
+              background: '#F5F0E1',
+              textDecoration: 'none',
+              color: '#1A1A1A',
+              transition: 'all 0.3s',
+            }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🦞</div>
+              <h3 style={{ fontFamily: "'Special Elite', monospace", fontSize: '1rem', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                OpenClaw
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.9em' }}>
+                {lang === 'zh' ? '实战智能体产物展示与对战，模型直接上场。' : 'Real OpenClaw agent outputs in live model battles.'}
+              </p>
+              <div style={{ marginTop: '12px' }}>
+                <span style={{
+                  display: 'inline-block',
+                  fontFamily: "'Special Elite', monospace",
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.1em',
+                  padding: '0.3rem 0.75rem',
+                  border: '1px solid #666',
+                  color: '#666',
+                  textTransform: 'uppercase',
+                }}>
+                  {lang === 'zh' ? '已上线' : 'Live'}
+                </span>
               </div>
-            ))}
+            </Link>
+
+            <div style={{
+              textAlign: 'center',
+              padding: '2.5rem 1.5rem',
+              border: '1px solid #1A1A1A',
+              background: '#F5F0E1',
+              opacity: 0.45,
+            }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🛠️</div>
+              <h3 style={{ fontFamily: "'Special Elite', monospace", fontSize: '1rem', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                {lang === 'zh' ? '技能' : 'Skills'}
+              </h3>
+              <p style={{ color: '#666', fontSize: '0.9em' }}>
+                {lang === 'zh' ? '相同工具，不同模型。谁用得更好？' : 'Same tools, different models. Who uses them better?'}
+              </p>
+              <div style={{ marginTop: '12px' }}>
+                <span style={{
+                  display: 'inline-block',
+                  fontFamily: "'Special Elite', monospace",
+                  fontSize: '0.7rem',
+                  letterSpacing: '0.1em',
+                  padding: '0.3rem 0.75rem',
+                  border: '1px dashed #666',
+                  color: '#666',
+                  textTransform: 'uppercase',
+                }}>
+                  {lang === 'zh' ? '即将推出' : 'Coming Soon'}
+                </span>
+              </div>
+            </div>
           </div>
         </section>
 

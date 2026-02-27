@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Challenge 02 - 3D Solar System Sandbox</title>
+  <style>
+    :root { --bg:#070b14; --panel:#101726cc; --line:#25314f; --text:#e7ecff; --muted:#9fb0da; --accent:#7fb3ff; }
+    html, body { margin:0; width:100%; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+    #app { position:fixed; inset:0; }
+    #ui {
+      position:fixed; left:12px; top:12px; width:340px; max-height:calc(100vh - 24px); overflow:auto;
+      background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; backdrop-filter:blur(8px);
+      box-shadow:0 10px 32px #0007;
+    }
+    h1 { font-size:15px; margin:0 0 8px; }
+    .row { display:grid; grid-template-columns: 1fr auto; gap:8px; align-items:center; margin:6px 0; }
+    .row3 { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; }
+    label, small { color:var(--muted); font-size:12px; }
+    input[type="range"], input[type="number"], button, select { width:100%; box-sizing:border-box; }
+    input, button, select {
+      border:1px solid #314064; background:#0d1425; color:var(--text); border-radius:8px; padding:7px 8px; font-size:12px;
+    }
+    button { cursor:pointer; }
+    button:hover { border-color:#5570aa; }
+    .buttons { display:grid; grid-template-columns: 1fr 1fr 1fr; gap:6px; margin-top:8px; }
+    .section { margin-top:10px; border-top:1px solid #243252; padding-top:10px; }
+    #list { max-height:180px; overflow:auto; border:1px solid #27355a; border-radius:8px; padding:6px; background:#0b1222; }
+    .item { display:grid; grid-template-columns:auto 1fr auto; gap:6px; align-items:center; padding:4px; border-bottom:1px dashed #213255; }
+    .dot { width:10px; height:10px; border-radius:50%; }
+    .pill { background:#1a2847; border:1px solid #314775; color:#b9ccff; border-radius:99px; padding:2px 8px; font-size:11px; }
+  </style>
+</head>
+<body>
+<div id="app"></div>
+<div id="ui">
+  <h1>🌌 3D Solar System Sandbox</h1>
+
+  <div class="row"><label>Gravity G: <span id="gVal"></span></label><input id="g" type="range" min="0.05" max="6" step="0.01" value="1"></div>
+  <div class="row"><label>Time speed: <span id="speedVal"></span></label><input id="speed" type="range" min="0.05" max="5" step="0.01" value="1"></div>
+  <div class="row"><label>Trail length: <span id="trailVal"></span></label><input id="trail" type="range" min="10" max="400" step="1" value="140"></div>
+
+  <div class="buttons">
+    <button id="toggle">Pause</button>
+    <button id="reset">Reset</button>
+    <button id="seed">Seed Random</button>
+  </div>
+
+  <div class="section">
+    <label>Create body</label>
+    <div class="row3" style="margin-top:6px;">
+      <input id="name" placeholder="Name" value="Body" />
+      <input id="mass" type="number" step="0.1" value="5" placeholder="Mass" />
+      <input id="radius" type="number" step="0.1" value="1.2" placeholder="Radius" />
+    </div>
+    <small>Position (x,y,z)</small>
+    <div class="row3"><input id="px" type="number" step="0.1" value="18"><input id="py" type="number" step="0.1" value="0"><input id="pz" type="number" step="0.1" value="0"></div>
+    <small>Velocity (vx,vy,vz)</small>
+    <div class="row3"><input id="vx" type="number" step="0.1" value="0"><input id="vy" type="number" step="0.1" value="0"><input id="vz" type="number" step="0.1" value="2.7"></div>
+    <div class="row" style="margin-top:6px;"><button id="add">Add Body</button><span class="pill" id="count">0 bodies</span></div>
+  </div>
+
+  <div class="section">
+    <label>Existing bodies</label>
+    <div id="list"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.161.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(() => {
+  const app = document.getElementById('app');
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x070b14);
+
+  const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.1, 5000);
+  camera.position.set(0, 30, 75);
+
+  const renderer = new THREE.WebGLRenderer({ antialias:true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  app.appendChild(renderer.domElement);
+
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  scene.add(new THREE.AmbientLight(0x9fb6ff, 0.45));
+  const d = new THREE.DirectionalLight(0xffffff, 0.9);
+  d.position.set(40, 50, 20);
+  scene.add(d);
+
+  const starGeo = new THREE.BufferGeometry();
+  const starCnt = 1200;
+  const stars = new Float32Array(starCnt * 3);
+  for (let i = 0; i < starCnt; i++) {
+    const r = 600 * Math.random() + 100;
+    const t = Math.random() * Math.PI * 2;
+    const p = Math.acos(2 * Math.random() - 1);
+    stars[i*3] = r * Math.sin(p) * Math.cos(t);
+    stars[i*3+1] = r * Math.cos(p);
+    stars[i*3+2] = r * Math.sin(p) * Math.sin(t);
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(stars, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color:0xaec7ff, size:1.1, sizeAttenuation:true })));
+
+  const gridGroup = new THREE.Group();
+  scene.add(gridGroup);
+  const planeSize = 140;
+  const seg = 64;
+  const baseGeo = new THREE.PlaneGeometry(planeSize, planeSize, seg, seg);
+  const basePositions = baseGeo.attributes.position.array.slice();
+  const mat = new THREE.MeshBasicMaterial({ color:0x1e2d4a, wireframe:true, transparent:true, opacity:0.55 });
+  const curvature = new THREE.Mesh(baseGeo, mat);
+  curvature.rotation.x = -Math.PI / 2;
+  gridGroup.add(curvature);
+
+  const axis = new THREE.AxesHelper(12);
+  axis.position.set(-65, 0, -65);
+  scene.add(axis);
+
+  let G = 1.0;
+  let speed = 1.0;
+  let paused = false;
+  let trailLength = 140;
+  const softening = 2.2;
+
+  const bodies = [];
+  let initial = null;
+
+  function colorFromName(n) {
+    let h = 0;
+    for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) >>> 0;
+    return new THREE.Color().setHSL((h % 360) / 360, 0.75, 0.62);
+  }
+
+  function bodyRadiusFromMass(m) {
+    return Math.max(0.45, Math.cbrt(Math.max(0.01, m)) * 0.65);
+  }
+
+  function makeTrail(col) {
+    const pts = new Float32Array(trailLength * 3);
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(pts, 3));
+    g.setDrawRange(0, 0);
+    const l = new THREE.Line(g, new THREE.LineBasicMaterial({ color:col, transparent:true, opacity:0.75 }));
+    scene.add(l);
+    return { line:l, data:pts, count:0 };
+  }
+
+  function pushTrail(body) {
+    const t = body.trail;
+    const arr = t.data;
+    if (t.count < trailLength) {
+      arr[t.count*3] = body.pos.x; arr[t.count*3+1] = body.pos.y; arr[t.count*3+2] = body.pos.z;
+      t.count++;
+    } else {
+      arr.copyWithin(0, 3);
+      const i = (trailLength - 1) * 3;
+      arr[i] = body.pos.x; arr[i+1] = body.pos.y; arr[i+2] = body.pos.z;
+    }
+    const attr = t.line.geometry.attributes.position;
+    attr.needsUpdate = true;
+    t.line.geometry.setDrawRange(0, Math.min(t.count, trailLength));
+  }
+
+  function createBody({ name, mass, radius, pos, vel, color }) {
+    const c = color || colorFromName(name);
+    const r = radius || bodyRadiusFromMass(mass);
+    const mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 24, 16), new THREE.MeshStandardMaterial({ color:c, emissive:c.clone().multiplyScalar(0.25), metalness:0.08, roughness:0.7 }));
+    mesh.position.copy(pos);
+    scene.add(mesh);
+    const b = { id: crypto.randomUUID(), name, mass, radius:r, pos:pos.clone(), vel:vel.clone(), acc:new THREE.Vector3(), mesh, trail:makeTrail(c), color:c };
+    bodies.push(b);
+    pushTrail(b);
+    refreshList();
+    return b;
+  }
+
+  function deleteBody(id) {
+    const i = bodies.findIndex(b => b.id === id);
+    if (i === -1) return;
+    const b = bodies[i];
+    scene.remove(b.mesh);
+    scene.remove(b.trail.line);
+    b.mesh.geometry.dispose(); b.mesh.material.dispose(); b.trail.line.geometry.dispose(); b.trail.line.material.dispose();
+    bodies.splice(i, 1);
+    refreshList();
+  }
+
+  function refreshList() {
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    bodies.forEach(b => {
+      const el = document.createElement('div');
+      el.className = 'item';
+      el.innerHTML = `<div class="dot" style="background:${b.color.getStyle()}"></div><div>${b.name} · m=${b.mass.toFixed(2)} r=${b.radius.toFixed(2)}</div>`;
+      const btn = document.createElement('button');
+      btn.textContent = 'Delete';
+      btn.onclick = () => deleteBody(b.id);
+      el.appendChild(btn);
+      list.appendChild(el);
+    });
+    document.getElementById('count').textContent = `${bodies.length} bodies`;
+  }
+
+  function computeAcceleration() {
+    for (const b of bodies) b.acc.set(0,0,0);
+    for (let i = 0; i < bodies.length; i++) {
+      for (let j = i + 1; j < bodies.length; j++) {
+        const a = bodies[i], b = bodies[j];
+        const dx = b.pos.x - a.pos.x, dy = b.pos.y - a.pos.y, dz = b.pos.z - a.pos.z;
+        const r2 = dx*dx + dy*dy + dz*dz + softening*softening;
+        const invR = 1 / Math.sqrt(r2);
+        const invR3 = invR * invR * invR;
+        const s = G * invR3;
+        a.acc.x += dx * s * b.mass; a.acc.y += dy * s * b.mass; a.acc.z += dz * s * b.mass;
+        b.acc.x -= dx * s * a.mass; b.acc.y -= dy * s * a.mass; b.acc.z -= dz * s * a.mass;
+      }
+    }
+  }
+
+  function mergeBodies(i, j) {
+    const a = bodies[i], b = bodies[j];
+    const m = a.mass + b.mass;
+    const pos = a.pos.clone().multiplyScalar(a.mass).add(b.pos.clone().multiplyScalar(b.mass)).divideScalar(m);
+    const vel = a.vel.clone().multiplyScalar(a.mass).add(b.vel.clone().multiplyScalar(b.mass)).divideScalar(m);
+    const name = `${a.name}+${b.name}`;
+    const color = a.color.clone().lerp(b.color, 0.5);
+    const radius = Math.cbrt(a.radius*a.radius*a.radius + b.radius*b.radius*b.radius);
+    const aid = a.id, bid = b.id;
+    deleteBody(aid); deleteBody(bid);
+    createBody({ name, mass:m, radius, pos, vel, color });
+  }
+
+  function handleCollisions() {
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (let i = 0; i < bodies.length; i++) {
+        for (let j = i + 1; j < bodies.length; j++) {
+          const a = bodies[i], b = bodies[j];
+          const rr = a.radius + b.radius;
+          if (a.pos.distanceToSquared(b.pos) <= rr * rr) {
+            mergeBodies(i, j);
+            changed = true;
+            break;
+          }
+        }
+        if (changed) break;
+      }
+    }
+  }
+
+  function integrate(dt) {
+    computeAcceleration();
+    for (const b of bodies) b.vel.addScaledVector(b.acc, 0.5 * dt);
+    for (const b of bodies) b.pos.addScaledVector(b.vel, dt);
+    computeAcceleration();
+    for (const b of bodies) {
+      b.vel.addScaledVector(b.acc, 0.5 * dt);
+      b.mesh.position.copy(b.pos);
+      pushTrail(b);
+    }
+    handleCollisions();
+  }
+
+  function updateCurvature() {
+    const arr = baseGeo.attributes.position.array;
+    for (let i = 0; i < arr.length; i += 3) {
+      const x = basePositions[i], z = basePositions[i+1];
+      let y = 0;
+      for (const b of bodies) {
+        const dx = x - b.pos.x, dz = z - b.pos.z;
+        const d2 = dx*dx + dz*dz + 16;
+        y -= (G * b.mass * 0.95) / Math.sqrt(d2);
+      }
+      arr[i+2] = THREE.MathUtils.clamp(y, -18, 8);
+    }
+    baseGeo.attributes.position.needsUpdate = true;
+    baseGeo.computeVertexNormals();
+  }
+
+  function setTrailLength(n) {
+    trailLength = n;
+    for (const b of bodies) {
+      scene.remove(b.trail.line);
+      b.trail.line.geometry.dispose(); b.trail.line.material.dispose();
+      b.trail = makeTrail(b.color);
+      b.trail.count = 0;
+      pushTrail(b);
+    }
+  }
+
+  function snapshotInitial() {
+    initial = bodies.map(b => ({ name:b.name, mass:b.mass, radius:b.radius, pos:b.pos.toArray(), vel:b.vel.toArray(), color:'#'+b.color.getHexString() }));
+  }
+
+  function resetSystem() {
+    while (bodies.length) deleteBody(bodies[0].id);
+    for (const d of initial) createBody({ name:d.name, mass:d.mass, radius:d.radius, pos:new THREE.Vector3(...d.pos), vel:new THREE.Vector3(...d.vel), color:d.color });
+  }
+
+  function seedDefault() {
+    while (bodies.length) deleteBody(bodies[0].id);
+    createBody({ name:'Sun', mass:1200, radius:6.5, pos:new THREE.Vector3(0,0,0), vel:new THREE.Vector3(0,0,0), color:'#ffd179' });
+    createBody({ name:'Mercury', mass:2.4, pos:new THREE.Vector3(12,0,0), vel:new THREE.Vector3(0,0,8.6), color:'#c7b8aa' });
+    createBody({ name:'Venus', mass:5.3, pos:new THREE.Vector3(18,0,0), vel:new THREE.Vector3(0,0,7.2), color:'#e8c27c' });
+    createBody({ name:'Earth', mass:6, pos:new THREE.Vector3(25,0,0), vel:new THREE.Vector3(0,0,6.1), color:'#73a9ff' });
+    createBody({ name:'Mars', mass:3.3, pos:new THREE.Vector3(33,0,0), vel:new THREE.Vector3(0,0,5.3), color:'#d58b67' });
+    createBody({ name:'Jupiter', mass:45, pos:new THREE.Vector3(46,0,0), vel:new THREE.Vector3(0,0,4.2), color:'#d8b295' });
+    snapshotInitial();
+  }
+
+  function seedRandom() {
+    while (bodies.length) deleteBody(bodies[0].id);
+    createBody({ name:'Core', mass:800, radius:5.5, pos:new THREE.Vector3(), vel:new THREE.Vector3(), color:'#ffe09d' });
+    const n = 8 + Math.floor(Math.random() * 10);
+    for (let i = 0; i < n; i++) {
+      const r = 12 + i * 3.5 + Math.random() * 4;
+      const a = Math.random() * Math.PI * 2;
+      const y = (Math.random() - 0.5) * 4;
+      const pos = new THREE.Vector3(Math.cos(a)*r, y, Math.sin(a)*r);
+      const tangent = new THREE.Vector3(-Math.sin(a), 0, Math.cos(a)).normalize();
+      const v = Math.sqrt((G * 800) / Math.max(8, r)) * (0.75 + Math.random() * 0.45);
+      const vel = tangent.multiplyScalar(v).add(new THREE.Vector3((Math.random()-0.5)*0.4, (Math.random()-0.5)*0.2, (Math.random()-0.5)*0.4));
+      createBody({ name:'P'+(i+1), mass:1 + Math.random()*10, pos, vel, color:new THREE.Color().setHSL(Math.random(), 0.7, 0.6) });
+    }
+    snapshotInitial();
+  }
+
+  const gEl = document.getElementById('g');
+  const speedEl = document.getElementById('speed');
+  const trailEl = document.getElementById('trail');
+  const gVal = document.getElementById('gVal');
+  const speedVal = document.getElementById('speedVal');
+  const trailVal = document.getElementById('trailVal');
+
+  function syncUI() {
+    gVal.textContent = Number(G).toFixed(2);
+    speedVal.textContent = Number(speed).toFixed(2) + 'x';
+    trailVal.textContent = String(trailLength);
+  }
+  gEl.oninput = e => { G = Number(e.target.value); syncUI(); };
+  speedEl.oninput = e => { speed = Number(e.target.value); syncUI(); };
+  trailEl.onchange = e => { setTrailLength(Number(e.target.value)); syncUI(); };
+
+  document.getElementById('toggle').onclick = () => {
+    paused = !paused;
+    document.getElementById('toggle').textContent = paused ? 'Resume' : 'Pause';
+  };
+  document.getElementById('reset').onclick = () => resetSystem();
+  document.getElementById('seed').onclick = () => seedRandom();
+
+  document.getElementById('add').onclick = () => {
+    const v = id => Number(document.getElementById(id).value);
+    const name = document.getElementById('name').value.trim() || 'Body';
+    createBody({
+      name,
+      mass: Math.max(0.1, v('mass')),
+      radius: Math.max(0.2, v('radius')),
+      pos: new THREE.Vector3(v('px'), v('py'), v('pz')),
+      vel: new THREE.Vector3(v('vx'), v('vy'), v('vz'))
+    });
+  };
+
+  addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(innerWidth, innerHeight);
+  });
+
+  seedDefault();
+  syncUI();
+
+  let prev = performance.now();
+  function animate(now) {
+    requestAnimationFrame(animate);
+    const raw = Math.min(0.03, (now - prev) / 1000);
+    prev = now;
+    controls.update();
+
+    if (!paused) {
+      const dt = raw * speed;
+      const sub = Math.max(1, Math.ceil(dt / 0.006));
+      const step = dt / sub;
+      for (let i = 0; i < sub; i++) integrate(step);
+      updateCurvature();
+    }
+
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(animate);
+})();
+</script>
+</body>
+</html>
