@@ -1,430 +1,376 @@
-```html
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ti Yun Zong - Ink Animation</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #f4f1e8; /* Rice paper color */
-        }
-        canvas {
-            display: block;
-            cursor: pointer;
-        }
-        #instruction {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            text-align: center;
-            font-family: "Courier New", Courier, monospace;
-            color: #555;
-            pointer-events: none;
-            opacity: 0.7;
-            font-size: 14px;
-            letter-spacing: 2px;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>梯云纵 — Tī Yún Zòng</title>
+<style>
+*{margin:0;padding:0}
+body{background:#0a0a0f;overflow:hidden;cursor:pointer;font-family:'SimSun','Songti SC',serif}
+canvas{display:block}
+#hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);color:rgba(200,180,150,.6);font-size:14px;letter-spacing:2px;pointer-events:none;transition:opacity 1s}
+#title{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(200,180,150,.9);font-size:48px;letter-spacing:12px;pointer-events:none;opacity:0;transition:opacity 2s;text-shadow:0 0 30px rgba(200,180,150,.3)}
+</style>
 </head>
 <body>
-    <canvas id="canvas"></canvas>
-    <div id="instruction">CLICK TO PERFORM TECHNIQUE</div>
+<canvas id="c"></canvas>
+<div id="title">梯 云 纵</div>
+<div id="hint">点击重新演绎</div>
+<script>
+const canvas=document.getElementById('c'),ctx=canvas.getContext('2d');
+let W,H,t=0,phase='setup',phaseT=0,camY=0,targetCamY=0,particles=[],afterimages=[],shockwaves=[];
+let heroY=0,heroX=0,heroVY=0,stepCount=0,maxSteps=6,landed=false,titleShown=false;
+const GROUND=200,INK='rgba(20,15,10,',GOLD='rgba(220,190,120,';
 
-    <script>
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        let width, height;
-        let tick = 0;
-        
-        // Configuration
-        const CONFIG = {
-            gravity: 0.4,
-            jumpForce: -8,
-            boostForce: -22,
-            groundY: 0, // Set in resize
-            colors: {
-                ink: '#1a1a1a',
-                inkLight: '#4a4a4a',
-                paper: '#f4f1e8',
-                moon: '#e8e4d6'
-            }
-        };
+function resize(){W=canvas.width=innerWidth;H=canvas.height=innerHeight;heroX=W/2}
+resize();window.onresize=resize;
 
-        // State
-        let state = {
-            isPlaying: false,
-            isRising: false,
-            hasBoosted: false,
-            frame: 0
-        };
+// Background layers
+const mountains=[],bamboos=[],clouds=[];
+for(let i=0;i<5;i++)mountains.push({x:Math.random()*2000-500,h:200+Math.random()*300,w:300+Math.random()*400,layer:i});
+for(let i=0;i<30;i++)bamboos.push({x:Math.random()*2000-500,h:300+Math.random()*600,layer:Math.random()*3|0});
+for(let i=0;i<8;i++)clouds.push({x:Math.random()*2000,y:-800-Math.random()*3000,w:150+Math.random()*200,speed:.2+Math.random()*.5});
 
-        // Entities
-        let player = {
-            x: 0,
-            y: 0,
-            vx: 0,
-            vy: 0,
-            width: 30,
-            height: 60,
-            history: [] // For afterimages
-        };
+function addParticles(x,y,count,color,spread,life){
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2,v=Math.random()*spread;
+    particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-.5,life:life||60+Math.random()*40,maxLife:life||60+Math.random()*40,r:1+Math.random()*3,color});
+  }
+}
 
-        let particles = [];
-        let shockwaves = [];
+function addShockwave(x,y){
+  shockwaves.push({x,y,r:0,maxR:120+Math.random()*60,life:30,maxLife:30});
+}
 
-        // Background Layers
-        const bgLayers = [
-            { type: 'moon', x: 0, speed: 0 },
-            { type: 'cloud', x: 0, speed: 0.2 },
-            { type: 'mountain', yOffset: 0.2, speed: 0.5, color: '#ccc' },
-            { type: 'mountain', yOffset: 0.4, speed: 1.0, color: '#999' },
-            { type: 'bamboo', speed: 2.0, elements: [] }
-        ];
+function addAfterimage(x,y,frame){
+  afterimages.push({x,y,frame,life:25,maxLife:25});
+}
 
-        function resize() {
-            width = canvas.width = window.innerWidth;
-            height = canvas.height = window.innerHeight;
-            CONFIG.groundY = height * 0.85;
-            player.x = width * 0.3;
-            player.y = CONFIG.groundY;
-            
-            // Generate static bamboo
-            bgLayers[4].elements = [];
-            for(let i=0; i<20; i++) {
-                bgLayers[4].elements.push({
-                    x: Math.random() * width,
-                    h: 100 + Math.random() * 200
-                });
-            }
-        }
+// Hero figure drawing
+function drawHero(x,y,frame,alpha=1){
+  ctx.save();ctx.translate(x,y);ctx.globalAlpha=alpha;
+  const s=1.0;ctx.scale(s,s);
+  
+  // frame: 0=stand, 1=crouch, 2=leap, 3-8=step(alternating), 9=peak, 10=fall, 11=land
+  const f=frame%12;
+  ctx.strokeStyle=`rgba(30,25,20,${alpha})`;ctx.lineWidth=2.5;ctx.lineCap='round';
+  ctx.fillStyle=`rgba(40,35,25,${alpha})`;
+  
+  // Robe / body
+  ctx.beginPath();
+  if(f===1){// crouch
+    ctx.moveTo(-8,-25);ctx.quadraticCurveTo(0,-30,8,-25);
+    ctx.lineTo(12,-5);ctx.quadraticCurveTo(0,5,-12,-5);ctx.closePath();ctx.fill();ctx.stroke();
+    // head
+    ctx.beginPath();ctx.arc(0,-32,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+    // hair ribbon
+    ctx.beginPath();ctx.moveTo(3,-38);ctx.quadraticCurveTo(15,-45,20,-35);ctx.stroke();
+  } else if(f>=3&&f<=8){// stepping - dynamic pose
+    const leg=f%2;const stretch=5;
+    ctx.moveTo(-10,-40);ctx.quadraticCurveTo(0,-48,10,-40);
+    ctx.lineTo(14+stretch,-10);ctx.quadraticCurveTo(0,0,-14-stretch,-10);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(0,-47,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+    // legs - one stepping on other
+    ctx.beginPath();
+    if(leg===0){
+      ctx.moveTo(-3,-8);ctx.lineTo(-8,10);ctx.lineTo(-5,12);// lower foot
+      ctx.moveTo(3,-8);ctx.lineTo(6,5);ctx.lineTo(-6,8);// upper foot stepping
+    }else{
+      ctx.moveTo(3,-8);ctx.lineTo(8,10);ctx.lineTo(5,12);
+      ctx.moveTo(-3,-8);ctx.lineTo(-6,5);ctx.lineTo(6,8);
+    }
+    ctx.stroke();
+    // arms spread
+    ctx.beginPath();ctx.moveTo(-8,-35);ctx.quadraticCurveTo(-25,-30,-30,-20);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(8,-35);ctx.quadraticCurveTo(25,-30,30,-20);ctx.stroke();
+    // sleeve flow
+    ctx.beginPath();ctx.moveTo(-30,-20);ctx.quadraticCurveTo(-35,-15,-40,-18);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(30,-20);ctx.quadraticCurveTo(35,-15,40,-18);ctx.stroke();
+    // hair ribbon flowing
+    ctx.beginPath();ctx.moveTo(3,-53);ctx.quadraticCurveTo(20,-60,25+Math.sin(t*.1)*5,-50);ctx.stroke();
+  } else if(f===9){// peak - spread eagle
+    ctx.moveTo(-12,-40);ctx.quadraticCurveTo(0,-50,12,-40);
+    ctx.lineTo(18,-5);ctx.quadraticCurveTo(0,5,-18,-5);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(0,-48,8,0,Math.PI*2);ctx.fill();ctx.stroke();
+    // arms wide
+    ctx.beginPath();ctx.moveTo(-10,-38);ctx.quadraticCurveTo(-30,-45,-40,-35);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(10,-38);ctx.quadraticCurveTo(30,-45,40,-35);ctx.stroke();
+    // legs
+    ctx.beginPath();ctx.moveTo(-5,-5);ctx.lineTo(-15,15);ctx.moveTo(5,-5);ctx.lineTo(15,15);ctx.stroke();
+    // hair
+    ctx.beginPath();ctx.moveTo(0,-55);ctx.quadraticCurveTo(15,-65,20,-55);ctx.stroke();
+  } else if(f===10){// falling
+    ctx.moveTo(-8,-42);ctx.quadraticCurveTo(0,-48,8,-42);
+    ctx.lineTo(10,-10);ctx.quadraticCurveTo(0,-2,-10,-10);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(0,-47,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-5,-8);ctx.lineTo(-3,12);ctx.moveTo(5,-8);ctx.lineTo(3,12);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(3,-53);ctx.quadraticCurveTo(10,-60,15,-55);ctx.stroke();
+  } else if(f===11){// land
+    ctx.moveTo(-10,-28);ctx.quadraticCurveTo(0,-35,10,-28);
+    ctx.lineTo(14,-5);ctx.quadraticCurveTo(0,2,-14,-5);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(0,-35,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-5,-3);ctx.lineTo(-10,8);ctx.moveTo(5,-3);ctx.lineTo(10,8);ctx.stroke();
+  } else {// stand (0,2)
+    ctx.moveTo(-8,-40);ctx.quadraticCurveTo(0,-46,8,-40);
+    ctx.lineTo(10,-8);ctx.quadraticCurveTo(0,0,-10,-8);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.beginPath();ctx.arc(0,-45,7,0,Math.PI*2);ctx.fill();ctx.stroke();
+    // legs
+    ctx.beginPath();ctx.moveTo(-3,-6);ctx.lineTo(-5,12);ctx.moveTo(3,-6);ctx.lineTo(5,12);ctx.stroke();
+    // arms
+    ctx.beginPath();ctx.moveTo(-8,-35);ctx.lineTo(-15,-25);ctx.moveTo(8,-35);ctx.lineTo(15,-25);ctx.stroke();
+    if(f===2){// pre-leap tension
+      ctx.beginPath();ctx.moveTo(3,-51);ctx.quadraticCurveTo(12,-55,15,-48);ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
 
-        window.addEventListener('resize', resize);
-        resize();
+// Background rendering
+function drawBg(){
+  // Sky gradient
+  const skyG=ctx.createLinearGradient(0,camY-H,0,camY+H);
+  skyG.addColorStop(0,'#0a0a15');skyG.addColorStop(.3,'#121520');skyG.addColorStop(.7,'#1a1a28');skyG.addColorStop(1,'#0f0f18');
+  ctx.fillStyle=skyG;ctx.fillRect(0,0,W,H);
+  
+  // Moon
+  const moonY=-1500-camY*.05+H/3;
+  if(moonY>-100&&moonY<H+100){
+    ctx.save();ctx.globalAlpha=.8;
+    const mg=ctx.createRadialGradient(W*.7,moonY,0,W*.7,moonY,60);
+    mg.addColorStop(0,'rgba(255,250,230,.9)');mg.addColorStop(.5,'rgba(255,250,230,.3)');mg.addColorStop(1,'rgba(255,250,230,0)');
+    ctx.fillStyle=mg;ctx.fillRect(W*.7-100,moonY-100,200,200);
+    ctx.beginPath();ctx.arc(W*.7,moonY,30,0,Math.PI*2);ctx.fillStyle='rgba(255,250,230,.85)';ctx.fill();
+    ctx.restore();
+  }
+  
+  // Stars
+  ctx.fillStyle='rgba(200,195,180,.4)';
+  for(let i=0;i<50;i++){
+    const sx=(i*137.5)%W,sy=((i*97.3)%3000-camY*.02)%H;
+    if(sy>0&&sy<H){ctx.fillRect(sx,sy,1.5,1.5);}
+  }
+  
+  // Clouds (parallax)
+  clouds.forEach(c=>{
+    const cy=c.y-camY*.15+H*.4;
+    if(cy<-100||cy>H+100)return;
+    ctx.save();ctx.globalAlpha=.15;ctx.fillStyle='#8a8a9a';
+    const cx=(c.x+t*c.speed)%(W+400)-200;
+    ctx.beginPath();
+    ctx.ellipse(cx,cy,c.w,30,0,0,Math.PI*2);ctx.fill();
+    ctx.ellipse(cx-40,cy-10,c.w*.6,25,0,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  });
+  
+  // Mountains (far)
+  mountains.forEach(m=>{
+    const parallax=.1+m.layer*.05;
+    const mx=m.x-camY*.02*m.layer*.3,my=GROUND-camY*parallax+H*.6;
+    ctx.save();ctx.globalAlpha=.15+m.layer*.05;
+    ctx.fillStyle=`hsl(220,10%,${12+m.layer*3}%)`;
+    ctx.beginPath();ctx.moveTo(mx-m.w/2,my);
+    ctx.quadraticCurveTo(mx-m.w/4,my-m.h,mx,my-m.h*.9);
+    ctx.quadraticCurveTo(mx+m.w/4,my-m.h*.7,mx+m.w/2,my);
+    ctx.fill();ctx.restore();
+  });
+  
+  // Bamboo
+  bamboos.forEach(b=>{
+    const parallax=.2+b.layer*.1;
+    const bx=b.x%(W+200)-100,by=GROUND-camY*parallax+H*.7;
+    if(bx<-50||bx>W+50)return;
+    ctx.save();ctx.globalAlpha=.12+b.layer*.04;ctx.strokeStyle=`hsl(140,15%,${18+b.layer*4}%)`;
+    ctx.lineWidth=2+b.layer;ctx.beginPath();
+    const sway=Math.sin(t*.02+b.x)*3;
+    ctx.moveTo(bx,by);ctx.quadraticCurveTo(bx+sway,by-b.h/2,bx+sway*2,by-b.h);
+    ctx.stroke();
+    // nodes
+    for(let n=1;n<5;n++){
+      const ny=by-b.h*n/5;
+      ctx.beginPath();ctx.ellipse(bx+sway*n/5,ny,3+b.layer,2,.1,0,Math.PI*2);ctx.stroke();
+    }
+    // leaves
+    ctx.fillStyle=ctx.strokeStyle;
+    for(let l=0;l<3;l++){
+      const ly=by-b.h*(.4+l*.2),lx=bx+sway*(.4+l*.2);
+      ctx.beginPath();ctx.ellipse(lx+(l%2?8:-8),ly,12,3,.3*(l%2?1:-1),0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  });
+  
+  // Ground
+  const gy=GROUND-camY*.3+H*.7;
+  if(gy<H+50){
+    ctx.save();ctx.globalAlpha=.3;
+    const grd=ctx.createLinearGradient(0,gy-20,0,gy+100);
+    grd.addColorStop(0,'#2a2520');grd.addColorStop(1,'#0a0a0f');
+    ctx.fillStyle=grd;ctx.fillRect(0,gy-5,W,H-gy+50);
+    // ink wash ground line
+    ctx.strokeStyle='rgba(60,50,40,.4)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,gy);
+    for(let i=0;i<W;i+=30)ctx.quadraticCurveTo(i+15,gy-3+Math.sin(i*.05)*4,i+30,gy);
+    ctx.stroke();ctx.restore();
+  }
+}
 
-        // Input
-        canvas.addEventListener('mousedown', () => {
-            if (!state.isPlaying) {
-                startJump();
-            } else if (player.y < CONFIG.groundY - height * 0.8) {
-                // Allow replay if at top or falling
-                reset();
-            }
-        });
+// Phases
+const phases={
+  setup:{dur:90,enter(){heroY=0;heroVY=0;stepCount=0;landed=false;titleShown=false;
+    particles=[];afterimages=[];shockwaves=[];
+    document.getElementById('title').style.opacity='0';
+    document.getElementById('hint').style.opacity='0';
+  }},
+  crouch:{dur:30},
+  leap:{dur:20,enter(){heroVY=-12;addParticles(heroX,heroY+GROUND*H/800,30,'ink',4);addShockwave(heroX,heroY+GROUND*H/800);}},
+  steps:{dur:maxSteps*22},
+  peak:{dur:60,enter(){
+    addParticles(heroX,heroY+GROUND*H/800-(-camY),40,'gold',6,80);
+    addShockwave(heroX,H/2);
+    document.getElementById('title').style.opacity='1';titleShown=true;
+  }},
+  fall:{dur:80},
+  land:{dur:60,enter(){
+    addParticles(heroX,GROUND*H/800+H*.7-camY*.3,50,'ink',5);
+    addShockwave(heroX,GROUND*H/800+H*.7-camY*.3);
+    landed=true;
+  }},
+  done:{dur:999999,enter(){document.getElementById('hint').style.opacity='1';}}
+};
+const phaseOrder=['setup','crouch','leap','steps','peak','fall','land','done'];
+let phaseIdx=0;
 
-        function reset() {
-            player.y = CONFIG.groundY;
-            player.vy = 0;
-            player.history = [];
-            state.isPlaying = false;
-            state.hasBoosted = false;
-            state.frame = 0;
-            particles = [];
-            shockwaves = [];
-        }
+function setPhase(idx){
+  phaseIdx=idx;phase=phaseOrder[idx];phaseT=0;
+  if(phases[phase].enter)phases[phase].enter();
+}
 
-        function startJump() {
-            state.isPlaying = true;
-            state.frame = 0;
-            state.hasBoosted = false;
-            player.vy = CONFIG.jumpForce;
-            player.history = [];
-            
-            // Initial Ink Splash
-            createSplash(player.x, player.y + player.height, 10, true);
-        }
+function nextPhase(){if(phaseIdx<phaseOrder.length-1)setPhase(phaseIdx+1);}
 
-        // --- Drawing Helpers ---
+// Step timing
+let lastStep=0,stepFrame=3;
 
-        function drawMoon() {
-            const moonX = width * 0.8;
-            const moonY = height * 0.15;
-            const r = 40;
-            
-            ctx.save();
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = "rgba(255,255,255,0.5)";
-            ctx.fillStyle = CONFIG.colors.moon;
-            ctx.beginPath();
-            ctx.arc(moonX, moonY, r, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        }
+function update(){
+  phaseT++;
+  if(phase!=='steps'&&phase!=='done'&&phaseT>=phases[phase].dur)nextPhase();
+  
+  switch(phase){
+    case'setup':heroY=0;targetCamY=0;break;
+    case'crouch':heroY=5*Math.sin(phaseT/phases[phase].dur*Math.PI*.5);targetCamY=0;break;
+    case'leap':
+      heroVY+=.3;heroY+=heroVY;
+      if(heroVY<-5)heroVY=-5;
+      targetCamY=heroY*.8;break;
+    case'steps':
+      if(phaseT-lastStep>20&&stepCount<maxSteps){
+        // Step on own foot - burst upward
+        heroVY=-14-stepCount*1.5;
+        stepFrame=3+stepCount;
+        lastStep=phaseT;stepCount++;
+        const sy=heroY+GROUND*H/800-(-camY);
+        addParticles(heroX,Math.min(sy,H),25,'qi',5+stepCount);
+        addShockwave(heroX,Math.min(sy,H));
+        addAfterimage(heroX,heroY,stepFrame);
+      }
+      heroVY+=.5;heroY+=heroVY;
+      targetCamY=heroY*.85;
+      if(stepCount>=maxSteps&&heroVY>0)nextPhase();
+      break;
+    case'peak':
+      heroVY*=.9;heroY+=heroVY;targetCamY=heroY*.85;break;
+    case'fall':
+      heroVY+=.6;heroY+=heroVY;
+      targetCamY=Math.max(0,heroY*.5);
+      if(heroY>=0){heroY=0;heroVY=0;nextPhase();}
+      break;
+    case'land':targetCamY=0;break;
+    case'done':targetCamY=0;break;
+  }
+  
+  camY+=(targetCamY-camY)*.08;
+  
+  // Update particles
+  particles=particles.filter(p=>{
+    p.x+=p.vx;p.y+=p.vy;p.vx*=.98;p.vy*=.98;p.life--;return p.life>0;
+  });
+  afterimages=afterimages.filter(a=>{a.life--;return a.life>0;});
+  shockwaves=shockwaves.filter(s=>{s.r+=(s.maxR-s.r)*.1;s.life--;return s.life>0;});
+}
 
-        function drawCloud(x, y, scale) {
-            ctx.fillStyle = "rgba(200, 200, 200, 0.4)";
-            ctx.beginPath();
-            ctx.ellipse(x, y, 60 * scale, 30 * scale, 0, 0, Math.PI * 2);
-            ctx.ellipse(x + 40 * scale, y - 10 * scale, 50 * scale, 25 * scale, 0, 0, Math.PI * 2);
-            ctx.ellipse(x - 40 * scale, y + 10 * scale, 50 * scale, 20 * scale, 0, 0, Math.PI * 2);
-            ctx.fill();
-        }
+function getHeroFrame(){
+  switch(phase){
+    case'setup':return 0;case'crouch':return 1;case'leap':return 2;
+    case'steps':return stepFrame;case'peak':return 9;case'fall':return 10;
+    case'land':return 11;case'done':return 0;
+  }return 0;
+}
 
-        function drawMountain(yOffset, color) {
-            ctx.fillStyle = color;
-            ctx.beginPath();
-            ctx.moveTo(0, height);
-            // Simple procedural peaks
-            let x = 0;
-            ctx.lineTo(0, height * (1 - yOffset));
-            while(x < width) {
-                x += 100 + Math.random() * 100;
-                const peakH = height * (0.3 + Math.random() * 0.4);
-                ctx.lineTo(x, height - peakH);
-            }
-            ctx.lineTo(width, height);
-            ctx.fill();
-        }
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  drawBg();
+  
+  // Shockwaves
+  shockwaves.forEach(s=>{
+    const a=s.life/s.maxLife;
+    ctx.save();ctx.globalAlpha=a*.5;ctx.strokeStyle=`rgba(220,200,150,${a})`;
+    ctx.lineWidth=2;ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.stroke();
+    ctx.strokeStyle=`rgba(180,160,120,${a*.5})`;
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r*.7,0,Math.PI*2);ctx.stroke();
+    ctx.restore();
+  });
+  
+  // Particles
+  particles.forEach(p=>{
+    const a=p.life/p.maxLife;
+    ctx.save();ctx.globalAlpha=a;
+    if(p.color==='ink'){ctx.fillStyle=`rgba(30,25,20,${a})`;}
+    else if(p.color==='gold'){ctx.fillStyle=`rgba(220,200,140,${a})`;}
+    else{ctx.fillStyle=`rgba(180,220,255,${a*.8})`;}// qi
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*a,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+  });
+  
+  // Afterimages
+  afterimages.forEach(a=>{
+    const alpha=a.life/a.maxLife*.3;
+    const hy=a.y+GROUND*H/800+camY*.3+H*.7-camY;
+    drawHero(a.x,hy,a.frame,alpha);
+  });
+  
+  // Hero
+  const heroScreenY=heroY+GROUND*H/800-(-camY)*.3+H*.7+camY*.3;
+  const hy=GROUND*H/800+H*.7-camY*.3+heroY;
+  if(phase!=='done'||landed){
+    // Qi aura during steps
+    if(phase==='steps'||phase==='peak'){
+      ctx.save();
+      const ag=ctx.createRadialGradient(heroX,hy-20,5,heroX,hy-20,60);
+      ag.addColorStop(0,'rgba(180,220,255,.15)');ag.addColorStop(1,'rgba(180,220,255,0)');
+      ctx.fillStyle=ag;ctx.fillRect(heroX-80,hy-80,160,120);
+      ctx.restore();
+    }
+    drawHero(heroX,hy,getHeroFrame());
+  }
+  
+  // Calligraphy text during peak
+  if(titleShown&&phase==='peak'){
+    ctx.save();ctx.globalAlpha=Math.min(1,phaseT/30);
+    ctx.fillStyle='rgba(200,180,150,.06)';ctx.font='120px "SimSun","Songti SC",serif';
+    ctx.textAlign='center';ctx.fillText('纵',W/2,H/2+40);
+    ctx.restore();
+  }
+  
+  // Ink wash vignette
+  const vig=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.8);
+  vig.addColorStop(0,'rgba(0,0,0,0)');vig.addColorStop(1,'rgba(0,0,0,.4)');
+  ctx.fillStyle=vig;ctx.fillRect(0,0,W,H);
+}
 
-        function drawBamboo() {
-            ctx.strokeStyle = "#2a2a2a";
-            ctx.lineWidth = 4;
-            const time = tick * 0.01;
-            
-            bgLayers[4].elements.forEach(b => {
-                // Sway
-                const sway = Math.sin(time + b.x * 0.01) * 10;
-                
-                ctx.beginPath();
-                ctx.moveTo(b.x, height);
-                ctx.quadraticCurveTo(b.x + sway, height - b.h/2, b.x + sway*1.5, height - b.h);
-                ctx.stroke();
-                
-                // Nodes
-                for(let j=0; j<5; j++) {
-                    let ny = height - (b.h/5) * j;
-                    let nx = b.x + sway * (j/5);
-                    ctx.beginPath();
-                    ctx.moveTo(nx - 5, ny);
-                    ctx.lineTo(nx + 5, ny);
-                    ctx.stroke();
-                }
-                
-                // Leaves
-                ctx.fillStyle = "#333";
-                ctx.beginPath();
-                ctx.ellipse(b.x + sway*1.5 + 10, height - b.h - 10, 15, 3, Math.PI/4, 0, Math.PI*2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.ellipse(b.x + sway*1.5 - 10, height - b.h + 5, 12, 3, -Math.PI/4, 0, Math.PI*2);
-                ctx.fill();
-            });
-        }
+function loop(){t++;update();draw();requestAnimationFrame(loop);}
 
-        function drawPlayer(x, y, opacity = 1, scale = 1) {
-            ctx.save();
-            ctx.translate(x, y);
-            ctx.scale(scale, scale);
-            ctx.globalAlpha = opacity;
-            ctx.fillStyle = CONFIG.colors.ink;
-            ctx.shadowBlur = 5;
-            ctx.shadowColor = "black";
+function start(){setPhase(0);stepCount=0;lastStep=0;heroY=0;heroVY=0;camY=0;targetCamY=0;}
 
-            // Style: Stick figure / Ink blot martial artist
-            const w = player.width;
-            const h = player.height;
-
-            // Body (Robe)
-            ctx.beginPath();
-            ctx.moveTo(0, -h * 0.2);
-            ctx.quadraticCurveTo(w * 0.5, -h * 0.1, w * 0.3, 0); // Right shoulder to bottom
-            ctx.lineTo(-w * 0.3, 0);
-            ctx.quadraticCurveTo(-w * 0.5, -h * 0.1, 0, -h * 0.2); // Left shoulder
-            ctx.fill();
-
-            // Head
-            ctx.beginPath();
-            ctx.arc(0, -h * 0.3, 8, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Hair / Headband
-            ctx.beginPath();
-            ctx.moveTo(-10, -h * 0.35);
-            ctx.quadraticCurveTo(0, -h * 0.5, 15, -h * 0.35);
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 3;
-            ctx.stroke();
-
-            // Legs (depending on state)
-            ctx.strokeStyle = "black";
-            ctx.lineWidth = 4;
-            
-            if (!state.isPlaying || player.y >= CONFIG.groundY - 1) {
-                // Standing
-                ctx.beginPath();
-                ctx.moveTo(-5, 0);
-                ctx.lineTo(-5, 15);
-                ctx.moveTo(5, 0);
-                ctx.lineTo(5, 15);
-                ctx.stroke();
-            } else {
-                // Jumping / Kicking
-                ctx.beginPath();
-                ctx.moveTo(0, 0);
-                ctx.lineTo(10, 15); // Leg kicking up
-                ctx.stroke();
-            }
-
-            ctx.restore();
-        }
-
-        // --- Effects Logic ---
-
-        function createSplash(x, y, count, isGround = false) {
-            for (let i = 0; i < count; i++) {
-                particles.push({
-                    x: x,
-                    y: y,
-                    vx: (Math.random() - 0.5) * (isGround ? 10 : 5),
-                    vy: (Math.random() - 1) * (isGround ? 10 : 5),
-                    size: Math.random() * 4 + 1,
-                    life: 1.0,
-                    decay: 0.02 + Math.random() * 0.03,
-                    type: 'ink'
-                });
-            }
-        }
-
-        function createShockwave(x, y) {
-            shockwaves.push({
-                x: x,
-                y: y,
-                radius: 10,
-                maxRadius: 100,
-                life: 1.0,
-                lineWidth: 5
-            });
-        }
-
-        // --- Main Loop ---
-
-        function update() {
-            tick++;
-
-            // Physics
-            if (state.isPlaying) {
-                // The "Step" Logic (Ti Yun Zong)
-                // Mid-air boost at 40% height
-                const progress = (CONFIG.groundY - player.y) / (CONFIG.groundY - (CONFIG.groundY - height));
-                
-                if (progress > 0.2 && progress < 0.3 && !state.hasBoosted) {
-                    state.hasBoosted = true;
-                    player.vy = CONFIG.boostForce;
-                    
-                    // Effects at the "step" point
-                    createShockwave(player.x, player.y + player.height);
-                    createSplash(player.x, player.y + player.height, 20);
-                    
-                    // Sound visual (text)
-                    // Not adding text DOM to keep it canvas only, but ink splash implies force
-                }
-
-                player.y += player.vy;
-                player.vy += CONFIG.gravity;
-
-                // Ground collision
-                if (player.y > CONFIG.groundY) {
-                    player.y = CONFIG.groundY;
-                    player.vy = 0;
-                    state.isPlaying = false;
-                }
-
-                // History for afterimages
-                if (state.hasBoosted && tick % 3 === 0) {
-                    player.history.push({x: player.x, y: player.y});
-                    if (player.history.length > 5) player.history.shift();
-                }
-            }
-
-            // Update Particles
-            for (let i = particles.length - 1; i >= 0; i--) {
-                let p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += 0.1; // gravity for ink
-                p.life -= p.decay;
-                if (p.life <= 0) particles.splice(i, 1);
-            }
-
-            // Update Shockwaves
-            for (let i = shockwaves.length - 1; i >= 0; i--) {
-                let s = shockwaves[i];
-                s.radius += 5;
-                s.life -= 0.05;
-                if (s.life <= 0) shockwaves.splice(i, 1);
-            }
-        }
-
-        function draw() {
-            // Clear with fade effect for trails? No, clean clear for ink style
-            ctx.clearRect(0, 0, width, height);
-
-            // Draw Background Layers
-            drawMoon();
-            
-            // Clouds (simple parallax)
-            let cloudX = (tick * bgLayers[1].speed) % width;
-            drawCloud(cloudX, height * 0.2, 1.5);
-            drawCloud(cloudX + width/2, height * 0.25, 1.0);
-
-            drawMountain(0.4, '#aaa'); // Far
-            drawMountain(0.2, '#777'); // Near
-
-            // Draw Shockwaves
-            ctx.strokeStyle = "rgba(50,50,50,0.5)";
-            shockwaves.forEach(s => {
-                ctx.beginPath();
-                ctx.arc(s.x, s.y, s.radius, 0, Math.PI*2);
-                ctx.lineWidth = s.lineWidth * s.life;
-                ctx.stroke();
-            });
-
-            // Draw Ink Particles
-            ctx.fillStyle = "rgba(30,30,30,0.8)";
-            particles.forEach(p => {
-                ctx.globalAlpha = p.life;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-                ctx.fill();
-            });
-            ctx.globalAlpha = 1;
-
-            // Draw Bamboo (Foreground)
-            drawBamboo();
-
-            // Draw Player
-            // Draw Afterimages
-            if (state.hasBoosted) {
-                player.history.forEach((pos, index) => {
-                    const opacity = (index / player.history.length) * 0.3;
-                    drawPlayer(pos.x, pos.y, opacity, 0.9);
-                });
-            }
-
-            // Draw Main Player
-            // Squash and stretch
-            let scaleY = 1;
-            if (Math.abs(player.vy) > 5) scaleY = 1.2;
-            if (player.vy > 5) scaleY = 0.8;
-            
-            drawPlayer(player.x, player.y, 1, scaleY);
-        }
-
-        function loop() {
-            update();
-            draw();
-            requestAnimationFrame(loop);
-        }
-
-        loop();
-
-    </script>
+canvas.addEventListener('click',()=>{if(phase==='done')start();});
+start();loop();
+</script>
 </body>
 </html>
-```

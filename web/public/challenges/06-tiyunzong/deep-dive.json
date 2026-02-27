@@ -1,4 +1,17 @@
 {
+  "MiniMax-M2.5": {
+    "challenge": "06-tiyunzong",
+    "model": "MiniMax-M2.5",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-27T12:20:00.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 14888,
+    "status": "ok"
+  },
   "claude-opus-4-6": {
     "challenge": "06-tiyunzong",
     "model": "claude-opus-4-6",
