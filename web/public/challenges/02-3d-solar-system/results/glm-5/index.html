@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relativistic N-Body Sandbox</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif;color:#eee}
+canvas{display:block}
+#ui{position:absolute;top:10px;left:10px;z-index:10;display:flex;flex-direction:column;gap:6px;max-width:260px}
+#ui button,#ui select{background:rgba(30,30,50,.85);border:1px solid rgba(100,140,255,.4);color:#cdf;padding:6px 10px;border-radius:6px;cursor:pointer;font-size:12px;transition:background .2s}
+#ui button:hover{background:rgba(60,60,100,.9)}
+.slider-row{display:flex;align-items:center;gap:6px;font-size:11px;color:#9ab}
+.slider-row input[type=range]{flex:1;accent-color:#6af}
+.slider-row span{min-width:28px;text-align:right}
+#info{position:absolute;bottom:10px;left:10px;font-size:11px;color:#567;z-index:10}
+#crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:rgba(100,160,255,.3);font-size:24px;pointer-events:none;z-index:5}
+.btn-row{display:flex;gap:4px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div id="crosshair">+</div>
+<div id="ui">
+  <div class="btn-row">
+    <button id="btnAdd">➕ Add Body</button>
+    <button id="btnPreset">🌍 Solar Preset</button>
+    <button id="btnReset">🗑 Reset</button>
+  </div>
+  <div class="btn-row">
+    <button id="btnPause">⏸ Pause</button>
+    <button id="btnTrails">🌀 Trails: ON</button>
+    <button id="btnGrid">📐 Grid: ON</button>
+  </div>
+  <div class="slider-row">G Strength <input type="range" id="sliderG" min="0.1" max="10" step="0.1" value="1"><span id="valG">1.0</span></div>
+  <div class="slider-row">Speed <input type="range" id="sliderSpeed" min="0.1" max="5" step="0.1" value="1"><span id="valSpeed">1.0</span></div>
+  <div class="slider-row">Trail Len <input type="range" id="sliderTrail" min="10" max="500" step="10" value="200"><span id="valTrail">200</span></div>
+  <div class="slider-row">Body Mass <input type="range" id="sliderMass" min="1" max="200" step="1" value="20"><span id="valMass">20</span></div>
+</div>
+<div id="info">Click to select body · Double-click to delete · Scroll to zoom · Drag to orbit</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+// --- Setup ---
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 5000);
+camera.position.set(0, 120, 200);
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+
+// Lights
+scene.add(new THREE.AmbientLight(0x334455, 1.5));
+const sun = new THREE.PointLight(0xffeedd, 2, 800);
+scene.add(sun);
+
+// Stars
+const starsGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(3000*3);
+for(let i=0;i<3000*3;i++) starPos[i]=(Math.random()-.5)*2000;
+starsGeo.setAttribute('position', new THREE.BufferAttribute(starPos,3));
+scene.add(new THREE.Points(starsGeo, new THREE.PointsMaterial({color:0xffffff,size:0.8,sizeAttenuation:true})));
+
+// --- Spacetime Grid (curvature visualization) ---
+const GRID_SIZE = 40;
+const GRID_SEG = 60;
+const gridGeo = new THREE.PlaneGeometry(GRID_SIZE*10, GRID_SIZE*10, GRID_SEG, GRID_SEG);
+gridGeo.rotateX(-Math.PI/2);
+const gridMat = new THREE.MeshBasicMaterial({color:0x2244aa, wireframe:true, transparent:true, opacity:0.25});
+const gridMesh = new THREE.Mesh(gridGeo, gridMat);
+gridMesh.position.y = -30;
+scene.add(gridMesh);
+const gridBaseY = new Float32Array(gridGeo.attributes.position.count);
+for(let i=0;i<gridBaseY.length;i++) gridBaseY[i] = gridGeo.attributes.position.getY(i);
+
+// --- State ---
+let bodies = [];
+let paused = false;
+let showTrails = true;
+let showGrid = true;
+let G_MULT = 1;
+let SPEED = 1;
+let TRAIL_LEN = 200;
+let NEW_MASS = 20;
+const G = 0.5;
+const SOFTENING = 2;
+const MERGE_FACTOR = 1.2;
+
+const COLORS = [0x44aaff,0xff6644,0x44ff88,0xffdd44,0xff44aa,0xaa44ff,0x44ffff,0xff8844,0x88ff44,0xddaaff];
+let colorIdx = 0;
+
+function bodyRadius(m){ return Math.pow(m, 1/3)*0.8; }
+
+function createBody(mass, pos, vel, color){
+  const r = bodyRadius(mass);
+  const geo = new THREE.SphereGeometry(r, 24, 18);
+  const mat = new THREE.MeshStandardMaterial({color, emissive: color, emissiveIntensity:0.3, roughness:0.5, metalness:0.3});
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.copy(pos);
+  scene.add(mesh);
+
+  // Glow sprite
+  const spriteMat = new THREE.SpriteMaterial({color, transparent:true, opacity:0.15, blending:THREE.AdditiveBlending});
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.set(r*6, r*6, 1);
+  mesh.add(sprite);
+
+  // Trail
+  const maxPts = 600;
+  const trailGeo = new THREE.BufferGeometry();
+  const trailPositions = new Float32Array(maxPts*3);
+  trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions, 3));
+  trailGeo.setDrawRange(0,0);
+  const trailMat = new THREE.LineBasicMaterial({color, transparent:true, opacity:0.5});
+  const trail = new THREE.Line(trailGeo, trailMat);
+  scene.add(trail);
+
+  const body = {
+    mass, vel: vel.clone(), mesh, sprite, trail, trailGeo, trailPositions,
+    trailIdx: 0, trailCount: 0, color,
+    history: [] // vec3 array
+  };
+  bodies.push(body);
+  return body;
+}
+
+function removeBody(b){
+  scene.remove(b.mesh);
+  scene.remove(b.trail);
+  b.mesh.geometry.dispose(); b.mesh.material.dispose();
+  b.trailGeo.dispose(); b.trail.material.dispose();
+  bodies = bodies.filter(x=>x!==b);
+}
+
+function resetAll(){
+  while(bodies.length) removeBody(bodies[0]);
+  colorIdx=0;
+}
+
+function addRandom(){
+  const angle = Math.random()*Math.PI*2;
+  const dist = 30+Math.random()*60;
+  const y = (Math.random()-.5)*40;
+  const pos = new THREE.Vector3(Math.cos(angle)*dist, y, Math.sin(angle)*dist);
+  const speed = 0.3+Math.random()*0.4;
+  const vel = new THREE.Vector3(-Math.sin(angle)*speed, (Math.random()-.5)*0.1, Math.cos(angle)*speed);
+  const c = COLORS[colorIdx++ % COLORS.length];
+  createBody(NEW_MASS, pos, vel, c);
+}
+
+function solarPreset(){
+  resetAll();
+  createBody(150, new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,0), 0xffdd33);
+  createBody(8, new THREE.Vector3(30,0,0), new THREE.Vector3(0,0,0.9), 0x88aaff);
+  createBody(12, new THREE.Vector3(55,2,0), new THREE.Vector3(0,0,0.65), 0xff8844);
+  createBody(10, new THREE.Vector3(-80,0,10), new THREE.Vector3(0,0,-0.55), 0x44ddaa);
+  createBody(6, new THREE.Vector3(0,5,100), new THREE.Vector3(-0.45,0,0), 0xdd66ff);
+  colorIdx=5;
+}
+
+// --- Physics ---
+function simulate(dt){
+  const n = bodies.length;
+  const acc = bodies.map(()=>new THREE.Vector3());
+  const gStrength = G * G_MULT;
+  for(let i=0;i<n;i++){
+    for(let j=i+1;j<n;j++){
+      const dx = bodies[j].mesh.position.clone().sub(bodies[i].mesh.position);
+      const dist2 = dx.lengthSq() + SOFTENING*SOFTENING;
+      const dist = Math.sqrt(dist2);
+      const F = gStrength * bodies[i].mass * bodies[j].mass / dist2;
+      const dir = dx.normalize();
+      acc[i].add(dir.clone().multiplyScalar(F/bodies[i].mass));
+      acc[j].add(dir.clone().multiplyScalar(-F/bodies[j].mass));
+    }
+  }
+  // Integrate (leapfrog-ish)
+  for(let i=0;i<n;i++){
+    bodies[i].vel.add(acc[i].multiplyScalar(dt));
+    bodies[i].mesh.position.add(bodies[i].vel.clone().multiplyScalar(dt));
+  }
+  // Collisions
+  for(let i=0;i<bodies.length;i++){
+    for(let j=i+1;j<bodies.length;j++){
+      const a=bodies[i], b=bodies[j];
+      const rSum = (bodyRadius(a.mass)+bodyRadius(b.mass))*MERGE_FACTOR;
+      if(a.mesh.position.distanceTo(b.mesh.position)<rSum){
+        // Merge into larger
+        const big = a.mass>=b.mass?a:b;
+        const small = a.mass>=b.mass?b:a;
+        const totalMass = big.mass+small.mass;
+        big.vel.multiplyScalar(big.mass).add(small.vel.clone().multiplyScalar(small.mass)).divideScalar(totalMass);
+        big.mass = totalMass;
+        const nr = bodyRadius(totalMass);
+        big.mesh.geometry.dispose();
+        big.mesh.geometry = new THREE.SphereGeometry(nr,24,18);
+        big.sprite.scale.set(nr*6,nr*6,1);
+        removeBody(small);
+        j--;
+      }
+    }
+  }
+}
+
+// --- Trail update ---
+function updateTrails(){
+  for(const b of bodies){
+    b.history.push(b.mesh.position.clone());
+    if(b.history.length>TRAIL_LEN) b.history.shift();
+    const arr = b.trailPositions;
+    const len = Math.min(b.history.length, 600);
+    for(let i=0;i<len;i++){
+      const h = b.history[b.history.length - len + i];
+      arr[i*3]=h.x; arr[i*3+1]=h.y; arr[i*3+2]=h.z;
+    }
+    b.trailGeo.attributes.position.needsUpdate = true;
+    b.trailGeo.setDrawRange(0, len);
+    b.trail.visible = showTrails;
+  }
+}
+
+// --- Grid curvature ---
+function updateGrid(){
+  if(!showGrid){gridMesh.visible=false;return;}
+  gridMesh.visible=true;
+  const pos = gridGeo.attributes.position;
+  for(let i=0;i<pos.count;i++){
+    const gx = pos.getX(i), gz = pos.getZ(i);
+    let depression = 0;
+    for(const b of bodies){
+      const bx=b.mesh.position.x, bz=b.mesh.position.z;
+      const d2 = (gx-bx)**2 + (gz-bz)**2 + 10;
+      depression -= b.mass*1.5 / Math.sqrt(d2);
+    }
+    pos.setY(i, gridBaseY[i] + depression);
+  }
+  pos.needsUpdate = true;
+  gridGeo.computeVertexNormals();
+}
+
+// --- Gravitational lensing glow (relativity-inspired): pulsing emissive based on local potential ---
+function updateRelativisticEffect(){
+  for(const b of bodies){
+    let potential = 0;
+    for(const o of bodies){
+      if(o===b) continue;
+      const d = b.mesh.position.distanceTo(o.mesh.position)+5;
+      potential += o.mass/d;
+    }
+    // Time dilation visual: deeper potential = redder + slower pulse
+    const intensity = Math.min(potential*0.05, 0.8);
+    const r = ((b.color>>16)&0xff)/255;
+    const g = ((b.color>>8)&0xff)/255;
+    const bl = (b.color&0xff)/255;
+    b.mesh.material.emissiveIntensity = 0.3 + intensity;
+    // Slight red-shift tint
+    b.mesh.material.emissive.setRGB(
+      Math.min(r + intensity*0.3, 1),
+      g * (1 - intensity*0.2),
+      bl * (1 - intensity*0.3)
+    );
+  }
+}
+
+// --- Raycaster for selection ---
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selected = null;
+
+renderer.domElement.addEventListener('click', e=>{
+  mouse.x = (e.clientX/innerWidth)*2-1;
+  mouse.y = -(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(bodies.map(b=>b.mesh));
+  if(hits.length){
+    selected = bodies.find(b=>b.mesh===hits[0].object)||null;
+  } else {
+    selected = null;
+  }
+});
+
+renderer.domElement.addEventListener('dblclick', e=>{
+  mouse.x = (e.clientX/innerWidth)*2-1;
+  mouse.y = -(e.clientY/innerHeight)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const hits = raycaster.intersectObjects(bodies.map(b=>b.mesh));
+  if(hits.length){
+    const b = bodies.find(b=>b.mesh===hits[0].object);
+    if(b) removeBody(b);
+  }
+});
+
+// --- UI ---
+document.getElementById('btnAdd').onclick = addRandom;
+document.getElementById('btnPreset').onclick = solarPreset;
+document.getElementById('btnReset').onclick = resetAll;
+document.getElementById('btnPause').onclick = function(){
+  paused=!paused;
+  this.textContent = paused?'▶ Resume':'⏸ Pause';
+};
+document.getElementById('btnTrails').onclick = function(){
+  showTrails=!showTrails;
+  this.textContent = showTrails?'🌀 Trails: ON':'🌀 Trails: OFF';
+};
+document.getElementById('btnGrid').onclick = function(){
+  showGrid=!showGrid;
+  this.textContent = showGrid?'📐 Grid: ON':'📐 Grid: OFF';
+};
+
+const slG=document.getElementById('sliderG'), vG=document.getElementById('valG');
+slG.oninput=()=>{G_MULT=+slG.value; vG.textContent=G_MULT.toFixed(1);};
+const slS=document.getElementById('sliderSpeed'), vS=document.getElementById('valSpeed');
+slS.oninput=()=>{SPEED=+slS.value; vS.textContent=SPEED.toFixed(1);};
+const slT=document.getElementById('sliderTrail'), vT=document.getElementById('valTrail');
+slT.oninput=()=>{TRAIL_LEN=+slT.value; vT.textContent=TRAIL_LEN;};
+const slM=document.getElementById('sliderMass'), vM=document.getElementById('valMass');
+slM.oninput=()=>{NEW_MASS=+slM.value; vM.textContent=NEW_MASS;};
+
+// --- Animation ---
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.05) * SPEED;
+  if(!paused && bodies.length){
+    const substeps = 3;
+    for(let s=0;s<substeps;s++) simulate(dt/substeps);
+    updateTrails();
+    updateRelativisticEffect();
+  }
+  updateGrid();
+  // Point light follows largest body
+  if(bodies.length){
+    let biggest = bodies[0];
+    for(const b of bodies) if(b.mass>biggest.mass) biggest=b;
+    sun.position.copy(biggest.mesh.position);
+  }
+  // Selection highlight
+  for(const b of bodies){
+    b.mesh.material.wireframe = (b===selected);
+  }
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', ()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+solarPreset();
+animate();
+</script>
+</body>
+</html>

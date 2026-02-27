@@ -25,6 +25,19 @@
     "file_size_bytes": 21124,
     "status": "ok"
   },
+  "glm-5": {
+    "challenge": "03-angry-birds",
+    "model": "glm-5",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-27T04:50:00.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 17268,
+    "status": "ok"
+  },
   "gpt-5.3-codex": {
     "challenge": "03-angry-birds",
     "model": "gpt-5.3-codex",

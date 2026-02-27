@@ -25,6 +25,19 @@
     "file_size_bytes": 37333,
     "status": "ok"
   },
+  "glm-5": {
+    "challenge": "02-3d-solar-system",
+    "model": "glm-5",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-27T04:29:00.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 13556,
+    "status": "ok"
+  },
   "gpt-5.3-codex": {
     "challenge": "02-3d-solar-system",
     "model": "gpt-5.3-codex",

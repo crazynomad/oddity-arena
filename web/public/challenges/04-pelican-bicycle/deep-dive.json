@@ -25,6 +25,19 @@
     "file_size_bytes": 10414,
     "status": "ok"
   },
+  "glm-5": {
+    "challenge": "04-pelican-bicycle",
+    "model": "glm-5",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-27T06:00:00.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 6901,
+    "status": "ok"
+  },
   "gpt-5.3-codex": {
     "challenge": "04-pelican-bicycle",
     "model": "gpt-5.3-codex",

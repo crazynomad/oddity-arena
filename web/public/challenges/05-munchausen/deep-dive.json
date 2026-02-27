@@ -25,6 +25,19 @@
     "file_size_bytes": 29154,
     "status": "ok"
   },
+  "glm-5": {
+    "challenge": "05-munchausen",
+    "model": "glm-5",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-27T06:17:00.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 22975,
+    "status": "ok"
+  },
   "gpt-5.3-codex": {
     "challenge": "05-munchausen",
     "model": "gpt-5.3-codex",
