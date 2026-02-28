@@ -63,5 +63,18 @@
     ],
     "file_size_bytes": 17823,
     "status": "ok"
+  },
+  "kimi-k2.5": {
+    "challenge": "03-angry-birds",
+    "model": "kimi-k2.5",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-28T02:17:00+08:00",
+    "rounds": 1,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 20229,
+    "status": "ok"
   }
 }

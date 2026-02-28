@@ -63,5 +63,18 @@
     ],
     "file_size_bytes": 16357,
     "status": "ok"
+  },
+  "kimi-k2.5": {
+    "challenge": "02-3d-solar-system",
+    "model": "kimi-k2.5",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-28T01:58:00+08:00",
+    "rounds": 1,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 12724,
+    "status": "ok"
   }
 }
