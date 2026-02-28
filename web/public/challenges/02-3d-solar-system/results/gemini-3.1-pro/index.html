@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Solar System N-Body Sandbox</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; color: white; font-family: sans-serif; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 15px; left: 15px; background: rgba(10, 10, 15, 0.85); padding: 20px; border-radius: 12px; border: 1px solid #333; z-index: 10; pointer-events: auto; backdrop-filter: blur(5px); width: 250px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        h3 { margin-top: 0; margin-bottom: 15px; font-size: 16px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #fff; border-bottom: 1px solid #444; padding-bottom: 8px;}
+        .control-group { margin-bottom: 12px; }
+        label { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: #ccc; font-family: monospace; }
+        input[type=range] { width: 100%; accent-color: #00aaff; cursor: pointer; }
+        button { background: #222; color: #fff; border: 1px solid #555; padding: 8px 12px; cursor: pointer; margin-right: 5px; border-radius: 6px; font-size: 12px; font-weight: bold; transition: all 0.2s; }
+        button:hover { background: #00aaff; border-color: #00aaff; color: #000; }
+        .btn-row { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+        .btn-row button { flex: 1; min-width: 45%; }
+        #btn-add { width: 100%; margin-top: 5px; background: #00aaff; color: #000; border: none; }
+        #btn-add:hover { background: #0088cc; }
+    </style>
+    <!-- Import Three.js -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="ui">
+        <h3>N-Body Sandbox</h3>
+        <div class="btn-row">
+            <button id="btn-pause">Pause</button>
+            <button id="btn-reset">Reset</button>
+            <button id="btn-add">Add Random Body</button>
+        </div>
+        <div class="control-group">
+            <label for="slider-gravity"><span>Gravity (G)</span> <span id="val-gravity">1.0</span></label>
+            <input type="range" id="slider-gravity" min="0.1" max="5.0" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label for="slider-speed"><span>Time Speed</span> <span id="val-speed">1.0</span></label>
+            <input type="range" id="slider-speed" min="0.1" max="5.0" step="0.1" value="1.0">
+        </div>
+        <div class="control-group">
+            <label for="slider-trails"><span>Trail Length</span> <span id="val-trails">100</span></label>
+            <input type="range" id="slider-trails" min="0" max="500" step="10" value="100">
+        </div>
+    </div>
+    
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Configuration & State ---
+        const config = { G: 1.0, timeStep: 0.1, speed: 1.0, trailLength: 100, paused: false };
+        let bodies = [];
+
+        // --- Three.js Setup ---
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x050505, 0.0015);
+        
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 3000);
+        camera.position.set(0, 200, 300);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // --- Lighting ---
+        const ambientLight = new THREE.AmbientLight(0x222222);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 3, 2000, 0.1); // Bright point light for the central star
+        scene.add(pointLight);
+
+        // --- Starfield Background ---
+        const starGeo = new THREE.BufferGeometry();
+        const starCount = 3000;
+        const starPos = new Float32Array(starCount * 3);
+        const starColors = new Float32Array(starCount * 3);
+        for(let i=0; i<starCount; i++) {
+            const r = 400 + Math.random() * 1500;
+            const theta = 2 * Math.PI * Math.random();
+            const phi = Math.acos(2 * Math.random() - 1);
+            starPos[i*3] = r * Math.sin(phi) * Math.cos(theta);
+            starPos[i*3+1] = r * Math.sin(phi) * Math.sin(theta);
+            starPos[i*3+2] = r * Math.cos(phi);
+
+            // Subtle colors for stars
+            const color = new THREE.Color().setHSL(Math.random(), 0.5, 0.8 + Math.random()*0.2);
+            starColors[i*3] = color.r;
+            starColors[i*3+1] = color.g;
+            starColors[i*3+2] = color.b;
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+        starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+        const starMat = new THREE.PointsMaterial({ size: 1.5, vertexColors: true, sizeAttenuation: true, transparent: true, opacity: 0.8 });
+        const stars = new THREE.Points(starGeo, starMat);
+        scene.add(stars);
+
+        // --- Spacetime Curvature Grid ---
+        const gridSize = 800;
+        const gridSegments = 120; // High res for smooth curving
+        const gridGeo = new THREE.PlaneGeometry(gridSize, gridSize, gridSegments, gridSegments);
+        gridGeo.rotateX(-Math.PI / 2);
+        
+        // Custom shader for dynamic spacetime deformation
+        const gridMat = new THREE.ShaderMaterial({
+            uniforms: {
+                color: { value: new THREE.Color(0x0088ff) },
+                bodiesPos: { value: [] },
+                bodiesMass: { value: [] },
+                numBodies: { value: 0 },
+                G: { value: config.G }
+            },
+            vertexShader: `
+                uniform vec3 bodiesPos[25];
+                uniform float bodiesMass[25];
+                uniform int numBodies;
+                uniform float G;
+                varying float vDepth;
+                
+                void main() {
+                    vec3 pos = position;
+                    float totalDepression = 0.0;
+                    
+                    for(int i=0; i<25; i++) {
+                        if(i >= numBodies) break;
+                        float dist = distance(pos.xz, bodiesPos[i].xz);
+                        dist = max(dist, 5.0); // Prevent infinite singularity
+                        // Deformation proportional to mass and G
+                        totalDepression += (G * bodiesMass[i] * 8.0) / dist;
+                    }
+                    
+                    totalDepression = min(totalDepression, 80.0); // Clamp maximum depth
+                    pos.y -= totalDepression;
+                    vDepth = totalDepression; // Pass to fragment for coloring
+                    
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 color;
+                varying float vDepth;
+                void main() {
+                    // Glow intensity based on depth (higher mass -> deeper -> brighter)
+                    float intensity = min(vDepth / 30.0, 1.0);
+                    vec3 finalColor = mix(color * 0.2, color * 1.5, intensity);
+                    
+                    // Fade out grid lines that are flat
+                    float alpha = 0.15 + intensity * 0.7;
+                    gl_FragColor = vec4(finalColor, alpha);
+                }
+            `,
+            wireframe: true,
+            transparent: true,
+            depthWrite: false,
+            blending: THREE.AdditiveBlending
+        });
+        const gridMesh = new THREE.Mesh(gridGeo, gridMat);
+        gridMesh.position.y = -30; // Place below origin
+        scene.add(gridMesh);
+
+        // Pre-allocate uniform arrays
+        for(let i=0; i<25; i++) {
+            gridMat.uniforms.bodiesPos.value.push(new THREE.Vector3());
+            gridMat.uniforms.bodiesMass.value.push(0);
+        }
+
+        // --- Physics Objects ---
+        const sphereGeo = new THREE.SphereGeometry(1, 32, 32);
+
+        function createBody(mass, pos, vel, color, isSun = false) {
+            const radius = Math.pow(mass, 0.33) * 1.5; // Density scaling
+            
+            const material = new THREE.MeshStandardMaterial({ 
+                color: color,
+                emissive: isSun ? color : 0x000000,
+                emissiveIntensity: isSun ? 2.0 : 0,
+                roughness: isSun ? 0.1 : 0.6,
+                metalness: 0.1
+            });
+            const mesh = new THREE.Mesh(sphereGeo, material);
+            mesh.scale.set(radius, radius, radius);
+            mesh.position.copy(pos);
+            scene.add(mesh);
+
+            // Dynamic Trail
+            const trailGeo = new THREE.BufferGeometry();
+            const trailPos = new Float32Array(500 * 3).fill(0); // Max trail buffer
+            trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPos, 3));
+            const trailMat = new THREE.LineBasicMaterial({ 
+                color: color, 
+                transparent: true, 
+                opacity: 0.5,
+                blending: THREE.AdditiveBlending 
+            });
+            const trail = new THREE.Line(trailGeo, trailMat);
+            // Hide trail lines that aren't populated yet by setting draw range
+            trail.geometry.setDrawRange(0, 0); 
+            scene.add(trail);
+
+            const body = {
+                id: Math.random().toString(36), mass, radius, mesh, velocity: vel.clone(), 
+                isSun, trail, trailPositions: [], color
+            };
+            bodies.push(body);
+            return body;
+        }
+
+        function initSystem() {
+            // Clean up
+            bodies.forEach(b => {
+                scene.remove(b.mesh);
+                scene.remove(b.trail);
+                b.mesh.material.dispose();
+                b.trail.material.dispose();
+            });
+            bodies = [];
+
+            // Central Star
+            createBody(1000, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, 0), 0xffaa00, true);
+            
+            // Inner fast planet
+            createBody(5, new THREE.Vector3(60, 0, 0), new THREE.Vector3(0, 0, -4.0), 0x00aaff);
+            
+            // Earth-like with eccentric orbit
+            createBody(12, new THREE.Vector3(-120, 10, 0), new THREE.Vector3(0, -0.5, 2.8), 0x44ff44);
+            
+            // Heavy outer planet
+            createBody(40, new THREE.Vector3(0, 0, 250), new THREE.Vector3(2.0, 0, 0), 0xff4444);
+            
+            // Binary pair setup (far out)
+            createBody(20, new THREE.Vector3(180, 0, 180), new THREE.Vector3(-1.0, 0, 1.5), 0xaa00ff);
+            createBody(15, new THREE.Vector3(195, 0, 180), new THREE.Vector3(-1.0, 0, -1.0), 0xff00aa);
+        }
+
+        function addRandomBody() {
+            if (bodies.length >= 25) return; // Limit for shader arrays
+            
+            const dist = 80 + Math.random() * 200;
+            const angle = Math.random() * Math.PI * 2;
+            const yOffset = (Math.random() - 0.5) * 40;
+            const pos = new THREE.Vector3(Math.cos(angle)*dist, yOffset, Math.sin(angle)*dist);
+            
+            // Estimate orbital velocity around origin
+            const speed = Math.sqrt(config.G * 1000 / dist) * (0.8 + Math.random()*0.4);
+            const vel = new THREE.Vector3(-pos.z, (Math.random()-0.5)*2, pos.x).normalize().multiplyScalar(speed);
+            
+            const mass = 2 + Math.random() * 20;
+            const color = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
+            createBody(mass, pos, vel, color);
+        }
+
+        // --- Physics Engine ---
+        function updatePhysics() {
+            const dt = config.timeStep * config.speed;
+            if (dt === 0) return;
+
+            // 1. Calculate gravity forces (N-Body)
+            const forces = [];
+            for (let i = 0; i < bodies.length; i++) forces[i] = new THREE.Vector3();
+
+            for (let i = 0; i < bodies.length; i++) {
+                const b1 = bodies[i];
+                if (b1.mass === 0) continue;
+
+                for (let j = i + 1; j < bodies.length; j++) {
+                    const b2 = bodies[j];
+                    if (b2.mass === 0) continue;
+
+                    const dir = new THREE.Vector3().subVectors(b2.mesh.position, b1.mesh.position);
+                    const distSq = dir.lengthSq();
+                    const dist = Math.sqrt(distSq);
+
+                    // Collision (inelastic merger)
+                    if (dist < (b1.radius + b2.radius) * 0.9) {
+                        // Merge b2 into b1
+                        const totalMass = b1.mass + b2.mass;
+                        const newVel = b1.velocity.clone().multiplyScalar(b1.mass)
+                                         .add(b2.velocity.clone().multiplyScalar(b2.mass))
+                                         .divideScalar(totalMass);
+                        
+                        b1.mass = totalMass;
+                        b1.velocity.copy(newVel);
+                        b1.radius = Math.pow(totalMass, 0.33) * 1.5;
+                        b1.mesh.scale.set(b1.radius, b1.radius, b1.radius);
+                        
+                        // Destroy b2
+                        b2.mass = 0;
+                        scene.remove(b2.mesh);
+                        scene.remove(b2.trail);
+                        continue;
+                    }
+
+                    // Newton's Law of Universal Gravitation
+                    // F = G * m1 * m2 / r^2
+                    // Softening factor added to prevent extreme forces near singularities
+                    const forceMag = (config.G * b1.mass * b2.mass) / (distSq + 1.0);
+                    const forceDir = dir.normalize().multiplyScalar(forceMag);
+                    
+                    forces[i].add(forceDir);
+                    forces[j].sub(forceDir); // Equal and opposite
+                }
+            }
+
+            // 2. Apply forces & update positions (Symplectic Euler)
+            let maxMass = 0;
+            let sunPos = null;
+
+            // Remove destroyed bodies
+            bodies = bodies.filter(b => b.mass > 0);
+
+            for (let i = 0; i < bodies.length; i++) {
+                const b = bodies[i];
+                
+                // Acceleration = Force / Mass
+                const acc = forces[i].divideScalar(b.mass);
+                b.velocity.add(acc.multiplyScalar(dt));
+                b.mesh.position.add(b.velocity.clone().multiplyScalar(dt));
+                
+                // Track heaviest body for dynamic lighting
+                if (b.mass > maxMass) {
+                    maxMass = b.mass;
+                    sunPos = b.mesh.position;
+                }
+
+                // Update Trail history
+                b.trailPositions.push(b.mesh.position.clone());
+                if (b.trailPositions.length > config.trailLength) {
+                    b.trailPositions.shift(); // keep sliding window
+                }
+                
+                // Apply to buffer geometry
+                const positions = b.trail.geometry.attributes.position.array;
+                const len = b.trailPositions.length;
+                for (let j = 0; j < len; j++) {
+                    const p = b.trailPositions[j];
+                    positions[j*3] = p.x;
+                    positions[j*3+1] = p.y;
+                    positions[j*3+2] = p.z;
+                }
+                b.trail.geometry.setDrawRange(0, len);
+                b.trail.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // Update Point Light to follow heaviest mass
+            if (sunPos) {
+                pointLight.position.copy(sunPos);
+            }
+
+            // 3. Update Grid Spacetime Shader
+            const numBodiesToPass = Math.min(bodies.length, 25);
+            gridMat.uniforms.numBodies.value = numBodiesToPass;
+            gridMat.uniforms.G.value = config.G;
+            for(let i=0; i<numBodiesToPass; i++) {
+                gridMat.uniforms.bodiesPos.value[i].copy(bodies[i].mesh.position);
+                gridMat.uniforms.bodiesMass.value[i] = bodies[i].mass;
+            }
+        }
+
+        // --- UI Events ---
+        document.getElementById('btn-pause').addEventListener('click', (e) => {
+            config.paused = !config.paused;
+            e.target.innerText = config.paused ? 'Resume' : 'Pause';
+            e.target.style.background = config.paused ? '#aa4400' : '#222';
+        });
+        
+        document.getElementById('btn-reset').addEventListener('click', () => {
+            initSystem();
+            if (config.paused) {
+                config.paused = false;
+                const pBtn = document.getElementById('btn-pause');
+                pBtn.innerText = 'Pause';
+                pBtn.style.background = '#222';
+            }
+        });
+        
+        document.getElementById('btn-add').addEventListener('click', addRandomBody);
+        
+        document.getElementById('slider-gravity').addEventListener('input', (e) => {
+            config.G = parseFloat(e.target.value);
+            document.getElementById('val-gravity').innerText = config.G.toFixed(1);
+        });
+        
+        document.getElementById('slider-speed').addEventListener('input', (e) => {
+            config.speed = parseFloat(e.target.value);
+            document.getElementById('val-speed').innerText = config.speed.toFixed(1);
+        });
+        
+        document.getElementById('slider-trails').addEventListener('input', (e) => {
+            config.trailLength = parseInt(e.target.value);
+            document.getElementById('val-trails').innerText = config.trailLength;
+            // Trim existing trails if shortened
+            bodies.forEach(b => {
+                if (b.trailPositions.length > config.trailLength) {
+                    b.trailPositions = b.trailPositions.slice(b.trailPositions.length - config.trailLength);
+                }
+            });
+        });
+
+        // --- Init & Loop ---
+        initSystem();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            if (!config.paused) {
+                // Run multiple small physics steps for stability per frame
+                for(let i=0; i<2; i++) updatePhysics(); 
+            }
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>

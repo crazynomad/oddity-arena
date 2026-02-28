@@ -38,6 +38,19 @@
     "file_size_bytes": 10414,
     "status": "ok"
   },
+  "gemini-3.1-pro": {
+    "challenge": "04-pelican-bicycle",
+    "model": "gemini-3.1-pro",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-28T13:27:00.000Z",
+    "rounds": 1,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 8795,
+    "status": "ok"
+  },
   "glm-5": {
     "challenge": "04-pelican-bicycle",
     "model": "glm-5",

@@ -38,6 +38,19 @@
     "file_size_bytes": 83744,
     "status": "ok"
   },
+  "gemini-3.1-pro": {
+    "challenge": "01-web-redesign",
+    "model": "gemini-3.1-pro",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-02-28T08:18:00Z",
+    "rounds": 1,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 15240,
+    "status": "ok"
+  },
   "glm-5": {
     "challenge": "01-web-redesign",
     "model": "glm-5",
