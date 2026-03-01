@@ -89,5 +89,18 @@
     ],
     "file_size_bytes": 20229,
     "status": "ok"
+  },
+  "qwen-max": {
+    "challenge": "03-angry-birds",
+    "model": "qwen-max",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-03-01T01:16:30.000Z",
+    "rounds": 2,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 23184,
+    "status": "ok"
   }
 }

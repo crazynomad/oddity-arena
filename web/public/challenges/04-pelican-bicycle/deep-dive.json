@@ -89,5 +89,18 @@
     ],
     "file_size_bytes": 6266,
     "status": "ok"
+  },
+  "qwen-max": {
+    "challenge": "04-pelican-bicycle",
+    "model": "qwen-max",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-03-01T02:29:00.000Z",
+    "rounds": 1,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 9198,
+    "status": "ok"
   }
 }

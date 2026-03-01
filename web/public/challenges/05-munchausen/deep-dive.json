@@ -89,5 +89,18 @@
     ],
     "file_size_bytes": 17988,
     "status": "ok"
+  },
+  "qwen-max": {
+    "challenge": "05-munchausen",
+    "model": "qwen-max",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-03-01T02:34:00.000Z",
+    "rounds": 1,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 30956,
+    "status": "ok"
   }
 }

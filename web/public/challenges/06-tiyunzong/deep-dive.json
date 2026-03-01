@@ -89,5 +89,18 @@
     ],
     "file_size_bytes": 13562,
     "status": "ok"
+  },
+  "qwen-max": {
+    "challenge": "06-tiyunzong",
+    "model": "qwen-max",
+    "driver": "sessions_spawn",
+    "driverMode": 3,
+    "timestamp": "2026-03-01T02:41:00.000Z",
+    "rounds": 1,
+    "tools_used": [
+      "write"
+    ],
+    "file_size_bytes": 28671,
+    "status": "ok"
   }
 }

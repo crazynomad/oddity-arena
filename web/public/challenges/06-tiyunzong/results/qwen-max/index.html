@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>梯云纵 · Tī Yún Zòng</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  background: #1a1a1a;
+  overflow: hidden;
+  cursor: pointer;
+  font-family: 'STKaiti', 'KaiTi', 'SimSun', serif;
+}
+canvas { display: block; }
+#overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none; z-index: 10;
+}
+#title {
+  color: rgba(60,40,20,0.9);
+  font-size: 0;
+  letter-spacing: 0.3em;
+  text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  transition: font-size 0.8s ease, opacity 1.5s ease;
+  opacity: 0;
+}
+#subtitle {
+  position: fixed; bottom: 30px; width: 100%; text-align: center;
+  color: rgba(80,60,40,0.6); font-size: 14px; letter-spacing: 0.2em;
+  pointer-events: none; z-index: 10;
+}
+#replay-hint {
+  position: fixed; bottom: 60px; width: 100%; text-align: center;
+  color: rgba(80,60,40,0); font-size: 16px; letter-spacing: 0.15em;
+  pointer-events: none; z-index: 10;
+  transition: color 1s ease;
+}
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="overlay"><div id="title">梯 云 纵</div></div>
+<div id="replay-hint">点击重演</div>
+<div id="subtitle">轻功·梯云纵</div>
+<script>
+// ============================================================
+//  梯云纵 — Canvas Wuxia Lightness Animation
+//  Aesthetic: Chinese ink painting on rice paper
+// ============================================================
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const titleEl = document.getElementById('title');
+const replayHint = document.getElementById('replay-hint');
+
+let W, H;
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ---- Utility ----
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function rand(a, b) { return a + Math.random() * (b - a); }
+function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
+function easeInOut(t) { return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }
+function easeOut(t) { return 1 - (1-t)*(1-t); }
+function easeIn(t) { return t*t; }
+function easeOutBack(t) { const c = 1.7; return 1 + (--t)*t*((c+1)*t + c); }
+
+// ---- Color palette (ink / rice paper) ----
+const RICE = '#f5eed6';
+const RICE_DARK = '#e8dfc0';
+const INK = '#2c2418';
+const INK_LIGHT = '#5a4a3a';
+const INK_MED = '#3d3226';
+const RED_SEAL = '#c23a2a';
+const MOON_COLOR = '#f0e8c8';
+
+// ---- Camera ----
+let cam = { x: 0, y: 0, targetY: 0, shake: 0 };
+
+// ---- Scene phases ----
+const PHASE = {
+  TITLE: 0, SETUP: 1, CROUCH: 2, LEAP: 3,
+  TIYUNZONG: 4, PEAK: 5, DESCENT: 6, LANDING: 7, END: 8
+};
+let phase, phaseTime, totalTime;
+let warrior, particles, afterimages, shockwaves, inkSplashes;
+let tyzSteps, tyzCurrent, tyzStepTime;
+let peakHoldTime, descentStartY;
+let showReplay = false;
+
+// ---- Background layers ----
+// Mountains
+const mountains = [];
+function genMountains() {
+  mountains.length = 0;
+  for (let layer = 0; layer < 3; layer++) {
+    const peaks = [];
+    const count = 5 + layer * 3;
+    for (let i = 0; i <= count; i++) {
+      peaks.push({
+        x: (i / count) * (W * 1.5) - W * 0.25,
+        y: H * (0.35 + layer * 0.12) + rand(-80, 80),
+        h: rand(120, 300) * (1 - layer * 0.25)
+      });
+    }
+    mountains.push({ peaks, parallax: 0.05 + layer * 0.08, alpha: 0.15 - layer * 0.03 });
+  }
+}
+
+// Bamboo
+const bamboos = [];
+function genBamboo() {
+  bamboos.length = 0;
+  for (let i = 0; i < 30; i++) {
+    const baseX = rand(-200, W + 200);
+    const baseY = H + rand(20, 100);
+    const height = rand(300, 800);
+    const segments = Math.floor(height / 40);
+    bamboos.push({
+      x: baseX, y: baseY, height, segments,
+      sway: rand(0, Math.PI * 2),
+      swayAmp: rand(2, 8),
+      swaySpeed: rand(0.3, 0.8),
+      thickness: rand(3, 8),
+      parallax: rand(0.15, 0.4),
+      alpha: rand(0.1, 0.35),
+      leaves: Array.from({length: randInt(3,8)}, () => ({
+        seg: randInt(Math.floor(segments*0.3), segments),
+        side: Math.random() > 0.5 ? 1 : -1,
+        angle: rand(-0.5, 0.5),
+        len: rand(15, 40)
+      }))
+    });
+  }
+}
+
+// Clouds
+const clouds = [];
+function genClouds() {
+  clouds.length = 0;
+  for (let i = 0; i < 12; i++) {
+    clouds.push({
+      x: rand(-200, W + 200),
+      y: rand(-500, H * 0.6),
+      w: rand(150, 400),
+      h: rand(30, 80),
+      speed: rand(0.1, 0.4),
+      parallax: rand(0.02, 0.15),
+      alpha: rand(0.05, 0.15)
+    });
+  }
+}
+
+// ---- Particle system ----
+function createParticle(x, y, opts = {}) {
+  return {
+    x, y,
+    vx: opts.vx || rand(-2, 2),
+    vy: opts.vy || rand(-4, -1),
+    life: opts.life || rand(0.5, 1.5),
+    maxLife: opts.life || rand(0.5, 1.5),
+    size: opts.size || rand(2, 6),
+    color: opts.color || INK,
+    alpha: opts.alpha || rand(0.3, 0.8),
+    gravity: opts.gravity !== undefined ? opts.gravity : 0.5,
+    type: opts.type || 'ink', // ink, qi, dust
+    rotation: rand(0, Math.PI * 2),
+    rotSpeed: rand(-0.1, 0.1)
+  };
+}
+
+// ---- Warrior ----
+function createWarrior() {
+  return {
+    x: W * 0.5, y: H * 0.75,
+    baseY: H * 0.75,
+    vx: 0, vy: 0,
+    angle: 0,
+    scale: 1,
+    crouchFactor: 0, // 0 = standing, 1 = full crouch
+    legPhase: 0,     // for tiyunzong leg animation
+    armPhase: 0,
+    robeFlow: 0,
+    alpha: 1
+  };
+}
+
+// ---- Afterimage ----
+function createAfterimage(w) {
+  return {
+    x: w.x, y: w.y,
+    angle: w.angle,
+    scale: w.scale,
+    crouchFactor: w.crouchFactor,
+    legPhase: w.legPhase,
+    armPhase: w.armPhase,
+    robeFlow: w.robeFlow,
+    alpha: 0.5,
+    life: 1.0
+  };
+}
+
+// ---- Shockwave ----
+function createShockwave(x, y) {
+  return { x, y, radius: 5, maxRadius: rand(60, 120), alpha: 0.7, life: 1.0 };
+}
+
+// ---- Ink splash ----
+function createInkSplash(x, y, count = 8) {
+  const splashes = [];
+  for (let i = 0; i < count; i++) {
+    const angle = rand(0, Math.PI * 2);
+    const speed = rand(2, 10);
+    splashes.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 3,
+      size: rand(2, 8),
+      alpha: rand(0.4, 0.9),
+      life: rand(0.4, 1.2),
+      maxLife: 0
+    });
+    splashes[splashes.length-1].maxLife = splashes[splashes.length-1].life;
+  }
+  return splashes;
+}
+
+// ---- Initialize ----
+function init() {
+  phase = PHASE.TITLE;
+  phaseTime = 0;
+  totalTime = 0;
+  warrior = createWarrior();
+  particles = [];
+  afterimages = [];
+  shockwaves = [];
+  inkSplashes = [];
+  tyzSteps = 5;
+  tyzCurrent = 0;
+  tyzStepTime = 0;
+  peakHoldTime = 0;
+  descentStartY = 0;
+  cam = { x: 0, y: 0, targetY: 0, shake: 0 };
+  showReplay = false;
+  replayHint.style.color = 'rgba(80,60,40,0)';
+  genMountains();
+  genBamboo();
+  genClouds();
+  // Title reveal
+  titleEl.style.fontSize = '64px';
+  titleEl.style.opacity = '1';
+}
+
+// ---- Draw helpers ----
+function drawRicePaper() {
+  // Base color
+  ctx.fillStyle = RICE;
+  ctx.fillRect(0, 0, W, H);
+  // Subtle texture with noise
+  ctx.globalAlpha = 0.03;
+  for (let i = 0; i < 2000; i++) {
+    const x = rand(0, W), y = rand(0, H);
+    const s = rand(1, 3);
+    ctx.fillStyle = Math.random() > 0.5 ? '#c8b890' : '#d4c8a0';
+    ctx.fillRect(x, y, s, s);
+  }
+  ctx.globalAlpha = 1;
+  // Edge vignette
+  const vg = ctx.createRadialGradient(W/2, H/2, Math.min(W,H)*0.3, W/2, H/2, Math.max(W,H)*0.8);
+  vg.addColorStop(0, 'rgba(0,0,0,0)');
+  vg.addColorStop(1, 'rgba(40,30,15,0.15)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+}
+
+function drawMoon(camY) {
+  const mx = W * 0.78;
+  const my = H * 0.12 - camY * 0.02;
+  const mr = 50;
+  // Glow
+  const glow = ctx.createRadialGradient(mx, my, mr * 0.3, mx, my, mr * 2.5);
+  glow.addColorStop(0, 'rgba(240,232,200,0.25)');
+  glow.addColorStop(0.5, 'rgba(240,232,200,0.08)');
+  glow.addColorStop(1, 'rgba(240,232,200,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(mx - mr*3, my - mr*3, mr*6, mr*6);
+  // Moon body
+  ctx.beginPath();
+  ctx.arc(mx, my, mr, 0, Math.PI * 2);
+  ctx.fillStyle = MOON_COLOR;
+  ctx.globalAlpha = 0.8;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  // Craters
+  ctx.globalAlpha = 0.1;
+  ctx.beginPath();
+  ctx.arc(mx - 12, my - 8, 10, 0, Math.PI * 2);
+  ctx.fillStyle = '#d8d0b0';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(mx + 15, my + 10, 7, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawMountainLayer(layer, camY) {
+  const { peaks, parallax, alpha } = layer;
+  const offsetY = -camY * parallax;
+  ctx.beginPath();
+  ctx.moveTo(-50, H + 100);
+  for (let i = 0; i < peaks.length; i++) {
+    const p = peaks[i];
+    const py = p.y + offsetY;
+    if (i === 0) {
+      ctx.lineTo(p.x, py);
+    } else {
+      const prev = peaks[i-1];
+      const cpx = (prev.x + p.x) / 2;
+      ctx.quadraticCurveTo(cpx, py - p.h, p.x, py);
+    }
+  }
+  ctx.lineTo(W + 50, H + 100);
+  ctx.closePath();
+  ctx.fillStyle = INK;
+  ctx.globalAlpha = alpha;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+}
+
+function drawBamboo(b, camY, time) {
+  const offsetY = -camY * b.parallax;
+  const sway = Math.sin(time * b.swaySpeed + b.sway) * b.swayAmp;
+  ctx.save();
+  ctx.globalAlpha = b.alpha;
+  ctx.strokeStyle = INK_MED;
+  ctx.lineWidth = b.thickness;
+  ctx.lineCap = 'round';
+
+  const segH = b.height / b.segments;
+  let px = b.x, py = b.y + offsetY;
+
+  for (let s = 0; s < b.segments; s++) {
+    const t = s / b.segments;
+    const swayOffset = sway * t * t;
+    const nx = b.x + swayOffset;
+    const ny = py - segH;
+
+    ctx.beginPath();
+    ctx.moveTo(px, py);
+    ctx.lineTo(nx, ny);
+    ctx.lineWidth = b.thickness * (1 - t * 0.6);
+    ctx.stroke();
+
+    // Node ring
+    if (s > 0 && s % 3 === 0) {
+      ctx.beginPath();
+      ctx.ellipse(nx, ny, b.thickness * (1 - t * 0.5) + 1, 2, 0, 0, Math.PI * 2);
+      ctx.fillStyle = INK_MED;
+      ctx.fill();
+    }
+
+    px = nx;
+    py = ny;
+  }
+
+  // Leaves
+  for (const leaf of b.leaves) {
+    const lt = leaf.seg / b.segments;
+    const lsway = sway * lt * lt;
+    const lx = b.x + lsway;
+    const ly = b.y + offsetY - leaf.seg * segH;
+    const lAngle = leaf.angle + Math.sin(time * 0.5 + leaf.seg) * 0.15;
+
+    ctx.save();
+    ctx.translate(lx, ly);
+    ctx.rotate(lAngle);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.quadraticCurveTo(leaf.len * 0.5 * leaf.side, -leaf.len * 0.3, leaf.len * leaf.side, -leaf.len * 0.1);
+    ctx.quadraticCurveTo(leaf.len * 0.5 * leaf.side, leaf.len * 0.1, 0, 0);
+    ctx.fillStyle = INK_MED;
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawCloud(c, camY, time) {
+  const offsetY = -camY * c.parallax;
+  const x = c.x + Math.sin(time * 0.1 + c.y) * 10 + time * c.speed * 5;
+  const y = c.y + offsetY;
+
+  ctx.save();
+  ctx.globalAlpha = c.alpha;
+  ctx.fillStyle = INK_LIGHT;
+
+  // Ink wash cloud
+  const parts = 5;
+  for (let i = 0; i < parts; i++) {
+    const px = x + (i - parts/2) * (c.w / parts) * 0.8;
+    const py = y + Math.sin(i * 1.2) * c.h * 0.3;
+    const rw = c.w / parts * rand(0.8, 1.3);
+    const rh = c.h * rand(0.5, 1.2);
+    ctx.beginPath();
+    ctx.ellipse(px, py, rw, rh, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawGround(camY) {
+  const groundY = warrior.baseY + 60 - camY;
+  if (groundY > H + 50) return;
+
+  ctx.save();
+  // Ground line - ink wash
+  ctx.strokeStyle = INK;
+  ctx.globalAlpha = 0.3;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(-10, groundY);
+  for (let x = 0; x <= W; x += 20) {
+    ctx.lineTo(x, groundY + Math.sin(x * 0.02) * 3 + rand(-1, 1));
+  }
+  ctx.stroke();
+
+  // Some grass strokes
+  ctx.globalAlpha = 0.15;
+  for (let i = 0; i < 40; i++) {
+    const gx = rand(0, W);
+    const gy = groundY + rand(0, 5);
+    const gh = rand(10, 30);
+    const ga = rand(-0.4, 0.4);
+    ctx.beginPath();
+    ctx.moveTo(gx, gy);
+    ctx.quadraticCurveTo(gx + Math.sin(ga) * gh * 0.5, gy - gh * 0.6, gx + Math.sin(ga) * gh, gy - gh);
+    ctx.strokeStyle = INK_MED;
+    ctx.lineWidth = rand(1, 2.5);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---- Draw warrior (ink brush style) ----
+function drawWarriorFigure(w, alpha = 1) {
+  ctx.save();
+  ctx.translate(w.x, w.y - cam.y);
+  ctx.rotate(w.angle);
+  ctx.scale(w.scale, w.scale);
+  ctx.globalAlpha = alpha;
+
+  const crouch = w.crouchFactor;
+  const bodyH = 50 * (1 - crouch * 0.3);
+  const headY = -bodyH - 20;
+
+  // Robe / body flow
+  ctx.strokeStyle = INK;
+  ctx.fillStyle = INK;
+  ctx.lineWidth = 3;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Legs
+  const legSpread = 12 + crouch * 15;
+  const legBend = crouch * 20;
+  const legPhase = w.legPhase;
+
+  // Left leg
+  ctx.beginPath();
+  ctx.moveTo(-4, 0);
+  ctx.quadraticCurveTo(-legSpread * 0.5, legBend + 20, -legSpread + Math.sin(legPhase) * 5, 40 + crouch * 15);
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Right leg
+  ctx.beginPath();
+  ctx.moveTo(4, 0);
+  ctx.quadraticCurveTo(legSpread * 0.5, legBend + 20, legSpread + Math.cos(legPhase) * 5, 40 + crouch * 15);
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Torso
+  ctx.beginPath();
+  ctx.moveTo(0, 5);
+  ctx.lineTo(0, headY + 12);
+  ctx.lineWidth = 5;
+  ctx.stroke();
+
+  // Robe flowing
+  const robeW = 25 + Math.sin(w.robeFlow) * 8;
+  ctx.beginPath();
+  ctx.moveTo(-8, -10);
+  ctx.quadraticCurveTo(-robeW, 15 + crouch * 10, -robeW + 5, 35 + Math.sin(w.robeFlow * 1.3) * 5);
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(8, -10);
+  ctx.quadraticCurveTo(robeW, 15 + crouch * 10, robeW - 5, 35 + Math.cos(w.robeFlow * 1.1) * 5);
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Arms
+  const armUp = w.armPhase;
+  // Left arm
+  ctx.beginPath();
+  ctx.moveTo(-6, -bodyH + 10);
+  ctx.quadraticCurveTo(-25, -bodyH * 0.5 - armUp * 25, -20 - Math.sin(w.robeFlow) * 5, -bodyH * 0.3 + 15 - armUp * 30);
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Right arm
+  ctx.beginPath();
+  ctx.moveTo(6, -bodyH + 10);
+  ctx.quadraticCurveTo(25, -bodyH * 0.5 - armUp * 25, 20 + Math.cos(w.robeFlow) * 5, -bodyH * 0.3 + 15 - armUp * 30);
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  // Sleeves flowing
+  if (armUp > 0.3) {
+    ctx.globalAlpha = alpha * 0.4;
+    ctx.beginPath();
+    ctx.moveTo(-20 - Math.sin(w.robeFlow) * 5, -bodyH * 0.3 + 15 - armUp * 30);
+    ctx.quadraticCurveTo(-30, -bodyH * 0.3 - armUp * 20, -35 + Math.sin(w.robeFlow * 2) * 8, -bodyH * 0.1 - armUp * 15);
+    ctx.lineWidth = 8;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(20 + Math.cos(w.robeFlow) * 5, -bodyH * 0.3 + 15 - armUp * 30);
+    ctx.quadraticCurveTo(30, -bodyH * 0.3 - armUp * 20, 35 - Math.cos(w.robeFlow * 2) * 8, -bodyH * 0.1 - armUp * 15);
+    ctx.lineWidth = 8;
+    ctx.stroke();
+    ctx.globalAlpha = alpha;
+  }
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, headY, 10, 0, Math.PI * 2);
+  ctx.fillStyle = INK;
+  ctx.fill();
+
+  // Hair ribbon
+  ctx.beginPath();
+  ctx.moveTo(0, headY - 8);
+  ctx.quadraticCurveTo(-15, headY - 20 + Math.sin(w.robeFlow) * 5, -25 + Math.sin(w.robeFlow * 0.7) * 10, headY - 15);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Sash / belt accent
+  ctx.beginPath();
+  ctx.moveTo(-10, -5);
+  ctx.quadraticCurveTo(-18 + Math.sin(w.robeFlow * 1.5) * 4, 10, -15, 25 + Math.sin(w.robeFlow) * 5);
+  ctx.strokeStyle = RED_SEAL;
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = alpha * 0.7;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawShockwave(sw) {
+  ctx.save();
+  ctx.translate(sw.x, sw.y - cam.y);
+  ctx.globalAlpha = sw.alpha * sw.life;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 3 * sw.life;
+  ctx.beginPath();
+  ctx.arc(0, 0, sw.radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner qi ring
+  ctx.strokeStyle = RED_SEAL;
+  ctx.lineWidth = 1.5 * sw.life;
+  ctx.globalAlpha = sw.alpha * sw.life * 0.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, sw.radius * 0.6, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawParticle(p) {
+  ctx.save();
+  ctx.translate(p.x, p.y - cam.y);
+  ctx.rotate(p.rotation);
+  ctx.globalAlpha = p.alpha * (p.life / p.maxLife);
+
+  if (p.type === 'qi') {
+    // Qi particles: bright, ethereal
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, p.size);
+    g.addColorStop(0, 'rgba(200,180,140,0.8)');
+    g.addColorStop(1, 'rgba(200,180,140,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(-p.size, -p.size, p.size * 2, p.size * 2);
+  } else if (p.type === 'dust') {
+    ctx.fillStyle = INK_LIGHT;
+    ctx.beginPath();
+    ctx.arc(0, 0, p.size * 0.5, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    // Ink splash
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    // Random ink blob shape
+    const points = 5;
+    for (let i = 0; i <= points; i++) {
+      const a = (i / points) * Math.PI * 2;
+      const r = p.size * (0.6 + Math.sin(a * 3 + p.rotation) * 0.4);
+      if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawInkSplash(splash) {
+  ctx.save();
+  ctx.translate(splash.x, splash.y - cam.y);
+  ctx.globalAlpha = splash.alpha * (splash.life / splash.maxLife);
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.arc(0, 0, splash.size, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+// ---- Chinese calligraphy text effect ----
+function drawQiText(text, x, y, alpha) {
+  ctx.save();
+  ctx.font = 'bold 28px STKaiti, KaiTi, serif';
+  ctx.fillStyle = RED_SEAL;
+  ctx.globalAlpha = alpha;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // Shadow
+  ctx.shadowColor = 'rgba(0,0,0,0.3)';
+  ctx.shadowBlur = 10;
+  ctx.fillText(text, x, y - cam.y);
+  ctx.restore();
+}
+
+// ---- Seal stamp ----
+function drawSeal(x, y, alpha) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = RED_SEAL;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(-20, -20, 40, 40);
+  ctx.font = '16px STKaiti, KaiTi, serif';
+  ctx.fillStyle = RED_SEAL;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('纵', 0, 0);
+  ctx.restore();
+}
+
+// ---- Qi burst effect for tiyunzong step ----
+function triggerTyzStep() {
+  const wx = warrior.x;
+  const wy = warrior.y;
+
+  // Shockwave
+  shockwaves.push(createShockwave(wx, wy + 30));
+
+  // Ink splash
+  const splashes = createInkSplash(wx, wy + 30, 12);
+  inkSplashes.push(...splashes);
+
+  // Qi particles
+  for (let i = 0; i < 15; i++) {
+    particles.push(createParticle(wx + rand(-15, 15), wy + 25, {
+      vx: rand(-3, 3), vy: rand(-6, -1),
+      life: rand(0.5, 1.2), size: rand(4, 12),
+      type: 'qi', gravity: -0.3, alpha: 0.8
+    }));
+  }
+
+  // Ink particles
+  for (let i = 0; i < 8; i++) {
+    particles.push(createParticle(wx + rand(-10, 10), wy + 20, {
+      vx: rand(-5, 5), vy: rand(-8, -2),
+      life: rand(0.3, 0.8), size: rand(3, 7),
+      type: 'ink', gravity: 0.8, alpha: 0.6
+    }));
+  }
+
+  // Afterimage
+  afterimages.push(createAfterimage(warrior));
+
+  // Camera shake
+  cam.shake = 8;
+
+  // Boost warrior upward
+  warrior.vy = -18 - tyzCurrent * 1.5;
+}
+
+// ---- Phase transitions ----
+function setPhase(p) {
+  phase = p;
+  phaseTime = 0;
+}
+
+// ---- Update ----
+function update(dt) {
+  totalTime += dt;
+  phaseTime += dt;
+
+  // Camera smoothing
+  cam.y = lerp(cam.y, cam.targetY, 0.05);
+  if (cam.shake > 0.5) {
+    cam.shake *= 0.85;
+    cam.x = (Math.random() - 0.5) * cam.shake;
+  } else {
+    cam.x = 0;
+    cam.shake = 0;
+  }
+
+  // Update particles
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += p.gravity * dt * 2;
+    p.vx *= 0.98;
+    p.life -= dt;
+    p.rotation += p.rotSpeed;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+
+  // Update afterimages
+  for (let i = afterimages.length - 1; i >= 0; i--) {
+    afterimages[i].life -= dt * 1.2;
+    afterimages[i].alpha = afterimages[i].life * 0.4;
+    if (afterimages[i].life <= 0) afterimages.splice(i, 1);
+  }
+
+  // Update shockwaves
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const sw = shockwaves[i];
+    sw.radius += (sw.maxRadius - sw.radius) * 0.12;
+    sw.life -= dt * 1.5;
+    if (sw.life <= 0) shockwaves.splice(i, 1);
+  }
+
+  // Update ink splashes
+  for (let i = inkSplashes.length - 1; i >= 0; i--) {
+    const s = inkSplashes[i];
+    s.x += s.vx;
+    s.y += s.vy;
+    s.vy += 0.5;
+    s.vx *= 0.96;
+    s.life -= dt;
+    if (s.life <= 0) inkSplashes.splice(i, 1);
+  }
+
+  // Warrior robe animation
+  warrior.robeFlow += dt * 3;
+
+  // Phase logic
+  switch (phase) {
+    case PHASE.TITLE:
+      if (phaseTime > 2.0) {
+        titleEl.style.opacity = '0';
+        setTimeout(() => { titleEl.style.fontSize = '0'; }, 800);
+        setPhase(PHASE.SETUP);
+      }
+      break;
+
+    case PHASE.SETUP:
+      warrior.x = W * 0.5;
+      warrior.y = warrior.baseY;
+      // Gentle breathing
+      warrior.crouchFactor = Math.sin(phaseTime * 2) * 0.05;
+      // Dust particles
+      if (Math.random() < 0.05) {
+        particles.push(createParticle(warrior.x + rand(-30, 30), warrior.y + 35, {
+          vx: rand(-0.5, 0.5), vy: rand(-1, -0.3),
+          life: rand(0.5, 1), size: rand(1, 3),
+          type: 'dust', gravity: 0.1, alpha: 0.3
+        }));
+      }
+      if (phaseTime > 1.5) setPhase(PHASE.CROUCH);
+      break;
+
+    case PHASE.CROUCH: {
+      const t = clamp(phaseTime / 0.8, 0, 1);
+      warrior.crouchFactor = easeInOut(t) * 0.8;
+      warrior.armPhase = easeInOut(t) * -0.3;
+      // Gathering qi particles
+      if (t > 0.3 && Math.random() < 0.15) {
+        const angle = rand(0, Math.PI * 2);
+        const dist = rand(40, 80);
+        particles.push(createParticle(
+          warrior.x + Math.cos(angle) * dist,
+          warrior.y + Math.sin(angle) * dist * 0.5, {
+          vx: -Math.cos(angle) * 2,
+          vy: -Math.sin(angle) * 2,
+          life: rand(0.3, 0.6), size: rand(3, 8),
+          type: 'qi', gravity: 0, alpha: 0.5
+        }));
+      }
+      if (phaseTime > 0.9) setPhase(PHASE.LEAP);
+      break;
+    }
+
+    case PHASE.LEAP: {
+      const t = clamp(phaseTime / 0.3, 0, 1);
+      warrior.crouchFactor = 0.8 * (1 - easeOut(t));
+      warrior.armPhase = lerp(-0.3, 0.8, easeOut(t));
+      if (t < 0.1) {
+        warrior.vy = -22;
+        // Ground burst
+        shockwaves.push(createShockwave(warrior.x, warrior.baseY + 40));
+        const splashes = createInkSplash(warrior.x, warrior.baseY + 40, 15);
+        inkSplashes.push(...splashes);
+        cam.shake = 10;
+        // Dust
+        for (let i = 0; i < 20; i++) {
+          particles.push(createParticle(warrior.x + rand(-20, 20), warrior.baseY + 35, {
+            vx: rand(-6, 6), vy: rand(-3, 1),
+            life: rand(0.5, 1.5), size: rand(2, 5),
+            type: 'dust', gravity: 0.5, alpha: 0.4
+          }));
+        }
+      }
+      warrior.y += warrior.vy * dt * 40;
+      warrior.vy += 0.3;
+      warrior.legPhase = phaseTime * 8;
+
+      cam.targetY = Math.min(0, warrior.y - warrior.baseY + 100);
+
+      if (phaseTime > 0.5) {
+        tyzCurrent = 0;
+        tyzStepTime = 0;
+        setPhase(PHASE.TIYUNZONG);
+      }
+      break;
+    }
+
+    case PHASE.TIYUNZONG: {
+      tyzStepTime += dt;
+      warrior.y += warrior.vy * dt * 40;
+      warrior.vy += 0.15;
+      warrior.legPhase = totalTime * 12;
+      warrior.armPhase = 0.5 + Math.sin(totalTime * 6) * 0.3;
+
+      // Continuous qi trail
+      if (Math.random() < 0.3) {
+        particles.push(createParticle(warrior.x + rand(-8, 8), warrior.y + 30, {
+          vx: rand(-1, 1), vy: rand(1, 3),
+          life: rand(0.3, 0.7), size: rand(3, 8),
+          type: 'qi', gravity: 0.2, alpha: 0.4
+        }));
+      }
+
+      cam.targetY = warrior.y - warrior.baseY + 100;
+
+      // Trigger step
+      if (tyzStepTime > 0.35 && tyzCurrent < tyzSteps) {
+        triggerTyzStep();
+        tyzCurrent++;
+        tyzStepTime = 0;
+
+        if (tyzCurrent >= tyzSteps) {
+          warrior.vy = -15;
+          setPhase(PHASE.PEAK);
+        }
+      }
+      break;
+    }
+
+    case PHASE.PEAK: {
+      warrior.y += warrior.vy * dt * 40;
+      warrior.vy += 0.08;
+      warrior.armPhase = 1.0;
+      warrior.legPhase = totalTime * 2;
+
+      cam.targetY = warrior.y - warrior.baseY + 100;
+
+      // Floating qi
+      if (Math.random() < 0.2) {
+        particles.push(createParticle(warrior.x + rand(-20, 20), warrior.y + rand(-20, 20), {
+          vx: rand(-1, 1), vy: rand(-1, 1),
+          life: rand(0.5, 1.0), size: rand(5, 12),
+          type: 'qi', gravity: -0.1, alpha: 0.3
+        }));
+      }
+
+      peakHoldTime += dt;
+      if (warrior.vy > 0 && peakHoldTime > 0.8) {
+        descentStartY = warrior.y;
+        setPhase(PHASE.DESCENT);
+      }
+      break;
+    }
+
+    case PHASE.DESCENT: {
+      warrior.vy += 0.4;
+      warrior.y += warrior.vy * dt * 40;
+      warrior.armPhase = lerp(1.0, 0.2, clamp(phaseTime / 2, 0, 1));
+      warrior.legPhase = totalTime * 4;
+      warrior.angle = Math.sin(phaseTime * 3) * 0.05;
+
+      cam.targetY = lerp(cam.targetY, 0, 0.03);
+
+      // Afterimage trail while descending fast
+      if (warrior.vy > 5 && Math.random() < 0.3) {
+        afterimages.push(createAfterimage(warrior));
+      }
+
+      // Wind particles
+      if (Math.random() < 0.15) {
+        particles.push(createParticle(warrior.x + rand(-15, 15), warrior.y - 20, {
+          vx: rand(-0.5, 0.5), vy: rand(-3, -1),
+          life: rand(0.2, 0.5), size: rand(2, 5),
+          type: 'qi', gravity: -0.5, alpha: 0.3
+        }));
+      }
+
+      if (warrior.y >= warrior.baseY - 5) {
+        warrior.y = warrior.baseY;
+        warrior.vy = 0;
+        warrior.angle = 0;
+        setPhase(PHASE.LANDING);
+      }
+      break;
+    }
+
+    case PHASE.LANDING: {
+      const t = clamp(phaseTime / 0.15, 0, 1);
+      if (t < 0.05) {
+        // Impact
+        shockwaves.push(createShockwave(warrior.x, warrior.baseY + 40));
+        const splashes = createInkSplash(warrior.x, warrior.baseY + 40, 20);
+        inkSplashes.push(...splashes);
+        cam.shake = 15;
+
+        for (let i = 0; i < 30; i++) {
+          particles.push(createParticle(warrior.x + rand(-25, 25), warrior.baseY + 35, {
+            vx: rand(-8, 8), vy: rand(-5, 2),
+            life: rand(0.5, 2), size: rand(2, 7),
+            type: Math.random() > 0.5 ? 'dust' : 'ink',
+            gravity: 0.8, alpha: 0.5
+          }));
+        }
+      }
+
+      warrior.crouchFactor = (1 - easeOutBack(clamp(phaseTime / 0.8, 0, 1))) * 0.6;
+      warrior.armPhase = lerp(0.2, 0, easeOut(clamp(phaseTime / 1.0, 0, 1)));
+      cam.targetY = lerp(cam.targetY, 0, 0.1);
+
+      if (phaseTime > 1.5) setPhase(PHASE.END);
+      break;
+    }
+
+    case PHASE.END: {
+      warrior.crouchFactor = Math.sin(totalTime * 2) * 0.03;
+      warrior.armPhase = 0;
+      cam.targetY = 0;
+      if (!showReplay && phaseTime > 0.5) {
+        showReplay = true;
+        replayHint.style.color = 'rgba(80,60,40,0.6)';
+      }
+      break;
+    }
+  }
+}
+
+// ---- Render ----
+function render() {
+  ctx.save();
+
+  // Camera shake offset
+  ctx.translate(cam.x, 0);
+
+  // Rice paper background
+  drawRicePaper();
+
+  // Moon
+  drawMoon(cam.y);
+
+  // Mountains (back to front)
+  for (const m of mountains) drawMountainLayer(m, cam.y);
+
+  // Clouds
+  for (const c of clouds) drawCloud(c, cam.y, totalTime);
+
+  // Bamboo
+  for (const b of bamboos) drawBamboo(b, cam.y, totalTime);
+
+  // Ground
+  drawGround(cam.y);
+
+  // Shockwaves (behind warrior)
+  for (const sw of shockwaves) drawShockwave(sw);
+
+  // Afterimages
+  for (const ai of afterimages) drawWarriorFigure(ai, ai.alpha);
+
+  // Ink splashes
+  for (const s of inkSplashes) drawInkSplash(s);
+
+  // Warrior
+  drawWarriorFigure(warrior, warrior.alpha);
+
+  // Particles (on top)
+  for (const p of particles) drawParticle(p);
+
+  // Qi text during tiyunzong steps
+  if (phase === PHASE.TIYUNZONG && tyzStepTime < 0.3) {
+    const textAlpha = 1 - tyzStepTime / 0.3;
+    const texts = ['踏！', '纵！', '起！', '飞！', '破！'];
+    drawQiText(texts[tyzCurrent % texts.length], warrior.x + rand(-5, 5), warrior.y - 60, textAlpha);
+  }
+
+  // Seal at end
+  if (phase === PHASE.END) {
+    const sa = clamp((phaseTime - 0.3) / 0.5, 0, 1);
+    drawSeal(W - 60, H - 60, sa);
+  }
+
+  ctx.restore();
+}
+
+// ---- Main loop ----
+let lastTime = 0;
+function loop(timestamp) {
+  const dt = Math.min((timestamp - lastTime) / 1000, 0.05);
+  lastTime = timestamp;
+
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+// ---- Start ----
+init();
+requestAnimationFrame((ts) => {
+  lastTime = ts;
+  loop(ts);
+});
+
+// Click to replay
+canvas.addEventListener('click', () => {
+  if (phase >= PHASE.END || showReplay) {
+    init();
+  }
+});
+
+// Handle resize
+window.addEventListener('resize', () => {
+  resize();
+  genMountains();
+  genBamboo();
+  genClouds();
+});
+</script>
+</body>
+</html>
