@@ -50,6 +50,25 @@ const translations: Record<string, Record<Lang, string>> = {
   'arcade.unstoppable': { zh: '💀 无人能挡！', en: '💀 UNSTOPPABLE!' },
   'arcade.legendary': { zh: '👑 传奇评审！', en: '👑 LEGENDARY JUDGE!' },
 
+  // Stats
+  'stats.title': { zh: '统计 / 深度分析', en: 'STATS / DEEP DIVE' },
+  'stats.subtitle': { zh: '模型生成数据对比 · 文件大小 · 生成元信息', en: 'Model generation data · File sizes · Metadata' },
+  'stats.model_overview': { zh: '📊 模型总览', en: '📊 Model Overview' },
+  'stats.model': { zh: '模型', en: 'Model' },
+  'stats.challenges_completed': { zh: '完成挑战', en: 'Completed' },
+  'stats.total_size': { zh: '总大小', en: 'Total Size' },
+  'stats.avg_size': { zh: '平均大小', en: 'Avg Size' },
+  'stats.avg_rounds': { zh: '平均轮次', en: 'Avg Rounds' },
+  'stats.details': { zh: '详细信息', en: 'Details' },
+  'stats.file_size': { zh: '文件大小', en: 'File Size' },
+  'stats.rounds': { zh: '轮次', en: 'Rounds' },
+  'stats.driver': { zh: '驱动方式', en: 'Driver' },
+  'stats.tools': { zh: '工具', en: 'Tools' },
+  'stats.time': { zh: '生成时间', en: 'Generated' },
+  'stats.grid_title': { zh: '📋 模型 × 挑战 矩阵 (KB)', en: '📋 Model × Challenge Grid (KB)' },
+  'stats.unit_kb': { zh: '单位: KB', en: 'Unit: KB' },
+  'stats.chart_title': { zh: '📊 挑战文件大小对比', en: '📊 File Size Comparison by Challenge' },
+
   // Footer
   'footer.credit': { zh: '不现实竞技场 — 不现实宇宙的一部分', en: 'Oddity Arena — Part of the Oddity Universe' },
 };

@@ -55,6 +55,16 @@ export function Header() {
         }}>
           {lang === 'zh' ? '排行榜' : 'Leaderboard'}
         </Link>
+        <Link href="/stats" style={{
+          fontFamily: "'Special Elite', monospace",
+          fontSize: '0.8rem',
+          textDecoration: 'none',
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+          color: '#4A4A4A',
+        }}>
+          {lang === 'zh' ? '统计' : 'Stats'}
+        </Link>
         <a href="https://github.com/crazynomad/oddity-arena" target="_blank" style={{
           fontFamily: "'Special Elite', monospace",
           fontSize: '0.8rem',
