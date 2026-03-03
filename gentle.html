@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>不要温和地走进那个良夜 · Do Not Go Gentle into That Good Night — Dylan Thomas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Noto+Serif+SC:wght@400;500;600;700&family=EB+Garamond:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root {
+  --bg: #0e1117;
+  --bg-deep: #141a24;
+  --text-cn: #e4dcd0;
+  --text-en: #9e968a;
+  --accent: #c49a3c;
+  --accent-soft: #a8853a;
+  --accent-light: #3d3222;
+  --accent-glow: rgba(196, 154, 60, 0.06);
+  --rule: #252d3a;
+  --quote-bg: #151c28;
+  --margin-note: #706a60;
+}
+
+html {
+  font-size: 18px;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-cn);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* dark paper texture overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* subtle ambient glow — the dying light */
+body::after {
+  content: '';
+  position: fixed;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+  animation: breathe 12s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* --- HEADER --- */
+.header {
+  padding: 6rem 2rem 4rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.6;
+}
+
+.header-label {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--margin-note);
+  margin-bottom: 2.5rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.2s forwards;
+}
+
+.title-cn {
+  font-family: 'Noto Serif SC', serif;
+  font-size: clamp(1.8rem, 5vw, 3.2rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text-cn);
+  margin-bottom: 0.6rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.4s forwards;
+}
+
+.title-en {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: clamp(1rem, 2.5vw, 1.5rem);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-en);
+  margin-bottom: 2rem;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.6s forwards;
+}
+
+.meta {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.8rem;
+  color: var(--margin-note);
+  letter-spacing: 0.1em;
+  opacity: 0;
+  animation: fadeUp 0.8s ease 0.8s forwards;
+}
+
+/* --- MAIN CONTENT --- */
+.content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 3rem 2rem 6rem;
+  position: relative;
+  z-index: 1;
+}
+
+/* --- INTRO --- */
+.intro {
+  margin-bottom: 4rem;
+  padding: 2rem 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  opacity: 0;
+  animation: fadeUp 0.8s ease 1s forwards;
+}
+
+.intro-text {
+  max-width: 540px;
+  margin: 0 auto;
+}
+
+.intro-text.cn {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.88rem;
+  line-height: 2;
+  color: var(--text-cn);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.intro-text.en {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.88rem;
+  font-style: italic;
+  line-height: 1.8;
+  color: var(--text-en);
+  text-align: center;
+}
+
+/* --- STANZA GROUPS --- */
+.stanza-group {
+  margin-bottom: 3rem;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.stanza-group.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.stanza-label {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.72rem;
+  letter-spacing: 0.2em;
+  color: var(--margin-note);
+  text-align: center;
+  margin-bottom: 1.8rem;
+}
+
+.stanza-label em {
+  font-style: italic;
+}
+
+.stanza {
+  text-align: center;
+}
+
+.verse {
+  margin-bottom: 1.2rem;
+}
+
+.verse:last-child {
+  margin-bottom: 0;
+}
+
+.verse.cn {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 2.2;
+  color: var(--text-cn);
+}
+
+.verse.en {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.9;
+  color: var(--text-en);
+}
+
+.verse p {
+  margin: 0;
+}
+
+/* refrains — the golden thread */
+.refrain {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.verse.en .refrain {
+  color: var(--accent-soft);
+  font-weight: 500;
+}
+
+/* final stanza — heightened intensity */
+.stanza-group.final .stanza-label {
+  color: var(--accent-soft);
+  font-size: 0.76rem;
+}
+
+.stanza-group.final .verse.cn {
+  font-size: 1.1rem;
+}
+
+.stanza-group.final .verse.en {
+  font-size: 1rem;
+}
+
+/* --- DIVIDER --- */
+.divider {
+  width: 40px;
+  height: 1px;
+  margin: 2.5rem auto;
+  background: var(--accent);
+  opacity: 0.25;
+}
+
+/* --- DYING LIGHT RULE --- */
+.dying-light {
+  width: 200px;
+  height: 1px;
+  margin: 4rem auto;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0.5;
+}
+
+/* --- NOTES SECTION --- */
+.notes {
+  margin-top: 4rem;
+  padding-top: 3rem;
+  border-top: 1px solid var(--rule);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.notes.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.note-heading {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.8rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.note-heading .cn {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 0.2rem;
+}
+
+.note-heading .en {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--text-en);
+}
+
+.note-pair {
+  margin-bottom: 1.5rem;
+}
+
+.note-pair .cn {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 0.88rem;
+  line-height: 1.95;
+  color: var(--text-cn);
+  margin-bottom: 0.4rem;
+}
+
+.note-pair .en {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 0.88rem;
+  line-height: 1.75;
+  color: var(--text-en);
+}
+
+.note-pair .en em {
+  font-style: italic;
+}
+
+/* --- ILLUSTRATIONS (inline SVG) --- */
+.illustration {
+  margin: 3rem auto;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.8s ease, transform 0.8s ease;
+}
+
+.illustration.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.illustration svg {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.illustration.hero {
+  max-width: 520px;
+  margin: 0 auto 1rem;
+}
+
+.illustration.inline {
+  max-width: 120px;
+  margin: 2.5rem auto;
+}
+
+.illustration figcaption {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.7rem;
+  color: var(--margin-note);
+  margin-top: 0.6rem;
+  letter-spacing: 0.05em;
+  font-style: italic;
+}
+
+/* --- FOOTER --- */
+.footer {
+  text-align: center;
+  padding: 3rem 2rem 4rem;
+  border-top: 1px solid var(--rule);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.footer p {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.75rem;
+  color: var(--margin-note);
+  letter-spacing: 0.08em;
+  line-height: 1.8;
+}
+
+.footer a {
+  color: var(--accent-soft);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s;
+}
+
+.footer a:hover {
+  border-color: var(--accent-soft);
+}
+
+/* --- PROGRESS BAR --- */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  z-index: 10000;
+  transition: width 0.1s linear;
+}
+
+/* --- BACK TO TOP --- */
+.back-to-top {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-deep);
+  border: 1px solid var(--rule);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s, transform 0.3s, background 0.3s;
+  z-index: 100;
+}
+
+.back-to-top.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.back-to-top:hover {
+  background: var(--accent-light);
+}
+
+.back-to-top svg {
+  width: 16px;
+  height: 16px;
+  stroke: var(--text-en);
+}
+
+/* --- EDITION LINKS --- */
+.editions {
+  text-align: center;
+  margin-top: 2rem;
+  margin-bottom: 1rem;
+}
+
+.editions a {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.75rem;
+  color: var(--margin-note);
+  text-decoration: none;
+  letter-spacing: 0.08em;
+  margin: 0 0.8rem;
+  border-bottom: 1px solid transparent;
+  transition: color 0.3s, border-color 0.3s;
+}
+
+.editions a:hover {
+  color: var(--accent-soft);
+  border-color: var(--accent-soft);
+}
+
+/* --- ANIMATIONS --- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 640px) {
+  html { font-size: 16px; }
+  .header { padding: 4rem 1.5rem 3rem; }
+  .content { padding: 2rem 1.5rem 4rem; }
+  .verse.cn { font-size: 0.95rem; line-height: 2; }
+  .verse.en { font-size: 0.88rem; }
+  .stanza-group.final .verse.cn { font-size: 1rem; }
+  .stanza-group.final .verse.en { font-size: 0.92rem; }
+  .intro-text { padding: 0 0.5rem; }
+}
+
+/* --- PRINT --- */
+@media print {
+  .progress-bar, .back-to-top { display: none; }
+  .stanza-group, .notes, .illustration { opacity: 1; transform: none; }
+  body::before, body::after { display: none; }
+  body { background: #fff; color: #1a1612; }
+  .verse.cn { color: #1a1612; }
+  .verse.en { color: #5c5147; }
+  .refrain { color: #c4553a; }
+  .verse.en .refrain { color: #c4553a; }
+}
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="header">
+  <div class="header-label">A Villanelle · 维兰内尔 · A Bilingual Reading</div>
+  <h1 class="title-cn">不要温和地走进那个良夜</h1>
+  <div class="title-en">Do Not Go Gentle into That Good Night</div>
+  <div class="meta">Dylan Thomas · 1951</div>
+</header>
+
+<!-- Header illustration: setting sun on the horizon -->
+<figure class="illustration hero stanza-group">
+  <svg viewBox="0 0 600 160" xmlns="http://www.w3.org/2000/svg" aria-label="A setting sun sinking below the horizon">
+    <defs>
+      <radialGradient id="sunGlow" cx="50%" cy="75%" r="35%">
+        <stop offset="0%" stop-color="#c49a3c" stop-opacity="0.12"/>
+        <stop offset="100%" stop-color="#c49a3c" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="600" height="160" fill="url(#sunGlow)"/>
+    <!-- horizon landscape -->
+    <path d="M 60 115 Q 130 90 200 115 Q 260 130 310 115 Q 370 95 430 115 Q 490 128 540 115"
+          fill="none" stroke="#c49a3c" stroke-width="0.6" opacity="0.3" stroke-linecap="round"/>
+    <!-- setting sun — half visible -->
+    <path d="M 278 115 A 22 22 0 0 1 322 115" fill="none" stroke="#c49a3c" stroke-width="0.8" opacity="0.5"/>
+    <circle cx="300" cy="115" r="22" fill="none" stroke="#c49a3c" stroke-width="0.3" opacity="0.15"/>
+    <!-- fading rays -->
+    <line x1="300" y1="88" x2="300" y2="72" stroke="#c49a3c" stroke-width="0.4" opacity="0.2"/>
+    <line x1="278" y1="95" x2="270" y2="82" stroke="#c49a3c" stroke-width="0.4" opacity="0.15"/>
+    <line x1="322" y1="95" x2="330" y2="82" stroke="#c49a3c" stroke-width="0.4" opacity="0.15"/>
+    <line x1="262" y1="105" x2="252" y2="96" stroke="#c49a3c" stroke-width="0.3" opacity="0.1"/>
+    <line x1="338" y1="105" x2="348" y2="96" stroke="#c49a3c" stroke-width="0.3" opacity="0.1"/>
+  </svg>
+</figure>
+
+<main class="content">
+
+<!-- INTRODUCTION -->
+<div class="intro">
+  <div class="intro-text cn">迪兰·托马斯于1947年写下这首维兰内尔，彼时他的父亲——一位退休的英语教师——正在失明，日渐衰弱。这首诗是英语世界最常被诵读的诗歌之一：对死亡的怒斥，对光明的执念，对至亲的绝望祈求。</div>
+  <div class="intro-text en">Dylan Thomas wrote this villanelle in 1947 as his father — a retired English teacher — was going blind and growing frail. It has become one of the most recited poems in the English language: a defiant cry against mortality, a fierce attachment to light, a desperate prayer to a dying father.</div>
+</div>
+
+<!-- ═══ THE POEM ═══ -->
+
+<!-- Stanza 1: The Imperative -->
+<div class="stanza-group">
+  <div class="stanza-label">开篇 · <em>The Imperative</em></div>
+  <div class="stanza">
+    <div class="verse cn">
+      <p>不要温和地走进那个良夜，</p>
+      <p>老年应当在日暮时分燃烧与咆哮；</p>
+      <p class="refrain">怒斥，怒斥光明的消逝。</p>
+    </div>
+    <div class="verse en">
+      <p>Do not go gentle into that good night,</p>
+      <p>Old age should burn and rave at close of day;</p>
+      <p class="refrain">Rage, rage against the dying of the light.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Stanza 2: The Wise -->
+<div class="stanza-group">
+  <div class="stanza-label">智者 · <em>The Wise</em></div>
+  <div class="stanza">
+    <div class="verse cn">
+      <p>智慧的人临终虽然懂得黑暗有理，</p>
+      <p>因为他们的话语未曾迸发出闪电，</p>
+      <p class="refrain">也不会温和地走进那个良夜。</p>
+    </div>
+    <div class="verse en">
+      <p>Though wise men at their end know dark is right,</p>
+      <p>Because their words had forked no lightning they</p>
+      <p class="refrain">Do not go gentle into that good night.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Stanza 3: The Good -->
+<div class="stanza-group">
+  <div class="stanza-label">善者 · <em>The Good</em></div>
+  <div class="stanza">
+    <div class="verse cn">
+      <p>善良的人，当最后的浪潮涌过，哭喊着</p>
+      <p>他们脆弱的善行本可在绿色的海湾里起舞，</p>
+      <p class="refrain">怒斥，怒斥光明的消逝。</p>
+    </div>
+    <div class="verse en">
+      <p>Good men, the last wave by, crying how bright</p>
+      <p>Their frail deeds might have danced in a green bay,</p>
+      <p class="refrain">Rage, rage against the dying of the light.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Inline illustration: a single flame -->
+<figure class="illustration inline stanza-group">
+  <svg viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg" aria-label="A single flame burning in darkness">
+    <path d="M 40 12 C 28 35 22 58 28 78 C 32 90 37 97 40 100 C 43 97 48 90 52 78 C 58 58 52 35 40 12"
+          fill="none" stroke="#c49a3c" stroke-width="0.8" opacity="0.4"/>
+    <path d="M 40 30 C 34 45 31 60 34 74 C 36 82 39 86 40 87 C 41 86 44 82 46 74 C 49 60 46 45 40 30"
+          fill="none" stroke="#c49a3c" stroke-width="0.5" opacity="0.55"/>
+    <path d="M 40 45 C 37 54 36 62 38 70 C 39 73 40 74 40 74 C 40 74 41 73 42 70 C 44 62 43 54 40 45"
+          fill="#c49a3c" opacity="0.1"/>
+  </svg>
+</figure>
+
+<!-- Stanza 4: The Wild -->
+<div class="stanza-group">
+  <div class="stanza-label">狂者 · <em>The Wild</em></div>
+  <div class="stanza">
+    <div class="verse cn">
+      <p>狂野的人，追逐并歌唱过翱翔的太阳，</p>
+      <p>才知道，为时太晚，他们令它途中悲伤，</p>
+      <p class="refrain">也不要温和地走进那个良夜。</p>
+    </div>
+    <div class="verse en">
+      <p>Wild men who caught and sang the sun in flight,</p>
+      <p>And learn, too late, they grieved it on its way,</p>
+      <p class="refrain">Do not go gentle into that good night.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Stanza 5: The Grave -->
+<div class="stanza-group">
+  <div class="stanza-label">肃者 · <em>The Grave</em></div>
+  <div class="stanza">
+    <div class="verse cn">
+      <p>严肃的人，临近死亡，以炫目的视觉看见</p>
+      <p>失明的眼可以像流星般闪耀欢欣，</p>
+      <p class="refrain">怒斥，怒斥光明的消逝。</p>
+    </div>
+    <div class="verse en">
+      <p>Grave men, near death, who see with blinding sight</p>
+      <p>Blind eyes could blaze like meteors and be gay,</p>
+      <p class="refrain">Rage, rage against the dying of the light.</p>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Stanza 6: The Father — final quatrain -->
+<div class="stanza-group final">
+  <div class="stanza-label">致父亲 · <em>The Father</em></div>
+  <div class="stanza">
+    <div class="verse cn">
+      <p>而您，我的父亲，在那悲伤的高处，</p>
+      <p>我祈求您，此刻用您炽烈的泪水诅咒我，祝福我。</p>
+      <p class="refrain">不要温和地走进那个良夜。</p>
+      <p class="refrain">怒斥，怒斥光明的消逝。</p>
+    </div>
+    <div class="verse en">
+      <p>And you, my father, there on the sad height,</p>
+      <p>Curse, bless, me now with your fierce tears, I pray.</p>
+      <p class="refrain">Do not go gentle into that good night.</p>
+      <p class="refrain">Rage, rage against the dying of the light.</p>
+    </div>
+  </div>
+</div>
+
+<!-- The dying light — a fading golden line -->
+<div class="dying-light"></div>
+
+<!-- ═══ NOTES ═══ -->
+
+<div class="notes">
+  <div class="note-heading">
+    <div class="cn">关于维兰内尔</div>
+    <div class="en">On the Villanelle</div>
+  </div>
+  <div class="note-pair">
+    <div class="cn">维兰内尔是一种严格的诗歌形式，源自文艺复兴时期的法国：全诗十九行，五个三行节加一个四行节，只使用两个韵脚，两句副歌交替出现，最终在末节汇合。迪兰·托马斯将这种形式推向了极致——每一次重复不是简单的回响，而是愈加炽烈的呐喊。副歌像潮水一样反复涌来，每一次都携带着更深的绝望与更猛烈的反抗。</div>
+    <div class="en">The villanelle is a strict poetic form from Renaissance France: nineteen lines across five tercets and one closing quatrain, built on only two rhymes, with two refrains alternating and converging in the final stanza. Thomas pushed this form to its limit — each recurrence is not a mere echo but an ever more incandescent cry. The refrains return like waves, each time carrying deeper despair and fiercer defiance.</div>
+  </div>
+  <div class="note-pair">
+    <div class="cn">迪兰·托马斯（1914–1953），威尔士诗人，以炽烈的语言和音乐般的韵律著称。此诗写于1947年，1952年发表于诗集《在乡间沉睡》。托马斯于1953年在纽约去世，年仅三十九岁。</div>
+    <div class="en">Dylan Thomas (1914–1953), Welsh poet renowned for his incandescent language and musical cadence. Written in 1947, this poem was published in 1952 in <em>In Country Sleep.</em> Thomas died in New York in 1953, aged thirty-nine.</div>
+  </div>
+</div>
+
+<!-- Closing illustration: fading ember -->
+<figure class="illustration inline stanza-group" style="max-width:200px">
+  <svg viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg" aria-label="A fading point of light">
+    <defs>
+      <radialGradient id="fadeEmber" cx="50%" cy="50%" r="35%">
+        <stop offset="0%" stop-color="#c49a3c" stop-opacity="0.25"/>
+        <stop offset="100%" stop-color="#c49a3c" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <ellipse cx="100" cy="25" rx="50" ry="12" fill="url(#fadeEmber)"/>
+    <line x1="50" y1="25" x2="150" y2="25" stroke="#c49a3c" stroke-width="0.3" opacity="0.25"/>
+  </svg>
+</figure>
+
+</main>
+
+<footer class="footer">
+  <p>Original poem by Dylan Thomas · first published 1951</p>
+  <p>Chinese translation &amp; design for bilingual reading</p>
+  <div class="editions">
+    <a href="gentle-en.html">English Edition</a>
+    <a href="gentle-cn.html">中文版</a>
+  </div>
+</footer>
+
+<button class="back-to-top" id="backToTop" aria-label="Back to top">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="18 15 12 9 6 15"></polyline>
+  </svg>
+</button>
+
+<script>
+// Progress bar
+const progressBar = document.getElementById('progressBar');
+function updateProgress() {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+  progressBar.style.width = progress + '%';
+}
+
+// Back to top
+const backToTop = document.getElementById('backToTop');
+function updateBackToTop() {
+  if (window.scrollY > 400) {
+    backToTop.classList.add('show');
+  } else {
+    backToTop.classList.remove('show');
+  }
+}
+backToTop.addEventListener('click', () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+
+// Scroll reveal
+const sections = document.querySelectorAll('.stanza-group, .notes');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.classList.add('visible');
+      observer.unobserve(entry.target);
+    }
+  });
+}, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+
+sections.forEach(section => observer.observe(section));
+
+// Scroll events
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(() => {
+      updateProgress();
+      updateBackToTop();
+      ticking = false;
+    });
+    ticking = true;
+  }
+});
+
+// Initial call
+updateProgress();
+</script>
+
+</body>
+</html>
